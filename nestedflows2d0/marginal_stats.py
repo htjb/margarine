@@ -76,6 +76,7 @@ class bijector_calculations(object):
         (replica posterior) and the base distribution (prior).
 
         """
+        
         logL = self._calc_logL()
         return tf.reduce_mean(logL)
 
@@ -93,6 +94,19 @@ class bijector_calculations(object):
         logL = self._calc_logL()
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
 
+    def evidence(self):
+
+        r"""
+
+        Function used to caluclate the marginal evidence.
+
+        """
+
+        logprob = self.bij.maf.log_prob(
+            _forward_transform(
+                self.samples, self.bij.theta_min, self.bij.theta_max))
+        D = self.klDiv()
+        return tf.reduce_mean(logprob) - D
 
 class kde_calculations(object):
 
