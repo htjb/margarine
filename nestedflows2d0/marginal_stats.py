@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from nestedflows2d0.processing import forward_transform
+from nestedflows2d0.processing import _forward_transform
 
 
 class bijector_calculations(object):
@@ -54,10 +54,10 @@ class bijector_calculations(object):
         """
 
         logprob = self.bij.maf.log_prob(
-            forward_transform(
+            _forward_transform(
                 self.samples, self.bij.theta_min, self.bij.theta_max))
         base_logprob = self.bij.base.log_prob(
-            forward_transform(
+            _forward_transform(
                 self.samples, self.bij.theta_min, self.bij.theta_max))
 
         def mask_tensor(tensor):
@@ -76,7 +76,7 @@ class bijector_calculations(object):
         (replica posterior) and the base distribution (prior).
 
         """
-        logL = self._calc_logL(self.bij, self.samples)
+        logL = self._calc_logL()
         return tf.reduce_mean(logL)
 
     def bayesian_dimensionality(self):
@@ -90,7 +90,7 @@ class bijector_calculations(object):
 
         """
 
-        logL = self._calc_logL(self.bij, self.samples)
+        logL = self._calc_logL()
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
 
 

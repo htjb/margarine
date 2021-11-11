@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
-from nestedflows2d0.processing import forward_transform, inverse_transform
+from nestedflows2d0.processing import _forward_transform, _inverse_transform
 import pickle
 
 
@@ -186,7 +186,7 @@ class Bijector(object):
         if type(early_stop) is not bool:
             raise TypeError("'early_stop' must be a boolean.")
 
-        phi = forward_transform(self.theta, self.theta_min, self.theta_max)
+        phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
 
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
@@ -234,9 +234,9 @@ class Bijector(object):
         u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
         prior_limits = np.array(
             [[0]*self.theta.shape[-1], [1]*self.theta.shape[-1]])
-        x = forward_transform(u, prior_limits[0], prior_limits[1])
+        x = _forward_transform(u, prior_limits[0], prior_limits[1])
         x = self.bij(x.astype(np.float32)).numpy()
-        x = inverse_transform(x, self.theta_min, self.theta_max)
+        x = _inverse_transform(x, self.theta_min, self.theta_max)
         mask = np.isfinite(x).all(axis=-1)
         return x[mask, :]
 
@@ -282,8 +282,7 @@ class Bijector(object):
                 sample_weights = pickle.load(f)
 
         bijector = cls(theta, sample_weights)
-        bijector(np.random.rand(theta.shape[-1]),
-                 np.array([[0]*theta.shape[-1], [1]*theta.shape[-1]]))
+        bijector(len(theta))
         for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
 
