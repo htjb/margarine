@@ -1,32 +1,121 @@
 import numpy as np
-from scipy.stats import norm, uniform, cauchy, gennorm
 import tensorflow as tf
 import tensorflow_probability as tfp
-import tqdm
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from nestedflows2d0.processing import forward_transform, inverse_transform
 import pickle
-import pprint
-import matplotlib.pyplot as plt
 
 def load(filename):
     return Bijector.load(filename)
 
 class Bijector(object):
-    def __init__(self, theta_min, theta_max, weights, **kwargs):
+
+    r"""
+    This class is used to train, load and call instances of a bijector
+    built from a series of autoregressive neural networks.
+
+    **Parameters:**
+
+    theta: **numpy array**
+        | The samples from the probability distribution that we require the
+            bijector to learn.
+
+    weights: **numpy array**
+        | The weights associated with the samples above.
+
+    **kwargs:**
+
+    number_networks: **int / default = 6**
+        | The bijector is built by chaining a series of autoregressive neural
+            networks together and this parameter is used to determine
+            how many networks there are in the chain.
+
+    learning_rate: **float / default = 1e-3**
+        | The learning rate determines the 'step size' of the optimization
+            algorithm used to train the bijector. Its value can effect the
+            quality of emulation.
+
+    hidden_layers: **list / default = [50, 50]**
+        | The number of layers and number of nodes in each hidden layer for
+            each neural network. The default is two hidden layers with
+            50 nodes each and each network in the chain has the same hidden
+            layer structure.
+
+    **Attributes:**
+
+    A list of some key attributes accessible to the user.
+
+    maf: **Instance of tfd.TransformedDistribution**
+        | By loading a trained instance of this class and accessing the
+            ``maf`` (masked autoregressive flow) attribute, which is an
+            instance of
+            ``tensorflow_probability.distributions.TransformedDistribution``,
+            the used can sample the trained bijector. e.g.
+
+            .. code:: python
+
+                from ...bijector import Bijector
+
+                file = '/trained_bijector.pkl'
+                bij = Bijector.load(file)
+
+                samples = bij.maf.sample(1000)
+
+            It can also be used to calculate log probabilities via
+
+            .. code:: python
+
+                from ...processing import forward_transform
+
+                log_prob = bij.log_prob(forward_transform(
+                    samples, bij.theta_min, bij.theta_max))
+
+            For more information on the attributes associated with
+            ``tensorflow_probability.distributions.TransformedDistribution``
+            see the tensorflow documentation.
+
+    theta_max: **numpy array**
+        | This is an approximate estimate of the true upper limits of the
+            priors used to generate the samples that we want the
+            bijector to learn (for more info see the ... paper).
+
+    theta_min: **numpy array**
+        | As above but an estimate of the true lower limits of the priors.
+
+    loss_history: **list**
+        | This list contains the value of the loss function at each epoch
+            during training.
+
+    """
+
+    def __init__(self, theta, weights, **kwargs):
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         self.sample_weights = weights
+        theta_max = np.max(theta, axis=0)
+        theta_min = np.min(theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = a
         self.theta_max = b
 
-        self.loc = 0
-        self.scale = 1
+        self.theta = theta
 
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
+
+        if type(self.number_networks) is not int:
+            raise TypeError("'number_networks' must be an integer.")
+        if type(self.learning_rate) not in [int, float]:
+            raise TypeError("'learning_rate', must be a float.")
+        if type(self.hidden_layers) is not list:
+            raise TypeError("'hidden_layers' must be a list of integers.")
+        else:
+            for i in range(len(hidden_layers)):
+                if type(hidden_layers[i]) is not int:
+                    raise TypeError("One or more valus in 'hidden_layers'" +
+                        "is not an integer.")
+
 
         self.mades = [tfb.AutoregressiveNetwork(params=2,
                       hidden_units=self.hidden_layers, activation='tanh',
@@ -37,29 +126,65 @@ class Bijector(object):
             tfb.MaskedAutoregressiveFlow(made) for made in self.mades])
 
         self.base = tfd.Blockwise(
-            [tfd.Normal(loc=self.loc, scale=self.scale)
+            [tfd.Normal(loc=0, scale=1)
              for _ in range(len(theta_min))])
         self.maf = tfd.TransformedDistribution(self.base, bijector=self.bij)
 
         self.optimizer = tf.keras.optimizers.Adam(
             learning_rate=self.learning_rate)
 
-        self.early_stop = kwargs.pop('early_stop', False)
-
     def _train_step(self, x, w):
+
+        r"""
+        This function is used to calculate the loss value at each epoch and
+        adjust the weights and biases of the neural networks via the
+        optimizer algorithm.
+        """
+
         with tf.GradientTape() as tape:
             loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
-            self.optimizer.apply_gradients(zip(gradients, self.maf.trainable_variables))
+            self.optimizer.apply_gradients(zip(gradients,
+                self.maf.trainable_variables))
             return loss
 
-    def train(self, theta, weights, epochs=100):
-        """ Train a neural network """
-        phi = forward_transform(theta, self.theta_min, self.theta_max)
+    def train(self, epochs=100, early_stop=False):
+        r"""
+
+        This function is called to train the bijector once it has been
+        initialised. For example
+
+        .. code:: python
+
+            from ...bijector import Bijector
+
+            bij = Bijector(theta, weights)
+            bij.train()
+
+        **Kwargs:**
+
+        epochs: **int / default = 100**
+            | The number of iterations to train the neural networks for.
+
+        early_stop: **boolean / default = False**
+            | Determines whether or not to implement an early stopping
+                algorithm or
+                train for the set number of epochs. If set to True then the
+                algorithm will stop training when the fractional difference
+                between the current loss and the average loss value over the
+                preceeding 10 epochs is < 1e-6.
+
+        """
+        if type(epochs) is not int:
+            raise TypeError("'epochs' is not an integer.")
+        if type(early_stop) is not boolean:
+            raise TypeError("'early_stop' must be a boolean.")
+
+        phi = forward_transform(self.theta, self.theta_min, self.theta_max)
 
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask,:]
-        weights_phi = weights[mask]
+        weights_phi = self.sample_weights[mask]
         weights_phi /= weights_phi.sum()
 
         phi = phi.astype('float32')
@@ -71,18 +196,42 @@ class Bijector(object):
             loss=self._train_step(phi, weights_phi).numpy()
             self.loss_history.append(loss)
             print('Epoch: ' + str(i) + ' Loss: ' + str(loss))
-            if self.early_stop:
+            if early_stop:
                 if len(self.loss_history) > 10:
-                    delta = (self.loss_history[-1]-np.mean(self.loss_history[-11:-1])) \
+                    delta = (self.loss_history[-1] -
+                        np.mean(self.loss_history[-11:-1])) \
                         /np.mean(self.loss_history[-11:-1])
                     if np.abs(delta) < 1e-6:
-                        print('Early Stopped: (Loss[-1] - Mean(Loss[-11:-1]))/Mean(Loss[-11:-1]) < 1e-6')
-                        print(np.mean(self.loss_history[-11:-1]), self.loss_history[-1])
-                        print((self.loss_history[-1]- np.mean(self.loss_history[-11:-1]))
+                        print('Early Stopped:' +
+                            ' (Loss[-1] - Mean(Loss[-11:-1]))' +
+                            '/Mean(Loss[-11:-1]) < 1e-6')
+                        print(np.mean(self.loss_history[-11:-1]),
+                            self.loss_history[-1])
+                        print((self.loss_history[-1]-
+                            np.mean(self.loss_history[-11:-1]))
                             /np.mean(self.loss_history[-11:-1]))
                         break
 
-    def __call__(self, u, prior_limits):
+    def __call__(self, length=1000):
+
+        r"""
+
+        This function is used when calling the bijector class to produce
+        samples.
+
+        **Kwargs:**
+
+        length: **int / default=1000**
+            | This should be an integer and is used to determine how many
+                samples are generated when calling the bijector.
+
+        """
+        if type(length) is not int:
+            raise TypeError("'length' must be an integer.")
+
+        u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
+        prior_limits = np.array(
+            [[0]*self.theta.shape[-1], [1]*self.theta.shape[-1]])
         x = forward_transform(u, prior_limits[0], prior_limits[1])
         x = self.bij(x.astype(np.float32)).numpy()
         x = inverse_transform(x, self.theta_min, self.theta_max)
@@ -90,17 +239,49 @@ class Bijector(object):
         return x[mask, :]
 
     def save(self, filename):
+        r"""
+
+        This function can be used to save an instance of a trained bijector as
+        a pickled class so that it can be loaded and used in differnt scripts.
+
+        **Parameters:**
+
+        filename: **string**
+            | Path in which to save the pickled bijector.
+
+        """
         nn_weights = [made.get_weights() for made in self.mades]
         with open(filename,'wb') as f:
-            pickle.dump([self.theta_min, self.theta_max, nn_weights, self.sample_weights], f)
+            pickle.dump([theta,
+                nn_weights, self.sample_weights], f)
 
     @classmethod
     def load(cls, filename):
-        with open(filename,'rb') as f:
-            theta_min, theta_max, nn_weights, sample_weights = pickle.load(f)
+        r"""
 
-        bijector = cls(theta_min, theta_max, sample_weights)
-        bijector(np.random.rand(len(theta_min)), np.array([[0]*5, [1]*5]))
+        This function can be used to load a saved bijector. For example
+
+        .. code:: python
+
+            from ...bijector import Bijector
+
+            file = 'path/to/pickled/bijector.pkl'
+            bij = Bijector.load(file)
+
+        **Parameters:**
+
+        filename: **string**
+            | Path to the saved bijector.
+
+        """
+
+        with open(filename,'rb') as f:
+            theta, nn_weights, \
+                sample_weights = pickle.load(f)
+
+        bijector = cls(self.theta, sample_weights)
+        bijector(np.random.rand(theta.shape[-1]),
+            np.array([[0]*theta.shape[-1], [1]*theta.shape[-1]]))
         for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
 
