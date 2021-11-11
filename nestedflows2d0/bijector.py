@@ -1,12 +1,17 @@
 import numpy as np
 import tensorflow as tf
-import tensorflow_probability as tfp
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from nestedflows2d0.processing import forward_transform, inverse_transform
 import pickle
 
+
 def load(filename):
+    """
+    Not sure this is needed but need to double check
+    (inherited from old code)
+    """
     return Bijector.load(filename)
+
 
 class Bijector(object):
 
@@ -111,11 +116,11 @@ class Bijector(object):
         if type(self.hidden_layers) is not list:
             raise TypeError("'hidden_layers' must be a list of integers.")
         else:
-            for i in range(len(hidden_layers)):
-                if type(hidden_layers[i]) is not int:
-                    raise TypeError("One or more valus in 'hidden_layers'" +
+            for i in range(len(self.hidden_layers)):
+                if type(self.hidden_layers[i]) is not int:
+                    raise TypeError(
+                        "One or more valus in 'hidden_layers'" +
                         "is not an integer.")
-
 
         self.mades = [tfb.AutoregressiveNetwork(params=2,
                       hidden_units=self.hidden_layers, activation='tanh',
@@ -144,8 +149,9 @@ class Bijector(object):
         with tf.GradientTape() as tape:
             loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
-            self.optimizer.apply_gradients(zip(gradients,
-                self.maf.trainable_variables))
+            self.optimizer.apply_gradients(
+                zip(gradients,
+                    self.maf.trainable_variables))
             return loss
 
     def train(self, epochs=100, early_stop=False):
@@ -177,13 +183,13 @@ class Bijector(object):
         """
         if type(epochs) is not int:
             raise TypeError("'epochs' is not an integer.")
-        if type(early_stop) is not boolean:
+        if type(early_stop) is not bool:
             raise TypeError("'early_stop' must be a boolean.")
 
         phi = forward_transform(self.theta, self.theta_min, self.theta_max)
 
         mask = np.isfinite(phi).all(axis=-1)
-        phi = phi[mask,:]
+        phi = phi[mask, :]
         weights_phi = self.sample_weights[mask]
         weights_phi /= weights_phi.sum()
 
@@ -193,23 +199,19 @@ class Bijector(object):
 
         self.loss_history = []
         for i in range(epochs):
-            loss=self._train_step(phi, weights_phi).numpy()
+            loss = self._train_step(phi, weights_phi).numpy()
             self.loss_history.append(loss)
             print('Epoch: ' + str(i) + ' Loss: ' + str(loss))
             if early_stop:
                 if len(self.loss_history) > 10:
-                    delta = (self.loss_history[-1] -
+                    delta = (
+                        self.loss_history[-1] -
                         np.mean(self.loss_history[-11:-1])) \
-                        /np.mean(self.loss_history[-11:-1])
+                        / np.mean(self.loss_history[-11:-1])
                     if np.abs(delta) < 1e-6:
                         print('Early Stopped:' +
-                            ' (Loss[-1] - Mean(Loss[-11:-1]))' +
-                            '/Mean(Loss[-11:-1]) < 1e-6')
-                        print(np.mean(self.loss_history[-11:-1]),
-                            self.loss_history[-1])
-                        print((self.loss_history[-1]-
-                            np.mean(self.loss_history[-11:-1]))
-                            /np.mean(self.loss_history[-11:-1]))
+                              ' (Loss[-1] - Mean(Loss[-11:-1]))' +
+                              '/Mean(Loss[-11:-1]) < 1e-6')
                         break
 
     def __call__(self, length=1000):
@@ -251,9 +253,9 @@ class Bijector(object):
 
         """
         nn_weights = [made.get_weights() for made in self.mades]
-        with open(filename,'wb') as f:
-            pickle.dump([theta,
-                nn_weights, self.sample_weights], f)
+        with open(filename, 'wb') as f:
+            pickle.dump([self.theta,
+                         nn_weights, self.sample_weights], f)
 
     @classmethod
     def load(cls, filename):
@@ -275,13 +277,13 @@ class Bijector(object):
 
         """
 
-        with open(filename,'rb') as f:
+        with open(filename, 'rb') as f:
             theta, nn_weights, \
                 sample_weights = pickle.load(f)
 
-        bijector = cls(self.theta, sample_weights)
+        bijector = cls(theta, sample_weights)
         bijector(np.random.rand(theta.shape[-1]),
-            np.array([[0]*theta.shape[-1], [1]*theta.shape[-1]]))
+                 np.array([[0]*theta.shape[-1], [1]*theta.shape[-1]]))
         for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
 

@@ -1,7 +1,7 @@
 import tensorflow as tf
-import tensorflow_probability as tfp
 import numpy as np
 from nestedflows2d0.processing import forward_transform
+
 
 class bijector_calculations(object):
 
@@ -19,7 +19,7 @@ class bijector_calculations(object):
 
             .. code:: python
 
-                from ... import Bijector
+                from ...bijector import Bijector
 
                 file = '/trained_bijector.pkl'
                 bij = Bijector.load(file)
@@ -42,7 +42,6 @@ class bijector_calculations(object):
         self.bij = bij
         self.samples = samples
 
-
     def _calc_logL(self):
 
         r"""
@@ -55,11 +54,11 @@ class bijector_calculations(object):
         """
 
         logprob = self.bij.maf.log_prob(
-            forward_transform(self.samples,
-            self.bij.theta_min, self.bij.theta_max))
+            forward_transform(
+                self.samples, self.bij.theta_min, self.bij.theta_max))
         base_logprob = self.bij.base.log_prob(
-            forward_transform(self.samples,
-            self.bij.theta_min, self.bij.theta_max))
+            forward_transform(
+                self.samples, self.bij.theta_min, self.bij.theta_max))
 
         def mask_tensor(tensor):
             return tf.boolean_mask(tensor, np.isfinite(tensor))
@@ -77,20 +76,21 @@ class bijector_calculations(object):
         (replica posterior) and the base distribution (prior).
 
         """
-        logL = _calc_logL(self.bij, self.samples)
+        logL = self._calc_logL(self.bij, self.samples)
         return tf.reduce_mean(logL)
 
     def bayesian_dimensionality(self):
 
         r"""
 
-        Calculates the bayesian dimensionality of the samples from the bijector.
+        Calculates the bayesian dimensionality of the
+        samples from the bijector.
         More details on bayesian dimensionality can be found in
         https://arxiv.org/abs/1903.06682.
 
         """
 
-        logL = _calc_logL(self.bij, self.samples)
+        logL = self._calc_logL(self.bij, self.samples)
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
 
 
@@ -126,7 +126,6 @@ class kde_calculations(object):
         self.kde = kde
         self.samples = samples
 
-
     def _calc_logL(self):
 
         r"""
@@ -138,7 +137,7 @@ class kde_calculations(object):
 
         """
 
-        #return logL
+        # return logL
 
     def klDiv(self):
 
@@ -148,8 +147,8 @@ class kde_calculations(object):
         (replica posterior) and the original distribution (prior).
 
         """
-        #logL = _calc_logL(self.kde, self.samples)
-        #return tf.reduce_mean(logL)
+        # logL = _calc_logL(self.kde, self.samples)
+        # return tf.reduce_mean(logL)
 
     def bayesian_dimensionality(self):
 
@@ -159,5 +158,5 @@ class kde_calculations(object):
 
         """
 
-        #logL = _calc_logL(self.kde, self.samples)
-        #return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
+        # logL = _calc_logL(self.kde, self.samples)
+        # return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
