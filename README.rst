@@ -7,8 +7,6 @@ To Do:
 
 - [ ] Need a catchy PackageName (preferably not nestedflows so that we can
   make the distinction between the two packages)
-- [ ] Write class for KDEs
-- [ ] Write functions to calculate marginal stats with KDEs
 - [ ] Need to double check who gets credited as an author since we are
   recycling some of the nestedflows code
 - ...
