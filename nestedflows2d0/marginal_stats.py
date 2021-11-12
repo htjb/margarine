@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from nestedflows2d0.processing import _forward_transform
+from tensorflow_probability import distributions as tfd
+from nestedflows2d0.kde import KDE
 
 
 class bijector_calculations(object):
@@ -76,7 +78,7 @@ class bijector_calculations(object):
         (replica posterior) and the base distribution (prior).
 
         """
-        
+
         logL = self._calc_logL()
         return tf.reduce_mean(logL)
 
@@ -135,7 +137,7 @@ class kde_calculations(object):
 
     """
 
-    def __init__(self, kde, samples):
+    def __init__(self, kde, samples, prior_limits, prior_types):
 
         self.kde = kde
         self.samples = samples
@@ -150,8 +152,25 @@ class kde_calculations(object):
         probability of the original distribution (prior).
 
         """
+        logprob = self.kde.kde.logpdf(
+            _forward_transform(
+            self.samples, self.kde.theta_min, self.kde.theta_max).T)
+        self.base = tfd.Blockwise(
+            [tfd.Normal(loc=0, scale=1)
+             for _ in range(self.samples.shape[-1])])
+        base_logprob = self.base.log_prob(
+            _forward_transform(
+                self.samples, self.kde.theta_min, self.kde.theta_max))
 
-        # return logL
+        def masking(arr):
+            return arr[np.isfinite(arr)]
+
+        logprob = masking(logprob)
+        base_logprob = masking(base_logprob)
+
+        logL = logprob - base_logprob
+        print('logL', logL)
+        return logL
 
     def klDiv(self):
 
@@ -161,8 +180,8 @@ class kde_calculations(object):
         (replica posterior) and the original distribution (prior).
 
         """
-        # logL = _calc_logL(self.kde, self.samples)
-        # return tf.reduce_mean(logL)
+        logL = self._calc_logL()
+        return tf.reduce_mean(logL)
 
     def bayesian_dimensionality(self):
 
@@ -172,5 +191,19 @@ class kde_calculations(object):
 
         """
 
-        # logL = _calc_logL(self.kde, self.samples)
-        # return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
+        logL = self._calc_logL()
+        return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
+
+    def evidence(self):
+
+        r"""
+
+        Function used to caluclate the marginal evidence.
+
+        """
+
+        logprob = self.kde.kde.logpdf(
+            _forward_transform(
+            self.samples, self.kde.theta_min, self.kde.theta_max).T)
+        D = self.klDiv()
+        return tf.reduce_mean(logprob).numpy() - D.numpy()

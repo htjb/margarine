@@ -100,8 +100,8 @@ class Bijector(object):
         theta_min = np.min(theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = a
-        self.theta_max = b
+        self.theta_min = b
+        self.theta_max = a
 
         self.theta = theta
 
