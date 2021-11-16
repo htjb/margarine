@@ -107,6 +107,7 @@ class bijector_calculations(object):
         logprob = self.bij.maf.log_prob(
             _forward_transform(
                 self.samples, self.bij.theta_min, self.bij.theta_max))
+        logprob = tf.boolean_mask(logprob, np.isfinite(logprob))
         D = self.klDiv()
         return tf.reduce_mean(logprob) - D
 
@@ -137,7 +138,7 @@ class kde_calculations(object):
 
     """
 
-    def __init__(self, kde, samples, prior_limits, prior_types):
+    def __init__(self, kde, samples):
 
         self.kde = kde
         self.samples = samples
@@ -169,7 +170,6 @@ class kde_calculations(object):
         base_logprob = masking(base_logprob)
 
         logL = logprob - base_logprob
-        print('logL', logL)
         return logL
 
     def klDiv(self):
@@ -205,5 +205,6 @@ class kde_calculations(object):
         logprob = self.kde.kde.logpdf(
             _forward_transform(
             self.samples, self.kde.theta_min, self.kde.theta_max).T)
+        logprob = logprob[np.isfinite(logprob)]
         D = self.klDiv()
         return tf.reduce_mean(logprob).numpy() - D.numpy()
