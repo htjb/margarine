@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
-from nestedflows2d0.processing import _forward_transform, _inverse_transform
+from bayesstats.processing import _forward_transform, _inverse_transform
 import pickle
 
 

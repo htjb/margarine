@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from nestedflows2d0.processing import _forward_transform
+from bayesstats.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
-from nestedflows2d0.kde import KDE
+from bayesstats.kde import KDE
 
 
 class bijector_calculations(object):

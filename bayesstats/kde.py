@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import gaussian_kde
-from nestedflows2d0.processing import _forward_transform, _inverse_transform
+from bayesstats.processing import _forward_transform, _inverse_transform
 import pickle
 
 
