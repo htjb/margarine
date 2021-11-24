@@ -1,6 +1,8 @@
 from bayesstats.bijector import Bijector
 from bayesstats.marginal_stats import bijector_calculations
 from anesthetic.samples import NestedSamples
+import matplotlib.pyplot as plt
+from hist_plotting import build
 import numpy as np
 
 def load_chains(root, logs=[], ndims=5):
@@ -41,17 +43,18 @@ bij = Bijector(theta, weights)
 # the posterior and needs more investigation).
 bij.train(epochs=100)
 
-# draw len(theta) samples from the bijector. The samples have equal weights.
-x = bij(len(theta))
+# transform len(theta) samples from the hypercube using the bijector.
+# The samples have equal weights.
+x = bij(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
 
 # example saving and loading the bijector (completely unecessary in this
 # code but just as an example)
 file = 'example_bijector.pkl'
-bij.save(file)
+#bij.save(file)
 bij = Bijector.load(file)
 
-# generating samples again from the loaded bijector
-x = bij(len(theta))
+# can also access the call function like so
+x = bij.sample(5000)
 
 # initiating the stats calculator with the bijector and samples from the
 # bijector
@@ -76,16 +79,19 @@ kde = KDE(theta, weights)
 # generating (analogous to training) the KDE.
 kde.generate_kde()
 
-# generating len(theta) samples from the KDE.
-x = kde(len(theta))
+# generating len(theta) samples from the KDE. This is a proper transformation
+# of the hypercube onto the KDE distribution but it is very slow. It's useful
+# I think for the 'any prior you like' application of this work.
+x = kde(np.random.uniform(0, 1, size=(10, theta.shape[-1])))
 
 # again just demonstraiting saving and loading the kde class.
 file = 'example_kde.pkl'
 kde.save(file)
 kde.load(file)
 
-# generating samples from the loaded KDE.
-x = kde(len(theta))
+# a much quicker way to generate samples from the kde that can then be
+# used to calculate marginal statistics.
+x = kde.sample(5000)
 
 # initiating the kde stats caclulator
 stats_calculator = kde_calculations(kde, x)

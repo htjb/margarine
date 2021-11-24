@@ -214,12 +214,34 @@ class Bijector(object):
                               '/Mean(Loss[-11:-1]) < 1e-6')
                         break
 
-    def __call__(self, length=1000):
+    def __call__(self, u):
 
         r"""
 
-        This function is used when calling the bijector class to produce
-        samples.
+        This function is used when calling the bijector class to transform
+        samples from the unit hypercube to samples on the bijector.
+
+        **Parameters:**
+
+        u: **numpy array**
+            | Samples on the uniform hypercube.
+
+        """
+
+        x = _forward_transform(
+            u, np.array([0]*self.theta.shape[-1]),
+            np.array([1]*self.theta.shape[-1]))
+        x = self.bij(x.astype(np.float32)).numpy()
+        x = _inverse_transform(x, self.theta_min, self.theta_max)
+        mask = np.isfinite(x).all(axis=-1)
+        return x[mask, ...]
+
+    def sample(self, length=1000):
+
+        r"""
+
+        This function is used to generate samples on the bijector via the
+        bijector __call__ function.
 
         **Kwargs:**
 
@@ -232,13 +254,7 @@ class Bijector(object):
             raise TypeError("'length' must be an integer.")
 
         u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
-        prior_limits = np.array(
-            [[0]*self.theta.shape[-1], [1]*self.theta.shape[-1]])
-        x = _forward_transform(u, prior_limits[0], prior_limits[1])
-        x = self.bij(x.astype(np.float32)).numpy()
-        x = _inverse_transform(x, self.theta_min, self.theta_max)
-        mask = np.isfinite(x).all(axis=-1)
-        return x[mask, :]
+        return self(u)
 
     def save(self, filename):
         r"""
@@ -282,7 +298,7 @@ class Bijector(object):
                 sample_weights = pickle.load(f)
 
         bijector = cls(theta, sample_weights)
-        bijector(len(theta))
+        bijector(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
         for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
 

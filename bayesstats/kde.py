@@ -1,8 +1,8 @@
 import numpy as np
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, norm
 from bayesstats.processing import _forward_transform, _inverse_transform
+from scipy.optimize import root_scalar
 import pickle
-
 
 class KDE(object):
 
@@ -25,10 +25,40 @@ class KDE(object):
         weights_phi = self.weights[mask]
         weights_phi /= weights_phi.sum()
 
-        self.kde = gaussian_kde(phi.T, weights=self.weights, bw_method='silverman')
+        self.kde = gaussian_kde(
+            phi.T, weights=self.weights, bw_method='silverman')
+
         return self.kde
 
-    def __call__(self, length=1000):
+    def __call__(self, u):
+        # generate useful parameters for __call__ function to transform
+        # hypercube into samples on the KDE.
+        S = self.kde.covariance
+        mu = self.kde.dataset.T
+        steps, s = [], []
+        for i in range(mu.shape[-1]):
+            step = S[i, :i] @ np.linalg.inv(S[:i,:i])
+            steps.append(step)
+            s.append((S[i,i] - step @ S[:i,i])**0.5)
+
+        # transform samples from unit hypercube to kde
+        transformed_samples = []
+        for j in range(len(u)):
+            x=u[j]
+            y = np.zeros_like(x)
+            for i in range(len(x)):
+                m = mu[:,i] + steps[i] @ (y[:i] - mu[:,:i]).T
+                y[i] = root_scalar(
+                    lambda f:
+                    (norm().cdf((f-m)/s[i])*self.kde.weights).sum()-x[i],
+                    bracket=(mu[:, i].min()*2, mu[:, i].max()*2),
+                    method='bisect').root
+            transformed_samples.append(
+                _inverse_transform(y, self.theta_min, self.theta_max))
+        transformed_samples = np.array(transformed_samples)
+        return transformed_samples
+
+    def sample(self, length=1000):
         x = self.kde.resample(length).T
         return _inverse_transform(x, self.theta_min, self.theta_max)
 
@@ -44,6 +74,6 @@ class KDE(object):
 
         kde_class = cls(theta, sample_weights)
         kde_class.kde = kde
-        kde_class(len(theta))
+        kde_class(np.random.uniform(0, 1, size=(2, theta.shape[-1])))
 
         return kde_class
