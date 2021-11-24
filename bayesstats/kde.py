@@ -6,7 +6,58 @@ import pickle
 
 class KDE(object):
 
+    r"""
+    This class is used to generate a KDE given a weighted set of samples,
+    generate samples from that KDE, transform samples on the
+    hypercube into samples on the KDE and save and load the KDE model.
+
+    **Parameters:**
+
+    theta: **numpy array**
+        | The samples from the probability distribution that we require the
+            bijector to learn.
+
+    weights: **numpy array**
+        | The weights associated with the samples above.
+
+    **Attributes:**
+
+    A list of some key attributes accessible to the user.
+
+    kde: **Instance of scipy.stats.gaussian_kde**
+        | Once the class has been initalised with a set of samples and
+            their corresponding weights we can generate the kde using
+            the following code
+
+            .. code:: python
+
+                from bayesstats.kde import KDE
+                import numpy as np
+
+                theta = np.loadtxt('path/to/samples.txt')
+                weights = np.loadtxt('path/to/weights.txt')
+
+                KDE_class = KDE(theta, weights)
+                KDE_class.generate_kde()
+
+            This is analogous to training a Normalising Flow (Bijector
+            class). Once the KDE is generated it can be accessed via
+            `KDE_class.kde`. Initialisation of the class and generation
+            of the KDE are kept seperate to allow models to be saved and
+            loaded effectively.
+
+    theta_max: **numpy array**
+        | This is an approximate estimate of the true upper limits of the
+            priors used to generate the samples that we want the
+            bijector to learn (for more info see the ... paper).
+
+    theta_min: **numpy array**
+        | As above but an estimate of the true lower limits of the priors.
+
+    """
+
     def __init__(self, theta, weights):
+
         self.theta = theta
         self.weights = weights
 
@@ -19,6 +70,12 @@ class KDE(object):
         self.theta_max = a
 
     def generate_kde(self):
+
+        r"""
+        Function noramlises the input data into a standard normal parameter
+        space and then generates a weighted KDE.
+        """
+
         phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
@@ -59,15 +116,59 @@ class KDE(object):
         return transformed_samples
 
     def sample(self, length=1000):
+
+        r"""
+
+        Function can be used to generate samples from the KDE. It is much
+        faster than the __call__ function but does not transform samples
+        from the hypercube onto the KDE. It is however useful if we
+        want to generate a large number of samples that can then be
+        used to calulate the marginal statistics.
+
+        **Kwargs:**
+
+        length: **int / default=1000**
+            | This should be an integer and is used to determine how many
+                samples are generated when calling the bijector.
+
+        """
         x = self.kde.resample(length).T
         return _inverse_transform(x, self.theta_min, self.theta_max)
 
     def save(self, filename):
+
+        r"""
+        Function can be used to save an initalised version of the KDE class
+        and it's assosiated generated KDE.
+
+        **Parameters:**
+
+        filename: **string**
+            | Path in which to save the pickled KDE.
+        """
         with open(filename, 'wb') as f:
             pickle.dump([self.theta, self.weights, self.kde], f)
 
     @classmethod
     def load(cls, filename):
+
+        r"""
+
+        This function can be used to load a saved KDE. For example
+
+        .. code:: python
+
+            from bayesstats.kde import KDE
+
+            file = 'path/to/pickled/bijector.pkl'
+            KDE_class = KDE.load(file)
+
+        **Parameters:**
+
+        filename: **string**
+            | Path to the saved KDE.
+
+        """
 
         with open(filename, 'rb') as f:
             theta, sample_weights, kde = pickle.load(f)
