@@ -271,7 +271,11 @@ class Bijector(object):
         nn_weights = [made.get_weights() for made in self.mades]
         with open(filename, 'wb') as f:
             pickle.dump([self.theta,
-                         nn_weights, self.sample_weights], f)
+                         nn_weights,
+                         self.sample_weights,
+                         self.number_networks,
+                         self.hidden_layers,
+                         self.learning_rate], f)
 
     @classmethod
     def load(cls, filename):
@@ -295,9 +299,14 @@ class Bijector(object):
 
         with open(filename, 'rb') as f:
             theta, nn_weights, \
-                sample_weights = pickle.load(f)
+                sample_weights, \
+                number_networks, \
+                hidden_layers, \
+                learning_rate = pickle.load(f)
 
-        bijector = cls(theta, sample_weights)
+        bijector = cls(
+            theta, sample_weights, number_networks=number_networks,
+            learning_rate=learning_rate, hidden_layers=hidden_layers)
         bijector(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
         for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
