@@ -14,27 +14,27 @@ class maf_calculations(object):
 
     **Paramesters:**
 
-    bij: **instance of MAF class**
-        | This should be a loaded and trained instance of a MAF. Bijectors
-            can be loaded like so
+        bij: **instance of MAF class**
+            | This should be a loaded and trained instance of a MAF. Bijectors
+                can be loaded like so
 
-            .. code:: python
+                .. code:: python
 
-                from ...maf import MAF
+                    from ...maf import MAF
 
-                file = '/trained_maf.pkl'
-                bij = MAF.load(file)
+                    file = '/trained_maf.pkl'
+                    bij = MAF.load(file)
 
-    samples: **np.array**
-        | This should be the output of the bijector when called to generate
-            a set of samples from the replicated probability distribution. e.g.
-            after loading a trained MAF we would pass
+        samples: **numpy array**
+            | This should be the output of the bijector when called to generate
+                a set of samples from the replicated probability distribution. e.g.
+                after loading a trained MAF we would pass
 
-            .. code:: python
+                .. code:: python
 
-                u = np.random.uniform(0, 1, size=(10000, 5))
-                prior_limits = np.array([[0]*5, [1]*5])
-                samples = bij(u, prior_limits)
+                    u = np.random.uniform(0, 1, size=(10000, 5))
+                    prior_limits = np.array([[0]*5, [1]*5])
+                    samples = bij(u, prior_limits)
 
     """
 
@@ -103,22 +103,22 @@ class kde_calculations(object):
     that KDE, can be used to calculate marginal KL divergences and
     bayesian dimensionalities.
 
-    **Paramesters:**
+    **Parameters:**
 
-    kde: **instance of KDE class**
-        | This should be a loaded instance of a KDE. KDEs
-            can be loaded like so
+        kde: **instance of KDE class**
+            | This should be a loaded instance of a KDE. KDEs
+                can be loaded like so
 
-            .. code:: python
+                .. code:: python
 
-                from ... import KDE
+                    from ... import KDE
 
-                file = '/trained_kde.pkl'
-                kde = KDE.load(file)
+                    file = '/trained_kde.pkl'
+                    kde = KDE.load(file)
 
-    samples: **np.array**
-        | This should be the output of the KDE when called to generate
-            a set of samples from the replicated probability distribution.
+        samples: **np.array**
+            | This should be the output of the KDE when called to generate
+                a set of samples from the replicated probability distribution.
 
     """
 

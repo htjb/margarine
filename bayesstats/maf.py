@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow_probability import (MAFs as tfb, distributions as tfd)
+from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from bayesstats.processing import _forward_transform, _inverse_transform
 import pickle
 
@@ -8,80 +8,81 @@ import pickle
 class MAF(object):
 
     r"""
+
     This class is used to train, load and call instances of a bijector
     built from a series of autoregressive neural networks.
 
     **Parameters:**
 
-    theta: **numpy array**
-        | The samples from the probability distribution that we require the
-            MAF to learn.
+        theta: **numpy array**
+            | The samples from the probability distribution that we require the
+                MAF to learn.
 
-    weights: **numpy array**
-        | The weights associated with the samples above.
+        weights: **numpy array**
+            | The weights associated with the samples above.
 
     **kwargs:**
 
-    number_networks: **int / default = 6**
-        | The bijector is built by chaining a series of autoregressive neural
-            networks together and this parameter is used to determine
-            how many networks there are in the chain.
+        number_networks: **int / default = 6**
+            | The bijector is built by chaining a series of autoregressive neural
+                networks together and this parameter is used to determine
+                how many networks there are in the chain.
 
-    learning_rate: **float / default = 1e-3**
-        | The learning rate determines the 'step size' of the optimization
-            algorithm used to train the MAF. Its value can effect the
-            quality of emulation.
+        learning_rate: **float / default = 1e-3**
+            | The learning rate determines the 'step size' of the optimization
+                algorithm used to train the MAF. Its value can effect the
+                quality of emulation.
 
-    hidden_layers: **list / default = [50, 50]**
-        | The number of layers and number of nodes in each hidden layer for
-            each neural network. The default is two hidden layers with
-            50 nodes each and each network in the chain has the same hidden
-            layer structure.
+        hidden_layers: **list / default = [50, 50]**
+            | The number of layers and number of nodes in each hidden layer for
+                each neural network. The default is two hidden layers with
+                50 nodes each and each network in the chain has the same hidden
+                layer structure.
 
     **Attributes:**
 
     A list of some key attributes accessible to the user.
 
-    maf: **Instance of tfd.TransformedDistribution**
-        | By loading a trained instance of this class and accessing the
-            ``maf`` (masked autoregressive flow) attribute, which is an
-            instance of
-            ``tensorflow_probability.distributions.TransformedDistribution``,
-            the used can sample the trained MAF. e.g.
+        maf: **Instance of tfd.TransformedDistribution**
+            | By loading a trained instance of this class and accessing the
+                ``maf`` (masked autoregressive flow) attribute, which is an
+                instance of
+                ``tensorflow_probability.distributions.TransformedDistribution``,
+                the used can sample the trained MAF. e.g.
 
-            .. code:: python
+                .. code:: python
 
-                from ...maf import MAF
+                    from ...maf import MAF
 
-                file = '/trained_maf.pkl'
-                bij = MAF.load(file)
+                    file = '/trained_maf.pkl'
+                    bij = MAF.load(file)
 
-                samples = bij.maf.sample(1000)
+                    samples = bij.maf.sample(1000)
 
-            It can also be used to calculate log probabilities via
+                It can also be used to calculate log probabilities via
 
-            .. code:: python
+                .. code:: python
 
-                from ...processing import forward_transform
+                    from ...processing import forward_transform
 
-                log_prob = bij.log_prob(forward_transform(
-                    samples, bij.theta_min, bij.theta_max))
+                    log_prob = bij.log_prob(forward_transform(
+                        samples, bij.theta_min, bij.theta_max))
 
-            For more information on the attributes associated with
-            ``tensorflow_probability.distributions.TransformedDistribution``
-            see the tensorflow documentation.
+                For more information on the attributes associated with
+                ``tensorflow_probability.distributions.TransformedDistribution``
+                see the tensorflow documentation.
 
-    theta_max: **numpy array**
-        | This is an approximate estimate of the true upper limits of the
-            priors used to generate the samples that we want the
-            MAF to learn (for more info see the ... paper).
+        theta_max: **numpy array**
+            | This is an approximate estimate of the true upper limits of the
+                priors used to generate the samples that we want the
+                MAF to learn (for more info see the ... paper).
 
-    theta_min: **numpy array**
-        | As above but an estimate of the true lower limits of the priors.
+        theta_min: **numpy array**
+            | As above but an estimate of the true lower limits of the priors.
 
-    loss_history: **list**
-        | This list contains the value of the loss function at each epoch
-            during training.
+        loss_history: **list**
+            | This list contains the value of the loss function at each epoch
+                during training.
 
     """
 
@@ -162,16 +163,16 @@ class MAF(object):
 
         **Kwargs:**
 
-        epochs: **int / default = 100**
-            | The number of iterations to train the neural networks for.
+            epochs: **int / default = 100**
+                | The number of iterations to train the neural networks for.
 
-        early_stop: **boolean / default = False**
-            | Determines whether or not to implement an early stopping
-                algorithm or
-                train for the set number of epochs. If set to True then the
-                algorithm will stop training when the fractional difference
-                between the current loss and the average loss value over the
-                preceeding 10 epochs is < 1e-6.
+            early_stop: **boolean / default = False**
+                | Determines whether or not to implement an early stopping
+                    algorithm or
+                    train for the set number of epochs. If set to True then the
+                    algorithm will stop training when the fractional difference
+                    between the current loss and the average loss value over the
+                    preceeding 10 epochs is < 1e-6.
 
         """
         if type(epochs) is not int:
@@ -216,8 +217,8 @@ class MAF(object):
 
         **Parameters:**
 
-        u: **numpy array**
-            | Samples on the uniform hypercube.
+            u: **numpy array**
+                | Samples on the uniform hypercube.
 
         """
 
@@ -238,9 +239,9 @@ class MAF(object):
 
         **Kwargs:**
 
-        length: **int / default=1000**
-            | This should be an integer and is used to determine how many
-                samples are generated when calling the MAF.
+            length: **int / default=1000**
+                | This should be an integer and is used to determine how many
+                    samples are generated when calling the MAF.
 
         """
         if type(length) is not int:
@@ -257,8 +258,8 @@ class MAF(object):
 
         **Parameters:**
 
-        filename: **string**
-            | Path in which to save the pickled MAF.
+            filename: **string**
+                | Path in which to save the pickled MAF.
 
         """
         nn_weights = [made.get_weights() for made in self.mades]
@@ -285,8 +286,8 @@ class MAF(object):
 
         **Parameters:**
 
-        filename: **string**
-            | Path to the saved MAF.
+            filename: **string**
+                | Path to the saved MAF.
 
         """
 

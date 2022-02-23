@@ -5,8 +5,8 @@ Welcome to bayesstats's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-Introduction <intro>
+   Introduction <intro>
 
-bayesstats Tutorials <tutorial>
+   bayesstats Tutorials <tutorial>
 
-bayesstats Functions <functions>
+   bayesstats Functions <functions>

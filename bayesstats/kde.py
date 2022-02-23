@@ -14,46 +14,46 @@ class KDE(object):
 
     **Parameters:**
 
-    theta: **numpy array**
-        | The samples from the probability distribution that we require the
-            bijector to learn.
+        theta: **numpy array**
+            | The samples from the probability distribution that we require the
+                bijector to learn.
 
-    weights: **numpy array**
-        | The weights associated with the samples above.
+        weights: **numpy array**
+            | The weights associated with the samples above.
 
     **Attributes:**
 
     A list of some key attributes accessible to the user.
 
-    kde: **Instance of scipy.stats.gaussian_kde**
-        | Once the class has been initalised with a set of samples and
-            their corresponding weights we can generate the kde using
-            the following code
+        kde: **Instance of scipy.stats.gaussian_kde**
+            | Once the class has been initalised with a set of samples and
+                their corresponding weights we can generate the kde using
+                the following code
 
-            .. code:: python
+                .. code:: python
 
-                from bayesstats.kde import KDE
-                import numpy as np
+                    from bayesstats.kde import KDE
+                    import numpy as np
 
-                theta = np.loadtxt('path/to/samples.txt')
-                weights = np.loadtxt('path/to/weights.txt')
+                    theta = np.loadtxt('path/to/samples.txt')
+                    weights = np.loadtxt('path/to/weights.txt')
 
-                KDE_class = KDE(theta, weights)
-                KDE_class.generate_kde()
+                    KDE_class = KDE(theta, weights)
+                    KDE_class.generate_kde()
 
-            This is analogous to training a Normalising Flow (Bijector
-            class). Once the KDE is generated it can be accessed via
-            `KDE_class.kde`. Initialisation of the class and generation
-            of the KDE are kept seperate to allow models to be saved and
-            loaded effectively.
+                This is analogous to training a Normalising Flow (Bijector
+                class). Once the KDE is generated it can be accessed via
+                `KDE_class.kde`. Initialisation of the class and generation
+                of the KDE are kept seperate to allow models to be saved and
+                loaded effectively.
 
-    theta_max: **numpy array**
-        | This is an approximate estimate of the true upper limits of the
-            priors used to generate the samples that we want the
-            bijector to learn (for more info see the ... paper).
+        theta_max: **numpy array**
+            | This is an approximate estimate of the true upper limits of the
+                priors used to generate the samples that we want the
+                bijector to learn (for more info see the ... paper).
 
-    theta_min: **numpy array**
-        | As above but an estimate of the true lower limits of the priors.
+        theta_min: **numpy array**
+            | As above but an estimate of the true lower limits of the priors.
 
     """
 
@@ -99,8 +99,8 @@ class KDE(object):
 
         **Parameters:**
 
-        u: **numpy array**
-            | Samples on the uniform hypercube.
+            u: **numpy array**
+                | Samples on the uniform hypercube.
 
         """
 
@@ -143,9 +143,9 @@ class KDE(object):
 
         **Kwargs:**
 
-        length: **int / default=1000**
-            | This should be an integer and is used to determine how many
-                samples are generated when calling the bijector.
+            length: **int / default=1000**
+                | This should be an integer and is used to determine how many
+                    samples are generated when calling the bijector.
 
         """
         x = self.kde.resample(length).T
@@ -159,8 +159,8 @@ class KDE(object):
 
         **Parameters:**
 
-        filename: **string**
-            | Path in which to save the pickled KDE.
+            filename: **string**
+                | Path in which to save the pickled KDE.
         """
         with open(filename, 'wb') as f:
             pickle.dump([self.theta, self.weights, self.kde], f)
@@ -181,8 +181,8 @@ class KDE(object):
 
         **Parameters:**
 
-        filename: **string**
-            | Path to the saved KDE.
+            filename: **string**
+                | Path to the saved KDE.
 
         """
 

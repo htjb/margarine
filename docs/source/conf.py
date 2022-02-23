@@ -14,6 +14,20 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import sys
+import os
+sys.path.append(os.path.abspath('../../'))
+
+def get_version(short=False):
+    with open('../../README.rst') as f:
+        for line in f:
+            if ':Version:' in line:
+                ver = line.split(':')[2].strip()
+                if short:
+                    subver = ver.split('.')
+                    return '%s.%s' % tuple(subver[:2])
+                else:
+                    return ver
 
 # -- Project information -----------------------------------------------------
 
@@ -21,8 +35,10 @@ project = 'bayesstats'
 copyright = '2022, Harry Bevins'
 author = 'Harry Bevins'
 
+# The short X.Y version
+version = get_version(True)
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = get_version()
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,10 +47,23 @@ release = '0.1.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
+    'sphinx.ext.imgconverter',
+    'numpydoc'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+source_suffix = '.rst'
+master_doc='index'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -47,9 +76,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
