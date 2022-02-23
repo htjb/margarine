@@ -4,31 +4,31 @@ from bayesstats.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
 
 
-class bijector_calculations(object):
+class maf_calculations(object):
 
     r"""
 
-    This class, once initalised with a trained bijector and samples from
+    This class, once initalised with a trained MAF and samples from
     that bijector, can be used to calculate marginal KL divergences and
     bayesian dimensionalities.
 
     **Paramesters:**
 
-    bij: **instance of Bijector class**
-        | This should be a loaded and trained instance of a bijector. Bijectors
+    bij: **instance of MAF class**
+        | This should be a loaded and trained instance of a MAF. Bijectors
             can be loaded like so
 
             .. code:: python
 
-                from ...bijector import Bijector
+                from ...maf import MAF
 
-                file = '/trained_bijector.pkl'
-                bij = Bijector.load(file)
+                file = '/trained_maf.pkl'
+                bij = MAF.load(file)
 
     samples: **np.array**
         | This should be the output of the bijector when called to generate
             a set of samples from the replicated probability distribution. e.g.
-            after loading a trained bijector we would pass
+            after loading a trained MAF we would pass
 
             .. code:: python
 
@@ -73,7 +73,7 @@ class bijector_calculations(object):
 
         r"""
 
-        Calculates the kl divergence between samples from the bijector
+        Calculates the kl divergence between samples from the MAF
         (replica posterior) and the base distribution (prior).
 
         """
@@ -86,7 +86,7 @@ class bijector_calculations(object):
         r"""
 
         Calculates the bayesian dimensionality of the
-        samples from the bijector.
+        samples from the MAF.
         More details on bayesian dimensionality can be found in
         https://arxiv.org/abs/1903.06682.
 
