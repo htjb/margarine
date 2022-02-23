@@ -4,6 +4,7 @@ from bayesstats.processing import _forward_transform, _inverse_transform
 from scipy.optimize import root_scalar
 import pickle
 
+
 class KDE(object):
 
     r"""
@@ -56,7 +57,7 @@ class KDE(object):
 
     """
 
-    def __init__(self, theta, weights):
+    def __init__(self, theta, weights, **kwargs):
 
         self.theta = theta
         self.weights = weights
@@ -68,6 +69,8 @@ class KDE(object):
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = b
         self.theta_max = a
+
+        self.bw_method = kwargs.pop('bw_method', 'silverman')
 
     def generate_kde(self):
 
@@ -83,7 +86,7 @@ class KDE(object):
         weights_phi /= weights_phi.sum()
 
         self.kde = gaussian_kde(
-            phi.T, weights=self.weights, bw_method='silverman')
+            phi.T, weights=self.weights, bw_method=self.bw_method)
 
         return self.kde
 

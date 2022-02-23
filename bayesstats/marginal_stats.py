@@ -96,21 +96,6 @@ class bijector_calculations(object):
         logL = self._calc_logL()
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
 
-    def evidence(self):
-
-        r"""
-
-        Function used to caluclate the marginal evidence.
-
-        """
-
-        logprob = self.bij.maf.log_prob(
-            _forward_transform(
-                self.samples, self.bij.theta_min, self.bij.theta_max))
-        logprob = tf.boolean_mask(logprob, np.isfinite(logprob))
-        D = self.klDiv()
-        return tf.reduce_mean(logprob) - D
-
 class kde_calculations(object):
 
     r"""
@@ -193,18 +178,3 @@ class kde_calculations(object):
 
         logL = self._calc_logL()
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
-
-    def evidence(self):
-
-        r"""
-
-        Function used to caluclate the marginal evidence.
-
-        """
-
-        logprob = self.kde.kde.logpdf(
-            _forward_transform(
-            self.samples, self.kde.theta_min, self.kde.theta_max).T)
-        logprob = logprob[np.isfinite(logprob)]
-        D = self.klDiv()
-        return tf.reduce_mean(logprob).numpy() - D.numpy()

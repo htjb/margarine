@@ -5,14 +5,6 @@ from bayesstats.processing import _forward_transform, _inverse_transform
 import pickle
 
 
-def load(filename):
-    """
-    Not sure this is needed but need to double check
-    (inherited from old code)
-    """
-    return Bijector.load(filename)
-
-
 class Bijector(object):
 
     r"""
@@ -147,6 +139,7 @@ class Bijector(object):
         """
 
         with tf.GradientTape() as tape:
+            # reduced_sum not reduced_mean??
             loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
