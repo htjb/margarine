@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: bayesstats
+Version: 0.1.0
+Summary: bayesstats: Posterior Sampling and Marginal Bayesian Statistics
+Home-page: https://github.com/htjb/bayesstats
+Author: Harry T. J. Bevins
+Author-email: htjb2@cam.ac.uk
+License: MIT
+Platform: UNKNOWN
+Classifier: Intended Audience :: Science/Research
+Classifier: Natural Language :: English
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Astronomy
+Classifier: Topic :: Scientific/Engineering :: Physics
+Provides-Extra: docs
+
+description
+
