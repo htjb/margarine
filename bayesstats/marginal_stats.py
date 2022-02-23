@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from bayesstats.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
-from bayesstats.kde import KDE
 
 
 class bijector_calculations(object):

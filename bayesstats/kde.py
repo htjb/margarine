@@ -91,6 +91,19 @@ class KDE(object):
         return self.kde
 
     def __call__(self, u):
+
+        r"""
+
+        This function is used when calling the kde class to transform
+        samples from the unit hypercube to samples on the kde.
+
+        **Parameters:**
+
+        u: **numpy array**
+            | Samples on the uniform hypercube.
+
+        """
+
         # generate useful parameters for __call__ function to transform
         # hypercube into samples on the KDE.
         S = self.kde.covariance

@@ -1,11 +1,11 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow_probability import (bijectors as tfb, distributions as tfd)
+from tensorflow_probability import (MAFs as tfb, distributions as tfd)
 from bayesstats.processing import _forward_transform, _inverse_transform
 import pickle
 
 
-class Bijector(object):
+class MAF(object):
 
     r"""
     This class is used to train, load and call instances of a bijector
@@ -15,7 +15,7 @@ class Bijector(object):
 
     theta: **numpy array**
         | The samples from the probability distribution that we require the
-            bijector to learn.
+            MAF to learn.
 
     weights: **numpy array**
         | The weights associated with the samples above.
@@ -29,7 +29,7 @@ class Bijector(object):
 
     learning_rate: **float / default = 1e-3**
         | The learning rate determines the 'step size' of the optimization
-            algorithm used to train the bijector. Its value can effect the
+            algorithm used to train the MAF. Its value can effect the
             quality of emulation.
 
     hidden_layers: **list / default = [50, 50]**
@@ -47,14 +47,14 @@ class Bijector(object):
             ``maf`` (masked autoregressive flow) attribute, which is an
             instance of
             ``tensorflow_probability.distributions.TransformedDistribution``,
-            the used can sample the trained bijector. e.g.
+            the used can sample the trained MAF. e.g.
 
             .. code:: python
 
-                from ...bijector import Bijector
+                from ...maf import MAF
 
-                file = '/trained_bijector.pkl'
-                bij = Bijector.load(file)
+                file = '/trained_maf.pkl'
+                bij = MAF.load(file)
 
                 samples = bij.maf.sample(1000)
 
@@ -74,7 +74,7 @@ class Bijector(object):
     theta_max: **numpy array**
         | This is an approximate estimate of the true upper limits of the
             priors used to generate the samples that we want the
-            bijector to learn (for more info see the ... paper).
+            MAF to learn (for more info see the ... paper).
 
     theta_min: **numpy array**
         | As above but an estimate of the true lower limits of the priors.
@@ -150,14 +150,14 @@ class Bijector(object):
     def train(self, epochs=100, early_stop=False):
         r"""
 
-        This function is called to train the bijector once it has been
+        This function is called to train the MAF once it has been
         initialised. For example
 
         .. code:: python
 
-            from ...bijector import Bijector
+            from ...maf import MAF
 
-            bij = Bijector(theta, weights)
+            bij = MAF(theta, weights)
             bij.train()
 
         **Kwargs:**
@@ -211,8 +211,8 @@ class Bijector(object):
 
         r"""
 
-        This function is used when calling the bijector class to transform
-        samples from the unit hypercube to samples on the bijector.
+        This function is used when calling the MAF class to transform
+        samples from the unit hypercube to samples on the MAF.
 
         **Parameters:**
 
@@ -233,14 +233,14 @@ class Bijector(object):
 
         r"""
 
-        This function is used to generate samples on the bijector via the
-        bijector __call__ function.
+        This function is used to generate samples on the MAF via the
+        MAF __call__ function.
 
         **Kwargs:**
 
         length: **int / default=1000**
             | This should be an integer and is used to determine how many
-                samples are generated when calling the bijector.
+                samples are generated when calling the MAF.
 
         """
         if type(length) is not int:
@@ -252,13 +252,13 @@ class Bijector(object):
     def save(self, filename):
         r"""
 
-        This function can be used to save an instance of a trained bijector as
+        This function can be used to save an instance of a trained MAF as
         a pickled class so that it can be loaded and used in differnt scripts.
 
         **Parameters:**
 
         filename: **string**
-            | Path in which to save the pickled bijector.
+            | Path in which to save the pickled MAF.
 
         """
         nn_weights = [made.get_weights() for made in self.mades]
@@ -274,19 +274,19 @@ class Bijector(object):
     def load(cls, filename):
         r"""
 
-        This function can be used to load a saved bijector. For example
+        This function can be used to load a saved MAF. For example
 
         .. code:: python
 
-            from ...bijector import Bijector
+            from ...maf import MAF
 
-            file = 'path/to/pickled/bijector.pkl'
-            bij = Bijector.load(file)
+            file = 'path/to/pickled/MAF.pkl'
+            bij = MAF.load(file)
 
         **Parameters:**
 
         filename: **string**
-            | Path to the saved bijector.
+            | Path to the saved MAF.
 
         """
 
@@ -300,8 +300,8 @@ class Bijector(object):
         bijector = cls(
             theta, sample_weights, number_networks=number_networks,
             learning_rate=learning_rate, hidden_layers=hidden_layers)
-        bijector(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
-        for made, nn_weights in zip(bijector.mades, nn_weights):
+        MAF(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
+        for made, nn_weights in zip(MAF.mades, nn_weights):
             made.set_weights(nn_weights)
 
-        return bijector
+        return MAF
