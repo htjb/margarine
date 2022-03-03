@@ -31,18 +31,9 @@ Details/Examples
 `bayesstats` is designed to make the calculation of marginal bayesian statistics
 feasible given a set of samples from an MCMC or nested sampling run.
 
-The current example can be run by cloning the git repo and following the
-instructions below
-
-.. code:: bash
-
-  git clone git@github.com:htjb/bayesstats.git
-  cd bayesstats
-  python3 basic_example.py
-
-The code should be well documented and is currently only intended as an
-example of functionality/application for collaborators. The code is still
-being edited and the example will be kept as up to date as possible.
+An example of how to use the code can be found on the github in the
+jupyter notebook `notebook/Tutorial.ipynb` or alternatively
+in the compiled documentation.
 
 Documentation
 -------------
