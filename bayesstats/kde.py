@@ -110,17 +110,17 @@ class KDE(object):
         mu = self.kde.dataset.T
         steps, s = [], []
         for i in range(mu.shape[-1]):
-            step = S[i, :i] @ np.linalg.inv(S[:i,:i])
+            step = S[i, :i] @ np.linalg.inv(S[:i, :i])
             steps.append(step)
-            s.append((S[i,i] - step @ S[:i,i])**0.5)
+            s.append((S[i, i] - step @ S[:i, i])**0.5)
 
         # transform samples from unit hypercube to kde
         transformed_samples = []
         for j in range(len(u)):
-            x=u[j]
+            x = u[j]
             y = np.zeros_like(x)
             for i in range(len(x)):
-                m = mu[:,i] + steps[i] @ (y[:i] - mu[:,:i]).T
+                m = mu[:, i] + steps[i] @ (y[:i] - mu[:, :i]).T
                 y[i] = root_scalar(
                     lambda f:
                     (norm().cdf((f-m)/s[i])*self.kde.weights).sum()-x[i],

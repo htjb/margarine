@@ -24,7 +24,8 @@ class MAF(object):
     **kwargs:**
 
         number_networks: **int / default = 6**
-            | The bijector is built by chaining a series of autoregressive neural
+            | The bijector is built by chaining a series of
+                autoregressive neural
                 networks together and this parameter is used to determine
                 how many networks there are in the chain.
 
@@ -170,8 +171,10 @@ class MAF(object):
                 | Determines whether or not to implement an early stopping
                     algorithm or
                     train for the set number of epochs. If set to True then the
-                    algorithm will stop training when the fractional difference
-                    between the current loss and the average loss value over the
+                    algorithm will stop training when the
+                    fractional difference
+                    between the current loss
+                    and the average loss value over the
                     preceeding 10 epochs is < 1e-6.
 
         """

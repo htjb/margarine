@@ -27,8 +27,8 @@ class maf_calculations(object):
 
         samples: **numpy array**
             | This should be the output of the bijector when called to generate
-                a set of samples from the replicated probability distribution. e.g.
-                after loading a trained MAF we would pass
+                a set of samples from the replicated probability
+                distribution. e.g. after loading a trained MAF we would pass
 
                 .. code:: python
 
@@ -95,6 +95,7 @@ class maf_calculations(object):
         logL = self._calc_logL()
         return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
 
+
 class kde_calculations(object):
 
     r"""
@@ -139,7 +140,7 @@ class kde_calculations(object):
         """
         logprob = self.kde.kde.logpdf(
             _forward_transform(
-            self.samples, self.kde.theta_min, self.kde.theta_max).T)
+                self.samples, self.kde.theta_min, self.kde.theta_max).T)
         self.base = tfd.Blockwise(
             [tfd.Normal(loc=0, scale=1)
              for _ in range(self.samples.shape[-1])])
