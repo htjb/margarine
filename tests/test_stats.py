@@ -21,7 +21,10 @@ def load_chains(root):
     names = ['p' + str(i) for i in range(ndims)]
     theta = samples[names].values
 
-    weights = samples.weights
+    try:
+        weights = samples.weights
+    except:
+        weights = samples.weight
 
     return samples, theta, weights
 
