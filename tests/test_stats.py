@@ -6,6 +6,7 @@ from bayesstats.marginal_stats import maf_calculations, kde_calculations
 import pytest
 from bayesstats.kde import KDE
 import pytest
+from numpy.testing import assert_equal
 
 @pytest.mark.filterwarnings('ignore::RuntimeWarning')
 
@@ -43,6 +44,11 @@ def test_maf():
     assert((stats.klDiv()-samples.D())/klerr <= 3)
     assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
 
+def test_maf_kwargs():
+
+    with pytest.raises(TypeError):
+        bij = MAF(theta, weights)
+        bij.sample(4.5)
     with pytest.raises(TypeError):
         MAF(theta, weights, number_networks=4.4)
     with pytest.raises(TypeError):
@@ -58,15 +64,26 @@ def test_maf():
         MAF(theta, weights)
         bij.train(epochs=100, early_stop='foo')
 
-    bij.train(100, early_stop=True)
+"""bij.train(100, early_stop=True)
 
-    x = bij.sample(5000)
+x = bij.sample(5000)
 
-    stats = maf_calculations(bij, x)
-    klerr = samples.ns_output()['D'].std()
-    bderr = samples.ns_output()['d'].std()
-    assert((stats.klDiv()-samples.D())/klerr <= 3)
-    assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+stats = maf_calculations(bij, x)
+klerr = samples.ns_output()['D'].std()
+bderr = samples.ns_output()['d'].std()
+assert((stats.klDiv()-samples.D())/klerr <= 3)
+assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)"""
+
+def test_maf_save_load():
+
+    bij = MAF(theta, weights)
+    bij.train(100)
+    file = 'saved_maf.pkl'
+    bij.save(file)
+    loaded_bijector = MAF.load(file)
+    for i in range(len(bij.mades)):
+        assert_equal(bij.mades[i].get_weights(),
+            loaded_bijector.mades[i].get_weights())
 
 def test_kde():
 
@@ -80,7 +97,11 @@ def test_kde():
     assert((stats.klDiv()-samples.D())/klerr <= 3)
     assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
 
-    #y = kde(np.random.uniform(0, 1, size=(100, theta.shape[-1])))
-    #stats = kde_calculations(kde, y)
-    #assert((stats.klDiv()-samples.D())/klerr <= 5)
-    #assert((stats.bayesian_dimensionality()-samples.d())/bderr <=5)
+def test_kde_save_load():
+
+    kde = KDE(theta, weights)
+    kde.generate_kde()
+    file = 'saved_maf.pkl'
+    kde.save(file)
+    loaded_kde = KDE.load(file)
+    assert_equal(kde.kde.covariance, loaded_kde.kde.covariance)
