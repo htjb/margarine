@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from anesthetic.samples import NestedSamples
 from bayesstats.maf import MAF
 from bayesstats.marginal_stats import maf_calculations, kde_calculations
