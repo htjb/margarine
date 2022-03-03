@@ -301,8 +301,8 @@ class MAF(object):
         bijector = cls(
             theta, sample_weights, number_networks=number_networks,
             learning_rate=learning_rate, hidden_layers=hidden_layers)
-        MAF(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
-        for made, nn_weights in zip(MAF.mades, nn_weights):
+        bijector(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
+        for made, nn_weights in zip(bijector.mades, nn_weights):
             made.set_weights(nn_weights)
 
-        return MAF
+        return bijector
