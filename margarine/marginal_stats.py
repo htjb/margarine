@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from bayesstats.processing import _forward_transform
+from margarine.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
 
 
@@ -123,10 +123,11 @@ class kde_calculations(object):
 
     """
 
-    def __init__(self, kde, samples):
+    def __init__(self, kde, samples, **kwargs):
 
         self.kde = kde
         self.samples = samples
+        self.w = kwargs.pop('weights', np.ones(len(self.samples)))
 
     def _calc_logL(self):
 
@@ -166,7 +167,7 @@ class kde_calculations(object):
 
         """
         logL = self._calc_logL()
-        return tf.reduce_mean(logL)
+        return tf.reduce_mean(self.w*logL)
 
     def bayesian_dimensionality(self):
 
@@ -177,4 +178,4 @@ class kde_calculations(object):
         """
 
         logL = self._calc_logL()
-        return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
+        return 2*(tf.reduce_mean(self.w*logL**2) - tf.reduce_mean(self.w*logL)**2)

@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
-from bayesstats.processing import _forward_transform, _inverse_transform
+from margarine.processing import _forward_transform, _inverse_transform
 import pickle
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import gaussian_kde, norm
-from bayesstats.processing import _forward_transform, _inverse_transform
+from margarine.processing import _forward_transform, _inverse_transform
 from scipy.optimize import root_scalar
 import pickle
 
