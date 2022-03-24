@@ -1,29 +1,29 @@
 .. toctree::
     :maxdepth: 6
 
-bayesstats Functions
+margarine Functions
 --------------------
 
-bayesstats.maf.MAF()
+margarine.maf.MAF()
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: bayesstats.maf.MAF()
+.. automodule:: margarine.maf.MAF()
     :members: _train_step, train, __call__, sample, save, load
 
-bayesstats.kde.KDE()
+margarine.kde.KDE()
 ~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: bayesstats.kde.KDE()
+.. automodule:: margarine.kde.KDE()
     :members: generate_kde, __call__, sample, save, load
 
-bayesstats.marginal_stats.maf_calculations()
+margarine.marginal_stats.maf_calculations()
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: bayesstats.marginal_stats.maf_calculations
+.. automodule:: margarine.marginal_stats.maf_calculations
     :members: _calc_logL, klDiv, bayesian_dimensionality
 
-bayesstats.marginal_stats.kde_calculations()
+margarine.marginal_stats.kde_calculations()
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: bayesstats.marginal_stats.kde_calculations
+.. automodule:: margarine.marginal_stats.kde_calculations
     :members: _calc_logL, klDiv, bayesian_dimensionality

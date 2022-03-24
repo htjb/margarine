@@ -1,4 +1,4 @@
-Welcome to bayesstats's documentation!
+Welcome to margarine's documentation!
 ======================================
 
 .. toctree::
@@ -7,6 +7,6 @@ Welcome to bayesstats's documentation!
 
    Introduction <intro>
 
-   bayesstats Tutorials <tutorial>
+   margarine Tutorials <tutorial>
 
-   bayesstats Functions <functions>
+   margarine Functions <functions>
