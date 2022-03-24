@@ -1,9 +1,9 @@
 import numpy as np
 from anesthetic.samples import NestedSamples
-from bayesstats.maf import MAF
-from bayesstats.marginal_stats import maf_calculations, kde_calculations
+from margarine.maf import MAF
+from margarine.marginal_stats import maf_calculations, kde_calculations
 import pytest
-from bayesstats.kde import KDE
+from margarine.kde import KDE
 import pytest
 from numpy.testing import assert_equal
 
