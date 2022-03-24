@@ -8,13 +8,13 @@ def readme(short=False):
             return f.read()
 
 setup(
-    name='bayesstats',
+    name='margarine',
     version='0.1.0',
-    description='bayesstats: Posterior Sampling and Marginal Bayesian Statistics',
+    description='margarine: Posterior Sampling and Marginal Bayesian Statistics',
     long_description=readme(),
     author='Harry T. J. Bevins',
     author_email='htjb2@cam.ac.uk',
-    url='https://github.com/htjb/bayesstats',
+    url='https://github.com/htjb/margarine',
     packages=find_packages(),
     install_requires=open('requirements.txt').read().splitlines(),
     license='MIT',
