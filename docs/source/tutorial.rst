@@ -6,7 +6,7 @@ Preliminaries
 
 The following set of examples shows the user how to train a Masked
 Autoregressive Flow (MAF) and an example Kernel Density Estimator (KDE).
-We further demonstrate how to use *bayesstats* to estimate the Kullback
+We further demonstrate how to use ``margarine`` to estimate the Kullback
 Leibler divergence and Bayesian Dimensionality with the trained MAF and
 KDE.
 
@@ -26,7 +26,7 @@ to load the chains and transform the parameters in the first three
 columns, which were generated with a log-uniform prior, into the unifrom
 parameter space.
 
-*bayesstats* currently assumes that the parameters are uniformly
+``margarine`` currently assumes that the parameters are uniformly
 distributed when calculating the KL divergence and bayesian
 dimensionality. It is therefore important to transform the parameters
 into the uniform parameter space before we train our MAF and KDE.
@@ -108,7 +108,7 @@ Masked Autoregressive Flows
 ---------------------------
 
 Firstly we will look at training a Masked Autoregressive Flow or MAF
-with ``bayesstats``. To train the MAF we first need to initalise the
+with ``margarine``. To train the MAF we first need to initalise the
 class with the samples and corresponding weights.
 
 .. code:: ipython3
@@ -116,7 +116,7 @@ class with the samples and corresponding weights.
     import os
     os.chdir('../')
     
-    from bayesstats.maf import MAF
+    from margarine.maf import MAF
     
     bij = MAF(theta, weights)
     bij.train(100)
@@ -124,106 +124,106 @@ class with the samples and corresponding weights.
 
 .. parsed-literal::
 
-    Epoch: 0 Loss: 0.0007236632
-    Epoch: 1 Loss: 0.00070656853
-    Epoch: 2 Loss: 0.0006889553
-    Epoch: 3 Loss: 0.0006711089
-    Epoch: 4 Loss: 0.00065313047
-    Epoch: 5 Loss: 0.00063506735
-    Epoch: 6 Loss: 0.00061694614
-    Epoch: 7 Loss: 0.0005987852
-    Epoch: 8 Loss: 0.0005805994
-    Epoch: 9 Loss: 0.0005624029
-    Epoch: 10 Loss: 0.0005442118
-    Epoch: 11 Loss: 0.000526045
-    Epoch: 12 Loss: 0.00050792674
-    Epoch: 13 Loss: 0.00048988743
-    Epoch: 14 Loss: 0.00047196637
-    Epoch: 15 Loss: 0.00045421295
-    Epoch: 16 Loss: 0.00043668825
-    Epoch: 17 Loss: 0.0004194658
-    Epoch: 18 Loss: 0.00040263258
-    Epoch: 19 Loss: 0.00038628906
-    Epoch: 20 Loss: 0.00037054575
-    Epoch: 21 Loss: 0.00035551866
-    Epoch: 22 Loss: 0.00034131674
-    Epoch: 23 Loss: 0.00032802264
-    Epoch: 24 Loss: 0.0003156741
-    Epoch: 25 Loss: 0.00030426422
-    Epoch: 26 Loss: 0.0002937718
-    Epoch: 27 Loss: 0.00028420804
-    Epoch: 28 Loss: 0.00027564922
-    Epoch: 29 Loss: 0.00026822375
-    Epoch: 30 Loss: 0.00026205485
-    Epoch: 31 Loss: 0.00025718394
-    Epoch: 32 Loss: 0.0002535229
-    Epoch: 33 Loss: 0.00025086358
-    Epoch: 34 Loss: 0.0002489371
-    Epoch: 35 Loss: 0.0002474835
-    Epoch: 36 Loss: 0.00024629524
-    Epoch: 37 Loss: 0.00024522963
-    Epoch: 38 Loss: 0.0002442098
-    Epoch: 39 Loss: 0.00024321837
-    Epoch: 40 Loss: 0.00024226846
-    Epoch: 41 Loss: 0.00024136137
-    Epoch: 42 Loss: 0.00024046174
-    Epoch: 43 Loss: 0.00023951035
-    Epoch: 44 Loss: 0.00023846547
-    Epoch: 45 Loss: 0.00023733877
-    Epoch: 46 Loss: 0.00023619492
-    Epoch: 47 Loss: 0.00023512096
-    Epoch: 48 Loss: 0.00023418863
-    Epoch: 49 Loss: 0.00023343405
-    Epoch: 50 Loss: 0.00023285777
-    Epoch: 51 Loss: 0.00023243543
-    Epoch: 52 Loss: 0.00023212955
-    Epoch: 53 Loss: 0.00023190017
-    Epoch: 54 Loss: 0.00023171352
-    Epoch: 55 Loss: 0.00023154773
-    Epoch: 56 Loss: 0.00023139233
-    Epoch: 57 Loss: 0.00023124304
-    Epoch: 58 Loss: 0.00023109719
-    Epoch: 59 Loss: 0.00023095074
-    Epoch: 60 Loss: 0.00023080046
-    Epoch: 61 Loss: 0.00023064525
-    Epoch: 62 Loss: 0.00023048747
-    Epoch: 63 Loss: 0.00023033183
-    Epoch: 64 Loss: 0.00023018329
-    Epoch: 65 Loss: 0.00023004579
-    Epoch: 66 Loss: 0.00022992169
-    Epoch: 67 Loss: 0.00022981213
-    Epoch: 68 Loss: 0.0002297175
-    Epoch: 69 Loss: 0.00022963778
-    Epoch: 70 Loss: 0.00022957241
-    Epoch: 71 Loss: 0.00022952007
-    Epoch: 72 Loss: 0.00022947852
-    Epoch: 73 Loss: 0.00022944613
-    Epoch: 74 Loss: 0.00022942103
-    Epoch: 75 Loss: 0.00022940213
-    Epoch: 76 Loss: 0.00022938765
-    Epoch: 77 Loss: 0.0002293757
-    Epoch: 78 Loss: 0.00022936362
-    Epoch: 79 Loss: 0.00022934936
-    Epoch: 80 Loss: 0.00022933145
-    Epoch: 81 Loss: 0.00022930934
-    Epoch: 82 Loss: 0.00022928328
-    Epoch: 83 Loss: 0.00022925375
-    Epoch: 84 Loss: 0.00022922209
-    Epoch: 85 Loss: 0.00022918936
-    Epoch: 86 Loss: 0.00022915701
-    Epoch: 87 Loss: 0.0002291264
-    Epoch: 88 Loss: 0.00022909862
-    Epoch: 89 Loss: 0.00022907445
-    Epoch: 90 Loss: 0.00022905417
-    Epoch: 91 Loss: 0.00022903763
-    Epoch: 92 Loss: 0.00022902423
-    Epoch: 93 Loss: 0.00022901288
-    Epoch: 94 Loss: 0.00022900262
-    Epoch: 95 Loss: 0.0002289925
-    Epoch: 96 Loss: 0.0002289821
-    Epoch: 97 Loss: 0.00022897117
-    Epoch: 98 Loss: 0.00022895969
-    Epoch: 99 Loss: 0.00022894757
+    Epoch: 0 Loss: 0.0007185101
+    Epoch: 1 Loss: 0.0007014023
+    Epoch: 2 Loss: 0.0006839341
+    Epoch: 3 Loss: 0.00066634326
+    Epoch: 4 Loss: 0.0006487031
+    Epoch: 5 Loss: 0.00063104363
+    Epoch: 6 Loss: 0.0006133788
+    Epoch: 7 Loss: 0.0005957194
+    Epoch: 8 Loss: 0.00057807605
+    Epoch: 9 Loss: 0.000560463
+    Epoch: 10 Loss: 0.00054290093
+    Epoch: 11 Loss: 0.00052541785
+    Epoch: 12 Loss: 0.0005080515
+    Epoch: 13 Loss: 0.00049085025
+    Epoch: 14 Loss: 0.00047387503
+    Epoch: 15 Loss: 0.00045719987
+    Epoch: 16 Loss: 0.0004409128
+    Epoch: 17 Loss: 0.00042511517
+    Epoch: 18 Loss: 0.00040991933
+    Epoch: 19 Loss: 0.00039544463
+    Epoch: 20 Loss: 0.00038181068
+    Epoch: 21 Loss: 0.00036913107
+    Epoch: 22 Loss: 0.0003575051
+    Epoch: 23 Loss: 0.00034701102
+    Epoch: 24 Loss: 0.00033769925
+    Epoch: 25 Loss: 0.00032958362
+    Epoch: 26 Loss: 0.0003226317
+    Epoch: 27 Loss: 0.00031675794
+    Epoch: 28 Loss: 0.00031182577
+    Epoch: 29 Loss: 0.0003076632
+    Epoch: 30 Loss: 0.00030409006
+    Epoch: 31 Loss: 0.00030094603
+    Epoch: 32 Loss: 0.00029811086
+    Epoch: 33 Loss: 0.00029550795
+    Epoch: 34 Loss: 0.00029309577
+    Epoch: 35 Loss: 0.000290852
+    Epoch: 36 Loss: 0.00028876044
+    Epoch: 37 Loss: 0.00028680352
+    Epoch: 38 Loss: 0.00028495849
+    Epoch: 39 Loss: 0.0002831965
+    Epoch: 40 Loss: 0.0002814832
+    Epoch: 41 Loss: 0.00027978222
+    Epoch: 42 Loss: 0.00027806248
+    Epoch: 43 Loss: 0.00027630394
+    Epoch: 44 Loss: 0.00027450087
+    Epoch: 45 Loss: 0.00027266104
+    Epoch: 46 Loss: 0.0002708026
+    Epoch: 47 Loss: 0.00026895
+    Epoch: 48 Loss: 0.00026712997
+    Epoch: 49 Loss: 0.00026536686
+    Epoch: 50 Loss: 0.00026367788
+    Epoch: 51 Loss: 0.0002620711
+    Epoch: 52 Loss: 0.00026054538
+    Epoch: 53 Loss: 0.00025909403
+    Epoch: 54 Loss: 0.00025770898
+    Epoch: 55 Loss: 0.00025638303
+    Epoch: 56 Loss: 0.00025510968
+    Epoch: 57 Loss: 0.0002538809
+    Epoch: 58 Loss: 0.0002526861
+    Epoch: 59 Loss: 0.00025151268
+    Epoch: 60 Loss: 0.00025035004
+    Epoch: 61 Loss: 0.00024919215
+    Epoch: 62 Loss: 0.00024803917
+    Epoch: 63 Loss: 0.0002468963
+    Epoch: 64 Loss: 0.0002457709
+    Epoch: 65 Loss: 0.00024467031
+    Epoch: 66 Loss: 0.00024360023
+    Epoch: 67 Loss: 0.00024256505
+    Epoch: 68 Loss: 0.00024156799
+    Epoch: 69 Loss: 0.00024061205
+    Epoch: 70 Loss: 0.00023969925
+    Epoch: 71 Loss: 0.00023883079
+    Epoch: 72 Loss: 0.00023800644
+    Epoch: 73 Loss: 0.0002372256
+    Epoch: 74 Loss: 0.00023648709
+    Epoch: 75 Loss: 0.0002357906
+    Epoch: 76 Loss: 0.00023513584
+    Epoch: 77 Loss: 0.00023452267
+    Epoch: 78 Loss: 0.00023394993
+    Epoch: 79 Loss: 0.00023341607
+    Epoch: 80 Loss: 0.00023291916
+    Epoch: 81 Loss: 0.00023245814
+    Epoch: 82 Loss: 0.00023203301
+    Epoch: 83 Loss: 0.00023164476
+    Epoch: 84 Loss: 0.0002312939
+    Epoch: 85 Loss: 0.00023098035
+    Epoch: 86 Loss: 0.00023070279
+    Epoch: 87 Loss: 0.00023045961
+    Epoch: 88 Loss: 0.0002302486
+    Epoch: 89 Loss: 0.00023006761
+    Epoch: 90 Loss: 0.00022991415
+    Epoch: 91 Loss: 0.00022978513
+    Epoch: 92 Loss: 0.00022967775
+    Epoch: 93 Loss: 0.00022958912
+    Epoch: 94 Loss: 0.00022951687
+    Epoch: 95 Loss: 0.00022945873
+    Epoch: 96 Loss: 0.00022941224
+    Epoch: 97 Loss: 0.00022937522
+    Epoch: 98 Loss: 0.00022934566
+    Epoch: 99 Loss: 0.00022932225
 
 
 We can then generate samples from the bijector using the following code
@@ -260,7 +260,7 @@ results and note that the similarity improves with the number of epochs.
 
 .. code:: ipython3
 
-    from bayesstats.marginal_stats import maf_calculations
+    from margarine.marginal_stats import maf_calculations
     
     stats = maf_calculations(bij, x)
     print(stats.klDiv(), samples.D())
@@ -269,13 +269,13 @@ results and note that the similarity improves with the number of epochs.
 
 .. parsed-literal::
 
-    tf.Tensor(3.3165507, shape=(), dtype=float32) 3.3308079438366938
-    tf.Tensor(4.181942, shape=(), dtype=float32) 5.013952162478263
+    tf.Tensor(3.2990043, shape=(), dtype=float32) 3.3308079438366938
+    tf.Tensor(4.3727474, shape=(), dtype=float32) 5.013952162478263
 
 
 We could imagine that the above set of parameters is a sub-sample of
 perhaps signal parameters that we are interested in and having
-marginalised out the nuisance parameters we can use ``bayesstats`` to
+marginalised out the nuisance parameters we can use ``margarine`` to
 determine how well constrained the sub-space is.
 
 As an example we can train a MAF on three of the parameters in this
@@ -299,106 +299,106 @@ distribution.
 
 .. parsed-literal::
 
-    Epoch: 0 Loss: 0.00043162625
-    Epoch: 1 Loss: 0.00041697096
-    Epoch: 2 Loss: 0.00040201913
-    Epoch: 3 Loss: 0.00038704174
-    Epoch: 4 Loss: 0.0003721551
-    Epoch: 5 Loss: 0.00035745723
-    Epoch: 6 Loss: 0.00034306958
-    Epoch: 7 Loss: 0.0003291606
-    Epoch: 8 Loss: 0.0003159566
-    Epoch: 9 Loss: 0.0003037277
-    Epoch: 10 Loss: 0.00029271413
-    Epoch: 11 Loss: 0.00028296578
-    Epoch: 12 Loss: 0.00027418995
-    Epoch: 13 Loss: 0.00026583258
-    Epoch: 14 Loss: 0.00025738275
-    Epoch: 15 Loss: 0.0002486456
-    Epoch: 16 Loss: 0.00023979602
-    Epoch: 17 Loss: 0.00023121592
-    Epoch: 18 Loss: 0.00022327917
-    Epoch: 19 Loss: 0.0002162135
-    Epoch: 20 Loss: 0.00021005911
-    Epoch: 21 Loss: 0.0002047087
-    Epoch: 22 Loss: 0.00020000151
-    Epoch: 23 Loss: 0.00019581053
-    Epoch: 24 Loss: 0.00019206767
-    Epoch: 25 Loss: 0.00018872511
-    Epoch: 26 Loss: 0.00018572956
-    Epoch: 27 Loss: 0.00018305895
-    Epoch: 28 Loss: 0.00018075563
-    Epoch: 29 Loss: 0.00017888586
-    Epoch: 30 Loss: 0.00017744435
-    Epoch: 31 Loss: 0.00017627429
-    Epoch: 32 Loss: 0.00017506914
-    Epoch: 33 Loss: 0.00017348277
-    Epoch: 34 Loss: 0.00017129931
-    Epoch: 35 Loss: 0.00016854021
-    Epoch: 36 Loss: 0.00016542303
-    Epoch: 37 Loss: 0.00016223195
-    Epoch: 38 Loss: 0.00015919938
-    Epoch: 39 Loss: 0.00015645067
-    Epoch: 40 Loss: 0.00015400929
-    Epoch: 41 Loss: 0.00015183857
-    Epoch: 42 Loss: 0.00014988861
-    Epoch: 43 Loss: 0.00014812716
-    Epoch: 44 Loss: 0.00014654719
-    Epoch: 45 Loss: 0.00014515895
-    Epoch: 46 Loss: 0.00014397415
-    Epoch: 47 Loss: 0.00014299034
-    Epoch: 48 Loss: 0.0001421843
-    Epoch: 49 Loss: 0.00014151618
-    Epoch: 50 Loss: 0.00014094308
-    Epoch: 51 Loss: 0.00014043465
-    Epoch: 52 Loss: 0.00013997986
-    Epoch: 53 Loss: 0.00013958235
-    Epoch: 54 Loss: 0.00013924825
-    Epoch: 55 Loss: 0.00013897457
-    Epoch: 56 Loss: 0.0001387453
-    Epoch: 57 Loss: 0.0001385367
-    Epoch: 58 Loss: 0.00013832882
-    Epoch: 59 Loss: 0.00013811704
-    Epoch: 60 Loss: 0.00013791495
-    Epoch: 61 Loss: 0.00013774459
-    Epoch: 62 Loss: 0.00013762053
-    Epoch: 63 Loss: 0.00013753829
-    Epoch: 64 Loss: 0.0001374758
-    Epoch: 65 Loss: 0.00013740842
-    Epoch: 66 Loss: 0.00013732407
-    Epoch: 67 Loss: 0.00013722722
-    Epoch: 68 Loss: 0.00013713026
-    Epoch: 69 Loss: 0.00013704192
-    Epoch: 70 Loss: 0.00013696271
-    Epoch: 71 Loss: 0.00013688844
-    Epoch: 72 Loss: 0.0001368164
-    Epoch: 73 Loss: 0.0001367483
-    Epoch: 74 Loss: 0.00013668828
-    Epoch: 75 Loss: 0.00013663822
-    Epoch: 76 Loss: 0.00013659625
-    Epoch: 77 Loss: 0.00013655804
-    Epoch: 78 Loss: 0.00013651975
-    Epoch: 79 Loss: 0.00013648091
-    Epoch: 80 Loss: 0.00013644346
-    Epoch: 81 Loss: 0.00013640951
-    Epoch: 82 Loss: 0.0001363801
-    Epoch: 83 Loss: 0.00013635457
-    Epoch: 84 Loss: 0.00013633158
-    Epoch: 85 Loss: 0.00013631061
-    Epoch: 86 Loss: 0.00013629172
-    Epoch: 87 Loss: 0.00013627516
-    Epoch: 88 Loss: 0.00013626063
-    Epoch: 89 Loss: 0.00013624632
-    Epoch: 90 Loss: 0.0001362302
-    Epoch: 91 Loss: 0.00013621067
-    Epoch: 92 Loss: 0.0001361876
-    Epoch: 93 Loss: 0.00013616233
-    Epoch: 94 Loss: 0.00013613654
-    Epoch: 95 Loss: 0.00013611156
-    Epoch: 96 Loss: 0.00013608833
-    Epoch: 97 Loss: 0.00013606714
-    Epoch: 98 Loss: 0.00013604855
-    Epoch: 99 Loss: 0.00013603258
+    Epoch: 0 Loss: 0.00043151045
+    Epoch: 1 Loss: 0.00041672972
+    Epoch: 2 Loss: 0.00040160108
+    Epoch: 3 Loss: 0.0003863657
+    Epoch: 4 Loss: 0.00037109375
+    Epoch: 5 Loss: 0.00035581551
+    Epoch: 6 Loss: 0.00034055865
+    Epoch: 7 Loss: 0.0003253689
+    Epoch: 8 Loss: 0.00031032556
+    Epoch: 9 Loss: 0.000295559
+    Epoch: 10 Loss: 0.00028127024
+    Epoch: 11 Loss: 0.00026773606
+    Epoch: 12 Loss: 0.0002552729
+    Epoch: 13 Loss: 0.0002441286
+    Epoch: 14 Loss: 0.00023431709
+    Epoch: 15 Loss: 0.00022553187
+    Epoch: 16 Loss: 0.00021728151
+    Epoch: 17 Loss: 0.00020923858
+    Epoch: 18 Loss: 0.00020157515
+    Epoch: 19 Loss: 0.0001947428
+    Epoch: 20 Loss: 0.00018895789
+    Epoch: 21 Loss: 0.00018402831
+    Epoch: 22 Loss: 0.00017959857
+    Epoch: 23 Loss: 0.00017541902
+    Epoch: 24 Loss: 0.00017139025
+    Epoch: 25 Loss: 0.0001674916
+    Epoch: 26 Loss: 0.00016375972
+    Epoch: 27 Loss: 0.00016028345
+    Epoch: 28 Loss: 0.0001571421
+    Epoch: 29 Loss: 0.00015434317
+    Epoch: 30 Loss: 0.0001518309
+    Epoch: 31 Loss: 0.00014954529
+    Epoch: 32 Loss: 0.00014746259
+    Epoch: 33 Loss: 0.00014559379
+    Epoch: 34 Loss: 0.00014396895
+    Epoch: 35 Loss: 0.00014262673
+    Epoch: 36 Loss: 0.00014160143
+    Epoch: 37 Loss: 0.00014089704
+    Epoch: 38 Loss: 0.00014046444
+    Epoch: 39 Loss: 0.00014021117
+    Epoch: 40 Loss: 0.00014004944
+    Epoch: 41 Loss: 0.00013994247
+    Epoch: 42 Loss: 0.00013990093
+    Epoch: 43 Loss: 0.00013992687
+    Epoch: 44 Loss: 0.00013996518
+    Epoch: 45 Loss: 0.0001399216
+    Epoch: 46 Loss: 0.0001397332
+    Epoch: 47 Loss: 0.00013941246
+    Epoch: 48 Loss: 0.00013902439
+    Epoch: 49 Loss: 0.00013863404
+    Epoch: 50 Loss: 0.00013828062
+    Epoch: 51 Loss: 0.00013798769
+    Epoch: 52 Loss: 0.0001377799
+    Epoch: 53 Loss: 0.00013768119
+    Epoch: 54 Loss: 0.00013769431
+    Epoch: 55 Loss: 0.00013778618
+    Epoch: 56 Loss: 0.00013789683
+    Epoch: 57 Loss: 0.00013796882
+    Epoch: 58 Loss: 0.00013797365
+    Epoch: 59 Loss: 0.00013791746
+    Epoch: 60 Loss: 0.00013782585
+    Epoch: 61 Loss: 0.00013772433
+    Epoch: 62 Loss: 0.00013762737
+    Epoch: 63 Loss: 0.00013753776
+    Epoch: 64 Loss: 0.00013745317
+    Epoch: 65 Loss: 0.00013737299
+    Epoch: 66 Loss: 0.00013730218
+    Epoch: 67 Loss: 0.00013724956
+    Epoch: 68 Loss: 0.00013722175
+    Epoch: 69 Loss: 0.00013721581
+    Epoch: 70 Loss: 0.00013721827
+    Epoch: 71 Loss: 0.00013721173
+    Epoch: 72 Loss: 0.0001371857
+    Epoch: 73 Loss: 0.00013714364
+    Epoch: 74 Loss: 0.00013709921
+    Epoch: 75 Loss: 0.00013706567
+    Epoch: 76 Loss: 0.00013704767
+    Epoch: 77 Loss: 0.00013704058
+    Epoch: 78 Loss: 0.00013703684
+    Epoch: 79 Loss: 0.00013703172
+    Epoch: 80 Loss: 0.00013702485
+    Epoch: 81 Loss: 0.00013701744
+    Epoch: 82 Loss: 0.00013700967
+    Epoch: 83 Loss: 0.00013700046
+    Epoch: 84 Loss: 0.00013698814
+    Epoch: 85 Loss: 0.00013697242
+    Epoch: 86 Loss: 0.00013695442
+    Epoch: 87 Loss: 0.00013693656
+    Epoch: 88 Loss: 0.0001369206
+    Epoch: 89 Loss: 0.00013690711
+    Epoch: 90 Loss: 0.00013689484
+    Epoch: 91 Loss: 0.00013688198
+    Epoch: 92 Loss: 0.00013686798
+    Epoch: 93 Loss: 0.0001368536
+    Epoch: 94 Loss: 0.00013683976
+    Epoch: 95 Loss: 0.00013682686
+    Epoch: 96 Loss: 0.00013681434
+    Epoch: 97 Loss: 0.00013680183
+    Epoch: 98 Loss: 0.00013678914
+    Epoch: 99 Loss: 0.00013677636
 
 
 
@@ -407,8 +407,8 @@ distribution.
 
 .. parsed-literal::
 
-    tf.Tensor(1.9865652, shape=(), dtype=float32)
-    tf.Tensor(2.555637, shape=(), dtype=float32)
+    tf.Tensor(1.9784489, shape=(), dtype=float32)
+    tf.Tensor(2.5428524, shape=(), dtype=float32)
 
 
 Kernel Density Estimators
@@ -421,14 +421,14 @@ performed with the MAFs.
 
 .. code:: ipython3
 
-    from bayesstats.kde import KDE
+    from margarine.kde import KDE
     kde = KDE(theta, weights)
     kde.generate_kde()
     x = kde.sample(5000)
     
     plotter(x, names)
     
-    from bayesstats.marginal_stats import kde_calculations
+    from margarine.marginal_stats import kde_calculations
     
     stats = kde_calculations(kde, x)
     print(stats.klDiv(), samples.D())
@@ -441,17 +441,18 @@ performed with the MAFs.
 
 .. parsed-literal::
 
-    tf.Tensor(3.1464424, shape=(), dtype=float32) 3.3308079438366938
-    tf.Tensor(4.086628, shape=(), dtype=float32) 5.013952162478263
+    tf.Tensor(3.1492083, shape=(), dtype=float32) 3.3308079438366938
+    tf.Tensor(4.025139, shape=(), dtype=float32) 5.013952162478263
 
 
 Rather than using the ``kde.sample()`` function to generate samples we
-could transform samples from the hypercube with the following code.
-However, we note that this is a much slower method of generating samples
-as it is designed to be bijective. Transformation from the hypercube is
-useful if we would like to use a trained KDE or MAF as the prior in a
-subseqeunt nested sampling run however is not necissary if we simply
-want to calcualte marginal Bayesian statistics.
+could transform samples from the hypercube with the following code and
+the ``__call__()`` function. However, we note that this is a much slower
+method of generating samples as it is designed to be bijective.
+Transformation from the hypercube is useful if we would like to use a
+trained KDE or MAF as the prior in a subseqeunt nested sampling run
+however is not necessary if we simply want to calcualte marginal
+Bayesian statistics.
 
 .. code:: ipython3
 
@@ -461,15 +462,15 @@ want to calcualte marginal Bayesian statistics.
 
 .. parsed-literal::
 
-    [[-0.11829965  1.27506803 -1.81180451  0.24690157 -0.00483511]
-     [ 0.12916093 -1.05167247 -0.97871323  1.74080209 -0.83085717]
-     [-0.16799171  0.58759295  0.13883955 -1.39876705  0.20187526]
-     [-0.99995712  0.11730558  1.76906986  1.99542091 -0.21824603]
-     [ 0.60131411 -1.58503205  0.01012616  0.41564238  0.84142974]
-     [-0.19917245 -0.28667918 -0.50765469  0.18660712  0.55610343]
-     [ 0.9444867  -0.1854406  -1.29777312 -0.03893257  0.18736033]
-     [ 0.11583377 -0.23988482 -1.13781312 -1.28659515 -0.79895018]
-     [ 1.32278833  0.63220892  0.92837153  2.76810487  1.32061413]
-     [-0.46915435  1.9774634   1.60885825 -0.12722853 -1.55120167]]
+    [[-2.30580893  0.2615454   1.0305738   0.95230235 -0.9160518 ]
+     [ 0.449536   -0.21128596  0.37450897 -0.06924562 -0.1435756 ]
+     [-0.23842612  1.89020679  1.01175275 -0.79411737 -1.26997843]
+     [ 0.69827796 -0.85031383  0.12800782  1.87217983 -0.0720315 ]
+     [-1.96867173 -1.70556795 -0.56749216 -1.02797262 -0.87023201]
+     [-0.55155518 -0.60825292  1.81532878 -1.32111645  0.61482667]
+     [-0.8416832   0.18485707  2.00253196  0.49622835 -0.63868005]
+     [-0.52705685 -0.11567092 -1.41513758 -1.26160741 -0.94664933]
+     [ 0.87743055  2.28065551 -0.94326398 -1.12061011 -0.03694226]
+     [ 0.39296398  0.62991565  1.31726872  0.46559934 -0.55856522]]
 
 

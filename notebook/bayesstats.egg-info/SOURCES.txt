@@ -1,5 +1,0 @@
-bayesstats.egg-info/PKG-INFO
-bayesstats.egg-info/SOURCES.txt
-bayesstats.egg-info/dependency_links.txt
-bayesstats.egg-info/requires.txt
-bayesstats.egg-info/top_level.txt
