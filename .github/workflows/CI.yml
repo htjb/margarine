@@ -32,12 +32,12 @@ jobs:
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 bayesstats --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 margarine --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 bayesstats --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 margarine --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        coverage run --source=bayesstats -m py.test
+        coverage run --source=margarine -m py.test
     #- name: Upload coverage to Codecov
     #  uses: codecov/codecov-action@v1
     #  with:
