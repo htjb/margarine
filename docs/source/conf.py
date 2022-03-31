@@ -31,7 +31,7 @@ def get_version(short=False):
 
 # -- Project information -----------------------------------------------------
 
-project = 'bayesstats'
+project = 'margarine'
 copyright = '2022, Harry Bevins'
 author = 'Harry Bevins'
 
