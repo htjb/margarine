@@ -39,22 +39,22 @@ into the uniform parameter space before we train our MAF and KDE.
         the pandas table of samples, a numpy
         array of the parameters in the uniform space and weights.
         """
-    
+
         samples = NestedSamples(root=root)
-    
+
         try:
             names = ['p' + str(i) for i in range(ndims)]
             theta = samples[names].values
         except:
             names = [i for i in range(ndims)]
             theta = samples[names].values
-    
+
         weights = samples.weights
-    
+
         return samples, theta, weights
-    
+
     ndims=5
-    
+
     root = '../tests/test_samples/test'
     samples, theta, weights = load_chains(root)
 
@@ -65,7 +65,7 @@ be useful later in the notebook.
 .. code:: ipython3
 
     from anesthetic.plot import hist_plot_1d, hist_plot_2d
-    
+
     def plotter(theta, names, w=None, ndims=5):
         """ Helper function that uses anesthetic to produce corner plots """
         fig, axes = plt.subplots(ndims, ndims, figsize=(8, 8), sharex='col')
@@ -95,7 +95,7 @@ be useful later in the notebook.
         plt.tight_layout()
         plt.subplots_adjust(hspace=0, wspace=0)
         plt.show()
-    
+
     names = ['log(p' + str(i) + ')' if i in [0, 1, 2] else 'p' + str(i) for i in range(ndims)]
     plotter(theta, names, weights)
 
@@ -115,9 +115,9 @@ class with the samples and corresponding weights.
 
     import os
     os.chdir('../')
-    
+
     from margarine.maf import MAF
-    
+
     bij = MAF(theta, weights)
     bij.train(100)
 
@@ -233,7 +233,7 @@ into samples on the target posterior distribution,
 .. code:: ipython3
 
     x = bij(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
-    
+
     plotter(x, names)
 
 
@@ -261,7 +261,7 @@ results and note that the similarity improves with the number of epochs.
 .. code:: ipython3
 
     from margarine.marginal_stats import maf_calculations
-    
+
     stats = maf_calculations(bij, x)
     print(stats.klDiv(), samples.D())
     print(stats.bayesian_dimensionality(), samples.d())
@@ -285,13 +285,13 @@ distribution.
 
     theta_reduced = theta[:, 1:-1]
     names_reduced = names[1:-1]
-    
+
     bij = MAF(theta_reduced, weights)
     bij.train(100)
     x = bij.sample(5000)
-    
+
     plotter(x, names_reduced, ndims=3)
-    
+
     stats = maf_calculations(bij, x)
     print(stats.klDiv())
     print(stats.bayesian_dimensionality())
@@ -412,7 +412,7 @@ distribution.
 
 
 Kernel Density Estimators
-=========================
+-------------------------
 
 We can perform a similar analysis using Kernel Density Estimators rather
 than MAFs which is done with the following code. Note that the
@@ -425,11 +425,11 @@ performed with the MAFs.
     kde = KDE(theta, weights)
     kde.generate_kde()
     x = kde.sample(5000)
-    
+
     plotter(x, names)
-    
+
     from margarine.marginal_stats import kde_calculations
-    
+
     stats = kde_calculations(kde, x)
     print(stats.klDiv(), samples.D())
     print(stats.bayesian_dimensionality(), samples.d())
@@ -472,5 +472,3 @@ Bayesian statistics.
      [-0.52705685 -0.11567092 -1.41513758 -1.26160741 -0.94664933]
      [ 0.87743055  2.28065551 -0.94326398 -1.12061011 -0.03694226]
      [ 0.39296398  0.62991565  1.31726872  0.46559934 -0.55856522]]
-
-
