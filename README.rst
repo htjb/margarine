@@ -11,6 +11,12 @@ Introduction
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
+.. image:: https://readthedocs.org/projects/margarine/badge/?version=latest
+  :target: https://margarine.readthedocs.io/en/latest/?badge=latest
+  :alt: Documentation Status
+.. image:: https://mybinder.org/badge_logo.svg
+  :target: https://mybinder.org/v2/gh/htjb/margarine/HEAD?labpath=notebook%2FTutorial.ipynb
+
 Installation
 ------------
 
@@ -32,8 +38,9 @@ Details/Examples
 feasible given a set of samples from an MCMC or nested sampling run.
 
 An example of how to use the code can be found on the github in the
-jupyter notebook `notebook/Tutorial.ipynb` or alternatively
-in the compiled documentation.
+jupyter notebook `notebook/Tutorial.ipynb`, alternatively
+in the compiled documentation or at
+`here <https://mybinder.org/v2/gh/htjb/margarine/7f55f9a9d3f3adb2356cb94b32c599caac8ea1ef?urlpath=lab%2Ftree%2Fnotebook%2FTutorial.ipynb>`_.
 
 Health Warning
 --------------
