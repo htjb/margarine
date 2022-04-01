@@ -1,2 +1,2 @@
-anesthetic
+anesthetic==2.0.0b11
 pandas==1.0.5
