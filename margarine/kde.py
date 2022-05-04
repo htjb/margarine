@@ -21,6 +21,11 @@ class KDE(object):
         weights: **numpy array**
             | The weights associated with the samples above.
 
+    **kwargs:**
+
+        bw_method: **str, scalar or callable**
+            | The bandwidth for the KDE.
+
     **Attributes:**
 
     A list of some key attributes accessible to the user.
