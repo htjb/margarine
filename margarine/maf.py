@@ -132,7 +132,7 @@ class MAF(object):
         self.optimizer = tf.keras.optimizers.Adam(
             learning_rate=self.learning_rate)
 
-    def _train_step(self, x, w):
+    def _train_step(self, x, w, prior_phi=None, prior_weights=None):
 
         r"""
         This function is used to calculate the loss value at each epoch and
@@ -141,7 +141,6 @@ class MAF(object):
         """
 
         with tf.GradientTape() as tape:
-            # reduced_sum not reduced_mean??
             loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
@@ -194,11 +193,22 @@ class MAF(object):
         self.phi = phi.copy()
         weights_phi = weights_phi.astype('float32')
 
+        """if self.prior is not None:
+            prior_phi = _forward_transform(self.prior, self.prior_min, self.prior_max)
+
+            mask = np.isfinite(prior_phi).all(axis=-1)
+            prior_phi = prior_phi[mask, :]
+            weights_prior_phi = self.prior_weights[mask]
+            weights_prior_phi /= weights_prior_phi.sum()
+
+            prior_phi = prior_phi.astype('float32')
+            self.prior_phi = prior_phi.copy()
+            weights_prior_phi = weights_prior_phi.astype('float32')"""
+
         self.loss_history = []
         for i in range(epochs):
             loss = self._train_step(phi, weights_phi).numpy()
             self.loss_history.append(loss)
-            print('Epoch: ' + str(i) + ' Loss: ' + str(loss))
             if early_stop:
                 if len(self.loss_history) > 10:
                     delta = (

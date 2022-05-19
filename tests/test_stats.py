@@ -1,7 +1,7 @@
 import numpy as np
 from anesthetic.samples import NestedSamples
 from margarine.maf import MAF
-from margarine.marginal_stats import maf_calculations, kde_calculations
+from margarine.marginal_stats import calculate
 import pytest
 from margarine.kde import KDE
 import pytest
@@ -20,31 +20,39 @@ def load_chains(root):
 
     names = ['p' + str(i) for i in range(ndims)]
     theta = samples[names].values
+    weights = samples.weights
 
-    try:
-        weights = samples.weights
-    except:
-        weights = samples.weight
-
-    return samples, theta, weights
+    return samples, theta, weights, names
 
 ndims=5
 
 root = 'tests/test_samples/test'
-samples, theta, weights = load_chains(root)
+samples, theta, weights, names = load_chains(root)
 
 def test_maf():
 
+    def check(i):
+        if stats['Value'][i] < samples.D():
+            assert(
+                np.abs(stats['Value'][i]-samples.D())/
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=4)
+        else:
+            assert(
+                np.abs(stats['Value'][i]-samples.D())/
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=4)
+
     bij = MAF(theta, weights)
-    bij.train(100)
+    bij.train(250)
 
     x = bij.sample(5000)
 
-    stats = maf_calculations(bij, x)
-    klerr = samples.ns_output()['D'].std()
-    bderr = samples.ns_output()['d'].std()
-    assert((stats.klDiv()-samples.D())/klerr <= 3)
-    assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+    stats = calculate(bij).statistics()
+    [check(i) for i in range(2)]
+
+    """prior = np.random.uniform(-4, 4, (len(x), 5))
+    stats = calculate(bij, prior_samples=prior,
+        prior_weights=np.ones_like(len(prior))).statistics()
+    [check(i) for i in range(2)]"""
 
 def test_maf_kwargs():
 
@@ -66,16 +74,6 @@ def test_maf_kwargs():
         MAF(theta, weights)
         bij.train(epochs=100, early_stop='foo')
 
-"""bij.train(100, early_stop=True)
-
-x = bij.sample(5000)
-
-stats = maf_calculations(bij, x)
-klerr = samples.ns_output()['D'].std()
-bderr = samples.ns_output()['d'].std()
-assert((stats.klDiv()-samples.D())/klerr <= 3)
-assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)"""
-
 def test_maf_save_load():
 
     bij = MAF(theta, weights)
@@ -89,15 +87,27 @@ def test_maf_save_load():
 
 def test_kde():
 
+    def check(i):
+        if stats['Value'][i] < samples.D():
+            assert(
+                np.abs(stats['Value'][i]-samples.D())/
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=4)
+        else:
+            assert(
+                np.abs(stats['Value'][i]-samples.D())/
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=4)
+
     kde = KDE(theta, weights)
     kde.generate_kde()
     x = kde.sample(5000)
 
-    stats = kde_calculations(kde, x)
-    klerr = samples.ns_output()['D'].std()
-    bderr = samples.ns_output()['d'].std()
-    assert((stats.klDiv()-samples.D())/klerr <= 3)
-    assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+    stats = calculate(kde).statistics()
+    [check(i) for i in range(2)]
+
+    prior = np.random.uniform(-4, 4, (len(x), 5))
+    stats = calculate(kde, prior_samples=prior,
+        prior_weights=np.ones_like(len(prior))).statistics()
+    [check(i) for i in range(2)]
 
 def test_kde_save_load():
 

@@ -65,7 +65,7 @@ class KDE(object):
     def __init__(self, theta, weights, **kwargs):
 
         self.theta = theta
-        self.weights = weights
+        self.sample_weights = weights
 
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         theta_max = np.max(theta, axis=0)
@@ -87,11 +87,11 @@ class KDE(object):
         phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
-        weights_phi = self.weights[mask]
+        weights_phi = self.sample_weights[mask]
         weights_phi /= weights_phi.sum()
 
         self.kde = gaussian_kde(
-            phi.T, weights=self.weights, bw_method=self.bw_method)
+            phi.T, weights=self.sample_weights, bw_method=self.bw_method)
 
         return self.kde
 
@@ -168,7 +168,7 @@ class KDE(object):
                 | Path in which to save the pickled KDE.
         """
         with open(filename, 'wb') as f:
-            pickle.dump([self.theta, self.weights, self.kde], f)
+            pickle.dump([self.theta, self.sample_weights, self.kde], f)
 
     @classmethod
     def load(cls, filename):
