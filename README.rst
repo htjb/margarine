@@ -47,6 +47,9 @@ Health Warning
 
 **The code is still in development.**
 
+**This branch contains code to calculate proper log probabilities using the
+MAFs and KDEs. It still needs thorough testing.**
+
 Currently the code assumes, when calculating marginal statistics, that the
 priors are uniformly distributed. If the priors are more complex then one of
 two approaches can currently be taken in order to use `margarine` to calculate

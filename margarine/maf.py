@@ -193,18 +193,6 @@ class MAF(object):
         self.phi = phi.copy()
         weights_phi = weights_phi.astype('float32')
 
-        """if self.prior is not None:
-            prior_phi = _forward_transform(self.prior, self.prior_min, self.prior_max)
-
-            mask = np.isfinite(prior_phi).all(axis=-1)
-            prior_phi = prior_phi[mask, :]
-            weights_prior_phi = self.prior_weights[mask]
-            weights_prior_phi /= weights_prior_phi.sum()
-
-            prior_phi = prior_phi.astype('float32')
-            self.prior_phi = prior_phi.copy()
-            weights_prior_phi = weights_prior_phi.astype('float32')"""
-
         self.loss_history = []
         for i in range(epochs):
             loss = self._train_step(phi, weights_phi).numpy()
@@ -262,6 +250,49 @@ class MAF(object):
 
         u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
         return self(u)
+
+    def log_prob(self, params, mins=self.theta_min, maxs=self.theta_max):
+
+        """
+        Function to caluclate the log-probability for a given MAF and
+        set of parameters.
+
+        While the density estimator has its own built in log probability
+        function, a correction has to be applied for the transformation of
+        variables that is used to improve accuracy when learning. The
+        correction is implemented here.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+        **Args:**
+
+            mins: **numpy array/ default=self.theta_min**
+                | Sometimes mins and maxs have to be provided for the
+                    normalisation since the default self.theta_min and
+                    self.theta_max are only approximates.
+
+            maxs: **numpy array/ default=self.theta_max**
+                | See above.
+
+        """
+        transformed_x = _forward_transform(
+            x, mins, maxs)
+        norm_jac = lambda y, minimum, maximum :
+            tfb.NormalCDF().inverse_log_det_jacobian(
+            (y - minimum)/(maximum-minimum), event_ndims=0).numpy()
+
+        correction = np.array(
+            [norm_jac(params[j], mins[j], maxs[j])
+            for j in range(len(params))])
+
+        logprob = (self.bij.maf.log_prob(transformed_x).numpy() + \
+            np.sum(correction)).astype(np.float64)
+        
+        return logprob
 
     def save(self, filename):
         r"""

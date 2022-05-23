@@ -156,6 +156,49 @@ class KDE(object):
         x = self.kde.resample(length).T
         return _inverse_transform(x, self.theta_min, self.theta_max)
 
+    def log_prob(self, params, mins=self.theta_min, maxs=self.theta_max):
+
+        """
+        Function to caluclate the log-probability for a given KDE and
+        set of parameters.
+
+        While the density estimator has its own built in log probability
+        function, a correction has to be applied for the transformation of
+        variables that is used to improve accuracy when learning. The
+        correction is implemented here.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+        **Args:**
+
+            mins: **numpy array/ default=self.theta_min**
+                | Sometimes mins and maxs have to be provided for the
+                    normalisation since the default self.theta_min and
+                    self.theta_max are only approximates.
+
+            maxs: **numpy array/ default=self.theta_max**
+                | See above.
+
+        """
+        transformed_x = _forward_transform(
+            x, mins, maxs)
+        norm_jac = lambda y, minimum, maximum :
+            tfb.NormalCDF().inverse_log_det_jacobian(
+            (y - minimum)/(maximum-minimum), event_ndims=0).numpy()
+
+        correction = np.array(
+            [norm_jac(params[j], mins[j], maxs[j])
+            for j in range(len(params))])
+
+        logprob = (self.kde.logpdf(transformed_x).numpy() + \
+            np.sum(correction)).astype(np.float64)
+        
+        return logprob
+
     def save(self, filename):
 
         r"""
