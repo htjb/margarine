@@ -269,9 +269,9 @@ class MAF(object):
                     probability.
 
         """
-        mins = self.theta_mins
-        maxs = self.theta_maxs
-        
+        mins = self.theta_min
+        maxs = self.theta_max
+
         transformed_x = _forward_transform(
             x, mins, maxs)
         norm_jac = lambda y, minimum, maximum : \
