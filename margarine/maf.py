@@ -282,7 +282,7 @@ class MAF(object):
             [norm_jac(params[j], mins[j], maxs[j])
             for j in range(len(params))])
 
-        logprob = (self.bij.maf.log_prob(transformed_x).numpy() + \
+        logprob = (self.maf.log_prob(transformed_x).numpy() + \
             np.sum(correction)).astype(np.float64)
 
         return logprob
