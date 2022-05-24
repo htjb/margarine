@@ -178,7 +178,7 @@ class KDE(object):
         maxs = self.theta_max
 
         transformed_x = _forward_transform(
-            x, mins, maxs)
+            params, mins, maxs)
         norm_jac = lambda y, minimum, maximum : \
             tfb.NormalCDF().inverse_log_det_jacobian(
             (y - minimum)/(maximum-minimum), event_ndims=0).numpy()
