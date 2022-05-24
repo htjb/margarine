@@ -24,7 +24,8 @@ def _forward_transform(x, min, max):
                 values...)
 
     """
-    return tfd.Normal(0, 1).quantile((x - min)/(max-min)).numpy()
+    minned = (0.999-0.001)*(x - min)/(max-min)+0.001
+    return tfd.Normal(0, 1).quantile(minned).numpy()
 
 
 def _inverse_transform(x, min, max):
@@ -49,4 +50,5 @@ def _inverse_transform(x, min, max):
                 values...)
 
     """
-    return tfd.Normal(0, 1).cdf(x).numpy()*(max-min) + min
+    return ((tfd.Normal(0, 1).cdf(x).numpy()-
+        0.001)*(max-min))/(0.999-0.001) + min

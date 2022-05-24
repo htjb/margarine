@@ -274,9 +274,11 @@ class MAF(object):
 
         transformed_x = _forward_transform(
             params, mins, maxs)
+
         norm_jac = lambda y, minimum, maximum : \
             tfb.NormalCDF().inverse_log_det_jacobian(
-            (y - minimum)/(maximum-minimum), event_ndims=0).numpy()
+            (0.999-0.001)*(y - minimum)/(maximum-minimum) + 0.001,
+            event_ndims=0).numpy()
 
         correction = np.array(
             [norm_jac(params[j], mins[j], maxs[j])
