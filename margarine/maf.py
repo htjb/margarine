@@ -251,7 +251,7 @@ class MAF(object):
         u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
         return self(u)
 
-    def log_prob(self, params, mins=self.theta_min, maxs=self.theta_max):
+    def log_prob(self, params):
 
         """
         Function to caluclate the log-probability for a given MAF and
@@ -268,17 +268,10 @@ class MAF(object):
                 | The set of samples for which to calculate the log
                     probability.
 
-        **Args:**
-
-            mins: **numpy array/ default=self.theta_min**
-                | Sometimes mins and maxs have to be provided for the
-                    normalisation since the default self.theta_min and
-                    self.theta_max are only approximates.
-
-            maxs: **numpy array/ default=self.theta_max**
-                | See above.
-
         """
+        mins = self.theta_mins
+        maxs = self.theta_maxs
+        
         transformed_x = _forward_transform(
             x, mins, maxs)
         norm_jac = lambda y, minimum, maximum : \
