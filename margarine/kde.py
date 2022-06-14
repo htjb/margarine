@@ -231,9 +231,6 @@ class KDE(object):
         mins = self.theta_min
         maxs = self.theta_max
 
-        transformed_x = _forward_transform(
-            params, mins, maxs)
-
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = np.prod([1/(self.theta_max[i] - self.theta_min[i])
@@ -243,7 +240,7 @@ class KDE(object):
                     prior, prior_weights)
             self.prior.generate_kde()
             prior_logprob_func = self.prior.log_prob
-            prior_logprob = prior_logprob_func(transformed_x)
+            prior_logprob = prior_logprob_func(params)
 
         posterior_logprob = self.log_prob(params)
 

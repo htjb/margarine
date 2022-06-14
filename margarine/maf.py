@@ -298,7 +298,7 @@ class MAF(object):
         return logprob
 
     def log_like(self, params, logevidence, prior=None):
-        
+
         r"""
         This function should return the log-likelihood for a given set of
         parameters.
@@ -328,9 +328,6 @@ class MAF(object):
         mins = self.theta_min
         maxs = self.theta_max
 
-        transformed_x = _forward_transform(
-            params, mins, maxs)
-
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = np.prod([1/(self.theta_max[i] - self.theta_min[i])
@@ -340,7 +337,7 @@ class MAF(object):
                     prior, prior_weights)
             self.prior.train(epochs=100)
             prior_logprob_func = self.prior.log_prob
-            prior_logprob = prior_logprob_func(transformed_x)
+            prior_logprob = prior_logprob_func(params)
 
         posterior_logprob = self.log_prob(params)
 
