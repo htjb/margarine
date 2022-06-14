@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 0.1.0
+:Version: 0.2.0
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
@@ -46,9 +46,6 @@ Health Warning
 --------------
 
 **The code is still in development.**
-
-**This branch contains code to calculate proper log probabilities using the
-MAFs and KDEs. It still needs thorough testing.**
 
 Currently the code assumes, when calculating marginal statistics, that the
 priors are uniformly distributed. If the priors are more complex then one of
