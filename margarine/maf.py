@@ -4,6 +4,7 @@ from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import _forward_transform, _inverse_transform
 import pickle
 import warnings
+import margarine
 
 
 class MAF(object):

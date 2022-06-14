@@ -5,7 +5,7 @@ from scipy.optimize import root_scalar
 import pickle
 import warnings
 from tensorflow_probability import bijectors as tfb
-
+import margarine
 
 class KDE(object):
 
