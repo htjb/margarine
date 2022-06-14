@@ -77,5 +77,5 @@ def reweight(samples, prior, weights, prior_weights, evidence):
     new_weights = []
     new_prior_weights = []
     new_evidence = []
-    return reweighted_samples, reweighted_prior, new_weights, new_prior_weights,
-        new_evidence
+    return reweighted_samples, reweighted_prior, new_weights, \
+        new_prior_weights, new_evidence

@@ -3,6 +3,8 @@ from scipy.stats import gaussian_kde, norm
 from margarine.processing import _forward_transform, _inverse_transform
 from scipy.optimize import root_scalar
 import pickle
+import warnings
+from tensorflow_probability import bijectors as tfb
 
 
 class KDE(object):
@@ -188,14 +190,14 @@ class KDE(object):
             correction = np.array(
                 [norm_jac(params[j], mins[j], maxs[j])
                 for j in range(len(params))])
-            logprob = (self.kde.logpdf(transformed_x).numpy() + \
+            logprob = (self.kde.logpdf(transformed_x.T) + \
                 np.sum(correction)).astype(np.float64)
         else:
             correction = np.array(
                 [[norm_jac(params[i, j], mins[j], maxs[j])
                 for j in range(params.shape[-1])]
                 for i in range(params.shape[0])])
-            logprob = (self.kde.logpdf(transformed_x).numpy() + \
+            logprob = (self.kde.logpdf(transformed_x.T) + \
                 np.sum(correction, axis=1)).astype(np.float64)
 
         return logprob
