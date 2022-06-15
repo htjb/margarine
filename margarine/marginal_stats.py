@@ -178,4 +178,5 @@ class kde_calculations(object):
         """
 
         logL = self._calc_logL()
-        return 2*(tf.reduce_mean(self.w*logL**2) - tf.reduce_mean(self.w*logL)**2)
+        return 2*(tf.reduce_mean(self.w*logL**2) -
+                  tf.reduce_mean(self.w*logL)**2)
