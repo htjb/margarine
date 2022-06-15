@@ -135,21 +135,21 @@ for which you can use the following bibtex
 
 .. code:: bibtex
 
-@ARTICLE{2022arXiv220512841B,
-     author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
-      title = "{Removing the fat from your posterior samples with margarine}",
-    journal = {arXiv e-prints},
-   keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
-       year = 2022,
-      month = may,
-        eid = {arXiv:2205.12841},
-      pages = {arXiv:2205.12841},
-archivePrefix = {arXiv},
-     eprint = {2205.12841},
-primaryClass = {astro-ph.IM},
-     adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
-    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-}
+    @ARTICLE{2022arXiv220512841B,
+         author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
+          title = "{Removing the fat from your posterior samples with margarine}",
+        journal = {arXiv e-prints},
+       keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
+           year = 2022,
+          month = may,
+            eid = {arXiv:2205.12841},
+          pages = {arXiv:2205.12841},
+    archivePrefix = {arXiv},
+         eprint = {2205.12841},
+    primaryClass = {astro-ph.IM},
+         adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
 
 Requirements
 ------------
