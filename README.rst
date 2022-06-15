@@ -29,7 +29,13 @@ commands in the terminal
   cd margarine
   python setup.py install --user
 
-A pip install is coming soon.
+or via a pip install with
+
+.. code:: bash
+
+  pip install margarine
+
+Note that the pip install is not always the most up to date version of the code.
 
 Details/Examples
 ----------------
