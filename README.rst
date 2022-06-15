@@ -16,7 +16,7 @@ Introduction
   :alt: Documentation Status
 .. image:: https://mybinder.org/badge_logo.svg
   :target: https://mybinder.org/v2/gh/htjb/margarine/HEAD?labpath=notebook%2FTutorial.ipynb
-.. image:: http://img.shields.io/badge/astro-ph.IM-arXiv%3A2205.12841-B31B1B.svg
+.. image:: http://img.shields.io/badge/astro.IM-arXiv%3A2205.12841-B31B1B.svg
   :target: https://arxiv.org/abs/2205.12841
 
 Installation
