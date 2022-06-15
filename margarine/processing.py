@@ -1,4 +1,6 @@
 from tensorflow_probability import distributions as tfd
+import warnings
+import numpy as np
 
 
 def _forward_transform(x, min, max):
@@ -24,7 +26,8 @@ def _forward_transform(x, min, max):
                 values...)
 
     """
-    return tfd.Normal(0, 1).quantile((x - min)/(max-min)).numpy()
+    minned = (0.999-0.001)*(x - min)/(max-min)+0.001
+    return tfd.Normal(0, 1).quantile(minned).numpy()
 
 
 def _inverse_transform(x, min, max):
@@ -49,4 +52,32 @@ def _inverse_transform(x, min, max):
                 values...)
 
     """
-    return tfd.Normal(0, 1).cdf(x).numpy()*(max-min) + min
+    return ((tfd.Normal(0, 1).cdf(x).numpy() -
+            0.001)*(max-min))/(0.999-0.001) + min
+
+
+def reweight(samples, prior, weights, prior_weights, evidence):
+    r"""
+
+    Helper function to transform samples, priors and evidences to a space
+    where the prior is uniform.
+
+    """
+
+    warnings.warn('Not implemented yet.')
+
+    n = len(samples)
+    samples_max = np.max(samples, axis=0)
+    samples_min = np.min(samples, axis=0)
+    a = ((n-2)*samples_max-samples_min)/(n-3)
+    b = ((n-2)*samples_min-samples_max)/(n-3)
+    samples_min = b
+    samples_max = a
+
+    reweighted_samples = []
+    reweighted_prior = []
+    new_weights = []
+    new_prior_weights = []
+    new_evidence = []
+    return reweighted_samples, reweighted_prior, new_weights, \
+        new_prior_weights, new_evidence

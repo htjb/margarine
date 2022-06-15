@@ -46,6 +46,13 @@ def test_maf():
     assert((stats.klDiv()-samples.D())/klerr <= 3)
     assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
 
+    L = samples.logL.values
+    estL = bij.log_like(theta, samples.ns_output()['logZ'].mean())
+    for i in range(len(L)):
+        if L[i] > -6:
+            assert((L[i] - estL[i])/L[i]*100 <= 5)
+
+
 def test_maf_kwargs():
 
     with pytest.raises(TypeError):
@@ -65,16 +72,6 @@ def test_maf_kwargs():
     with pytest.raises(TypeError):
         MAF(theta, weights)
         bij.train(epochs=100, early_stop='foo')
-
-"""bij.train(100, early_stop=True)
-
-x = bij.sample(5000)
-
-stats = maf_calculations(bij, x)
-klerr = samples.ns_output()['D'].std()
-bderr = samples.ns_output()['d'].std()
-assert((stats.klDiv()-samples.D())/klerr <= 3)
-assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)"""
 
 def test_maf_save_load():
 
@@ -98,6 +95,12 @@ def test_kde():
     bderr = samples.ns_output()['d'].std()
     assert((stats.klDiv()-samples.D())/klerr <= 3)
     assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+
+    L = samples.logL.values
+    estL = kde.log_like(theta, samples.ns_output()['logZ'].mean())
+    for i in range(len(L)):
+        if L[i] > -6:
+            assert((L[i] - estL[i])/L[i]*100 <= 5)
 
 def test_kde_save_load():
 
