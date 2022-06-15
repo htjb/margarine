@@ -16,6 +16,8 @@ Introduction
   :alt: Documentation Status
 .. image:: https://mybinder.org/badge_logo.svg
   :target: https://mybinder.org/v2/gh/htjb/margarine/HEAD?labpath=notebook%2FTutorial.ipynb
+.. image:: http://img.shields.io/badge/math.CO-arXiv%3A2205.12841-B31B1B.svg
+  :target: https://arxiv.org/abs/2205.12841
 
 Installation
 ------------
@@ -127,8 +129,27 @@ Licence and Citation
 
 The software is available on the MIT licence.
 
-If you use the code for academic purposes we request that you cite the paper
-currently in preparation as Bevins et al. in prep..
+If you use the code for academic purposes we request that you cite the
+`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__
+for which you can use the following bibtex
+
+.. code:: bibtex
+
+@ARTICLE{2022arXiv220512841B,
+     author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
+      title = "{Removing the fat from your posterior samples with margarine}",
+    journal = {arXiv e-prints},
+   keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
+       year = 2022,
+      month = may,
+        eid = {arXiv:2205.12841},
+      pages = {arXiv:2205.12841},
+archivePrefix = {arXiv},
+     eprint = {2205.12841},
+primaryClass = {astro-ph.IM},
+     adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
+    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
 
 Requirements
 ------------
