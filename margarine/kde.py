@@ -7,6 +7,7 @@ import warnings
 from tensorflow_probability import bijectors as tfb
 import margarine
 
+
 class KDE(object):
 
     r"""
@@ -181,28 +182,29 @@ class KDE(object):
 
         transformed_x = _forward_transform(
             params, mins, maxs)
-        norm_jac = lambda y, minimum, maximum : \
-            tfb.NormalCDF().inverse_log_det_jacobian(
-            (0.999-0.001)*(y - minimum)/(maximum-minimum) + 0.001,
-            event_ndims=0).numpy()
+        
+        def norm_jac(y, minimum, maximum):
+            return tfb.NormalCDF().inverse_log_det_jacobian(
+                (0.999-0.001)*(y - minimum)/(maximum-minimum) + 0.001,
+                event_ndims=0).numpy()
 
         if params.ndim == 1:
             correction = np.array(
                 [norm_jac(params[j], mins[j], maxs[j])
-                for j in range(len(params))])
-            logprob = (self.kde.logpdf(transformed_x.T) + \
-                np.sum(correction)).astype(np.float64)
+                    for j in range(len(params))])
+            logprob = (self.kde.logpdf(transformed_x.T) +
+                       np.sum(correction)).astype(np.float64)
         else:
             correction = np.array(
                 [[norm_jac(params[i, j], mins[j], maxs[j])
-                for j in range(params.shape[-1])]
-                for i in range(params.shape[0])])
-            logprob = (self.kde.logpdf(transformed_x.T) + \
-                np.sum(correction, axis=1)).astype(np.float64)
+                    for j in range(params.shape[-1])]
+                    for i in range(params.shape[0])])
+            logprob = (self.kde.logpdf(transformed_x.T) +
+                       np.sum(correction, axis=1)).astype(np.float64)
 
         return logprob
 
-    def log_like(self, params, logevidence, prior=None):
+    def log_like(self, params, logevidence, prior=None, prior_weights=None):
 
         r"""
         This function should return the log-likelihood for a given set of
@@ -230,16 +232,13 @@ class KDE(object):
                     samples should be reweighted prior to any training.
 
         """
-        mins = self.theta_min
-        maxs = self.theta_max
 
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = np.prod([1/(self.theta_max[i] - self.theta_min[i])
-                for i in range(len(self.theta_min))])
+                                    for i in range(len(self.theta_min))])
         else:
-            self.prior = margarine.kde.KDE(
-                    prior, prior_weights)
+            self.prior = margarine.kde.KDE(prior, prior_weights)
             self.prior.generate_kde()
             prior_logprob_func = self.prior.log_prob
             prior_logprob = prior_logprob_func(params)

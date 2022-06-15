@@ -1,5 +1,6 @@
 from tensorflow_probability import distributions as tfd
 import warnings
+import numpy as np
 
 
 def _forward_transform(x, min, max):
@@ -51,8 +52,9 @@ def _inverse_transform(x, min, max):
                 values...)
 
     """
-    return ((tfd.Normal(0, 1).cdf(x).numpy()-
-        0.001)*(max-min))/(0.999-0.001) + min
+    return ((tfd.Normal(0, 1).cdf(x).numpy() -
+            0.001)*(max-min))/(0.999-0.001) + min
+
 
 def reweight(samples, prior, weights, prior_weights, evidence):
     r"""
