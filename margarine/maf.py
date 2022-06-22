@@ -284,10 +284,10 @@ class MAF(object):
 
         correction = np.array(norm_jac(params, mins, maxs))
         if params.ndim == 1:
-            logprob = (self.maf.log_prob(transformed_x) +
+            logprob = (self.maf.log_prob(transformed_x).numpy() +
                        np.sum(correction)).astype(np.float64)
         else:
-            logprob = (self.maf.log_prob(transformed_x) +
+            logprob = (self.maf.log_prob(transformed_x).numpy() +
                        np.sum(correction, axis=1)).astype(np.float64)
 
         return logprob
