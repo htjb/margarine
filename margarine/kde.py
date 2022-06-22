@@ -182,23 +182,17 @@ class KDE(object):
 
         transformed_x = _forward_transform(
             params, mins, maxs)
-        
+
         def norm_jac(y, minimum, maximum):
             return tfb.NormalCDF().inverse_log_det_jacobian(
                 (0.999-0.001)*(y - minimum)/(maximum-minimum) + 0.001,
                 event_ndims=0).numpy()
 
+        correction = np.array(norm_jac(params, mins, maxs))
         if params.ndim == 1:
-            correction = np.array(
-                [norm_jac(params[j], mins[j], maxs[j])
-                    for j in range(len(params))])
             logprob = (self.kde.logpdf(transformed_x.T) +
                        np.sum(correction)).astype(np.float64)
         else:
-            correction = np.array(
-                [[norm_jac(params[i, j], mins[j], maxs[j])
-                    for j in range(params.shape[-1])]
-                    for i in range(params.shape[0])])
             logprob = (self.kde.logpdf(transformed_x.T) +
                        np.sum(correction, axis=1)).astype(np.float64)
 
