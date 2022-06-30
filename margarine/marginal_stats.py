@@ -63,6 +63,7 @@ class calculate(object):
         self.theta_weights = self.de.sample_weights
         self.samples = self.de.sample(len(self.theta))
 
+        self.prior_de = kwargs.pop('prior_de', None)
         self.prior_samples = kwargs.pop('prior_samples', None)
         self.prior_weights = kwargs.pop('prior_weights', None)
 
@@ -131,7 +132,27 @@ class calculate(object):
                 np.cumsum(self.theta_weights), np.cumsum(prior_wde), base_logprob)
 
             theta_base_logprob = theta_base_logprob[args]
-
+        elif self.prior_de is not None:
+            if isinstance(self.prior_de, margarine.kde.KDE):
+                self.base = self.prior_de.copy()
+                base_logprob_func = self.base.generate_kde().logpdf
+                de_prior_samples = self.base.sample(len(self.prior_samples))
+                transformed_prior = _forward_transform(self.prior_samples,
+                    self.base.theta_min, self.base.theta_max)
+                transformed_x = _forward_transform(de_prior_samples,
+                    self.base.theta_min, self.base.theta_max)
+                theta_base_logprob = base_logprob_func(transformed_prior.T)
+                base_logprob = base_logprob_func(transformed_x.T)
+            elif isinstance(self.prior_de, margarine.maf.MAF):
+                self.base = self.prior_de.copy()
+                base_logprob_func = self.base.maf.log_prob
+                de_prior_samples = self.base.sample(len(self.prior_samples))
+                transformed_prior = _forward_transform(self.prior_samples,
+                    self.base.theta_min, self.base.theta_max)
+                transformed_x = _forward_transform(de_prior_samples,
+                    self.base.theta_min, self.base.theta_max)
+                theta_base_logprob = base_logprob_func(transformed_prior).numpy()
+                base_logprob = base_logprob_func(transformed_x).numpy()
         else:
             if isinstance(self.de, margarine.kde.KDE):
                 self.base = margarine.kde.KDE(
