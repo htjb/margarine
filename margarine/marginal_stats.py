@@ -76,15 +76,6 @@ class calculate(object):
                 warnings.warn('No prior weights have been provided. ' +
                     'Assuming there are none.')
 
-        r"""
-
-        This is a helper function which is used by klDiv() and
-        bayesian_dimensionality() to calculate the difference between the log
-        probability of the replica samples (replica posterior) and the log
-        probability of the base distribution (prior).
-
-        """
-
     def statistics(self):
 
         def mask_arr(arr):
