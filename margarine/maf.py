@@ -271,23 +271,26 @@ class MAF(object):
                     probability.
 
         """
-        mins = self.theta_min
-        maxs = self.theta_max
+        mins = self.theta_min.astype(np.float32)
+        maxs = self.theta_max.astype(np.float32)
 
         transformed_x = _forward_transform(
             params, mins, maxs)
 
-        def norm_jac(y, minimum, maximum):
-            return tfb.NormalCDF().inverse_log_det_jacobian(
-                (0.999-0.001)*(y - minimum)/(maximum-minimum) + 0.001,
-                event_ndims=0).numpy()
+        transform_chain = tfb.Chain([
+            tfb.Invert(tfb.NormalCDF()), tfb.Shift(0.001),
+            tfb.Scale((0.999-0.001)/(maxs - mins)), tfb.Shift(-mins)])
 
-        correction = np.array(norm_jac(params, mins, maxs))
+        def norm_jac(y):
+            return transform_chain.inverse_log_det_jacobian(
+                y, event_ndims=0).numpy()
+
+        correction = norm_jac(transformed_x)
         if params.ndim == 1:
-            logprob = (self.maf.log_prob(transformed_x).numpy() +
+            logprob = (self.maf.log_prob(transformed_x).numpy() -
                        np.sum(correction)).astype(np.float64)
         else:
-            logprob = (self.maf.log_prob(transformed_x).numpy() +
+            logprob = (self.maf.log_prob(transformed_x).numpy() -
                        np.sum(correction, axis=1)).astype(np.float64)
 
         return logprob
