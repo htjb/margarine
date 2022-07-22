@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 0.2.1
+:Version: 0.3.0
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
@@ -49,16 +49,6 @@ An example of how to use the code can be found on the github in the
 jupyter notebook `notebook/Tutorial.ipynb`, alternatively
 in the compiled documentation or at
 `here <https://mybinder.org/v2/gh/htjb/margarine/7f55f9a9d3f3adb2356cb94b32c599caac8ea1ef?urlpath=lab%2Ftree%2Fnotebook%2FTutorial.ipynb>`_.
-
-Health Warning
---------------
-
-**The code is still in development.**
-
-Currently the master branch assumes, when calculating marginal statistics, that the
-priors are uniformly distributed. If this is not the case marginal KL divergences
-and marginal Bayesian dimensionalities should be calculated with the
-error_analysis branch.
 
 Documentation
 -------------
