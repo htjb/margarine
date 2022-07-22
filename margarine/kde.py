@@ -184,8 +184,8 @@ class KDE(object):
             params, mins, maxs)
 
         transform_chain = tfb.Chain([
-            tfb.Invert(tfb.NormalCDF()), tfb.Shift(0.001),
-            tfb.Scale((0.999-0.001)/(maxs - mins)), tfb.Shift(-mins)])
+            tfb.Invert(tfb.NormalCDF()), 
+            tfb.Scale(1/(maxs - mins)), tfb.Shift(-mins)])
 
         def norm_jac(y):
             return transform_chain.inverse_log_det_jacobian(
