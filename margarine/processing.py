@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 
 
-def _forward_transform(x, min, max):
+def _forward_transform(x, min=0, max=1):
     r"""
 
     Tranforms input samples. Normalise between 0 and 1 and then tranform
@@ -26,8 +26,9 @@ def _forward_transform(x, min, max):
                 values...)
 
     """
-    minned = (0.999-0.001)*(x - min)/(max-min)+0.001
-    return tfd.Normal(0, 1).quantile(minned).numpy()
+    x = tfd.Uniform(min, max).cdf(x).numpy()
+    x = tfd.Normal(0, 1).quantile(x).numpy()
+    return x
 
 
 def _inverse_transform(x, min, max):
@@ -52,8 +53,9 @@ def _inverse_transform(x, min, max):
                 values...)
 
     """
-    return ((tfd.Normal(0, 1).cdf(x).numpy() -
-            0.001)*(max-min))/(0.999-0.001) + min
+    x = tfd.Normal(0, 1).cdf(x).numpy()
+    x = tfd.Uniform(min, max).quantile(x).numpy()
+    return x
 
 
 def reweight(samples, prior, weights, prior_weights, evidence):
