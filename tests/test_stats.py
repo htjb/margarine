@@ -49,9 +49,9 @@ def test_maf():
     stats = calculate(bij).statistics()
     [check(i) for i in range(2)]
 
-    prior = np.random.uniform(-4, 4, (len(x), 5))
+    prior = np.random.uniform(-4, 4, (len(theta), 5))
     stats = calculate(bij, prior_samples=prior,
-        prior_weights=np.ones_like(len(prior))).statistics()
+        prior_weights=np.ones(len(prior))).statistics()
     [check(i) for i in range(2)]
 
     L = samples.logL.values
@@ -111,9 +111,9 @@ def test_kde():
     stats = calculate(kde).statistics()
     [check(i) for i in range(2)]
 
-    prior = np.random.uniform(-4, 4, (len(x), 5))
+    prior = np.random.uniform(-4, 4, (len(theta), 5))
     stats = calculate(kde, prior_samples=prior,
-        prior_weights=np.ones_like(len(prior))).statistics()
+        prior_weights=np.ones(len(prior))).statistics()
     [check(i) for i in range(2)]
 
     L = samples.logL.values

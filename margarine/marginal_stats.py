@@ -161,14 +161,15 @@ class calculate(object):
                     self.prior_samples, self.prior_weights)
                 self.base.train(epochs=100)
                 base_logprob_func = self.base.maf.log_prob
-                de_prior_samples = self.base.sample(len(self.prior_samples))
+                de_prior_samples = self.base.sample(len(self.theta))
                 transformed_prior = _forward_transform(self.prior_samples,
                     self.base.theta_min, self.base.theta_max)
                 transformed_x = _forward_transform(de_prior_samples,
                     self.base.theta_min, self.base.theta_max)
                 theta_base_logprob = base_logprob_func(transformed_prior).numpy()
                 base_logprob = base_logprob_func(transformed_x).numpy()
-
+            print(len(deargs), len(self.theta))
+            print(np.sum(base_logprob))
             base_logprob = base_logprob[deargs]
             base_logprob = np.interp(
                 np.cumsum(self.theta_weights), np.cumsum(wde), base_logprob)
