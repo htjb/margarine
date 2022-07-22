@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 0.2.0
+:Version: 0.2.1
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
@@ -16,6 +16,8 @@ Introduction
   :alt: Documentation Status
 .. image:: https://mybinder.org/badge_logo.svg
   :target: https://mybinder.org/v2/gh/htjb/margarine/HEAD?labpath=notebook%2FTutorial.ipynb
+.. image:: http://img.shields.io/badge/astro.IM-arXiv%3A2205.12841-B31B1B.svg
+  :target: https://arxiv.org/abs/2205.12841
 
 Installation
 ------------
@@ -29,7 +31,13 @@ commands in the terminal
   cd margarine
   python setup.py install --user
 
-A pip install is coming soon.
+or via a pip install with
+
+.. code:: bash
+
+  pip install margarine
+
+Note that the pip install is not always the most up to date version of the code.
 
 Details/Examples
 ----------------
@@ -47,9 +55,10 @@ Health Warning
 
 **The code is still in development.**
 
-Currently returned log-probabilities are gaussianised due to the
-normalisation. There is a missing jacobian term to correct for this
-that will be coded and added shortly.
+Currently the master branch assumes, when calculating marginal statistics, that the
+priors are uniformly distributed. If this is not the case marginal KL divergences
+and marginal Bayesian dimensionalities should be calculated with the
+error_analysis branch.
 
 Documentation
 -------------
@@ -70,8 +79,27 @@ Licence and Citation
 
 The software is available on the MIT licence.
 
-If you use the code for academic purposes we request that you cite the paper
-currently in preparation as Bevins et al. in prep..
+If you use the code for academic purposes we request that you cite the
+`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__
+for which you can use the following bibtex
+
+.. code:: bibtex
+
+    @ARTICLE{2022arXiv220512841B,
+         author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
+          title = "{Removing the fat from your posterior samples with margarine}",
+        journal = {arXiv e-prints},
+       keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
+           year = 2022,
+          month = may,
+            eid = {arXiv:2205.12841},
+          pages = {arXiv:2205.12841},
+    archivePrefix = {arXiv},
+         eprint = {2205.12841},
+    primaryClass = {astro-ph.IM},
+         adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
 
 Requirements
 ------------

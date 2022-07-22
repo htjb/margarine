@@ -3,6 +3,8 @@ import tensorflow as tf
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import _forward_transform, _inverse_transform
 import pickle
+import warnings
+import margarine
 
 
 class MAF(object):
@@ -262,6 +264,93 @@ class MAF(object):
 
         u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
         return self(u)
+
+    def log_prob(self, params):
+
+        """
+        Function to caluclate the log-probability for a given MAF and
+        set of parameters.
+
+        While the density estimator has its own built in log probability
+        function, a correction has to be applied for the transformation of
+        variables that is used to improve accuracy when learning. The
+        correction is implemented here.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+        """
+        mins = self.theta_min.astype(np.float32)
+        maxs = self.theta_max.astype(np.float32)
+
+        transformed_x = _forward_transform(
+            params, mins, maxs)
+
+        transform_chain = tfb.Chain([
+            tfb.Invert(tfb.NormalCDF()), tfb.Shift(0.001),
+            tfb.Scale((0.999-0.001)/(maxs - mins)), tfb.Shift(-mins)])
+
+        def norm_jac(y):
+            return transform_chain.inverse_log_det_jacobian(
+                y, event_ndims=0).numpy()
+
+        correction = norm_jac(transformed_x)
+        if params.ndim == 1:
+            logprob = (self.maf.log_prob(transformed_x).numpy() -
+                       np.sum(correction)).astype(np.float64)
+        else:
+            logprob = (self.maf.log_prob(transformed_x).numpy() -
+                       np.sum(correction, axis=1)).astype(np.float64)
+
+        return logprob
+
+    def log_like(self, params, logevidence, prior=None, prior_weights=None):
+
+        r"""
+        This function should return the log-likelihood for a given set of
+        parameters.
+
+        It requires the logevidence from the original nested sampling run
+        in order to do this and in the case that the prior is non-uniform
+        prior samples should be provided.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+            logevidence: **float**
+                | Should be the log-evidence from the full nested sampling
+                    run with nuisance parameters.
+
+            prior: **numpy array/default=None**
+                | An array of prior samples corresponding to the prior. Default
+                    assumption is that the prior is uniform which is
+                    required if you want to combine likelihoods from different
+                    experiments/data sets. In this case samples and prior
+                    samples should be reweighted prior to any training.
+
+        """
+
+        if prior is None:
+            warnings.warn('Assuming prior is uniform!')
+            prior_logprob = np.prod([1/(self.theta_max[i] - self.theta_min[i])
+                                    for i in range(len(self.theta_min))])
+        else:
+            self.prior = margarine.maf.MAF(prior, prior_weights)
+            self.prior.train()
+            prior_logprob_func = self.prior.log_prob
+            prior_logprob = prior_logprob_func(params)
+
+        posterior_logprob = self.log_prob(params)
+
+        loglike = posterior_logprob + logevidence - prior_logprob
+
+        return loglike
 
     def save(self, filename):
         r"""

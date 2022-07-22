@@ -54,6 +54,13 @@ def test_maf():
         prior_weights=np.ones_like(len(prior))).statistics()
     [check(i) for i in range(2)]
 
+    L = samples.logL.values
+    estL = bij.log_like(theta, samples.ns_output()['logZ'].mean())
+    for i in range(len(L)):
+        if L[i] > -6:
+            assert((L[i] - estL[i])/L[i]*100 <= 5)
+
+
 def test_maf_kwargs():
 
     with pytest.raises(TypeError):
@@ -108,6 +115,12 @@ def test_kde():
     stats = calculate(kde, prior_samples=prior,
         prior_weights=np.ones_like(len(prior))).statistics()
     [check(i) for i in range(2)]
+
+    L = samples.logL.values
+    estL = kde.log_like(theta, samples.ns_output()['logZ'].mean())
+    for i in range(len(L)):
+        if L[i] > -6:
+            assert((L[i] - estL[i])/L[i]*100 <= 5)
 
 def test_kde_save_load():
 
