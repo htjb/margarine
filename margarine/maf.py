@@ -237,9 +237,7 @@ class MAF(object):
 
         """
 
-        x = _forward_transform(
-            u, np.array([0]*self.theta.shape[-1]),
-            np.array([1]*self.theta.shape[-1]))
+        x = _forward_transform(u)
         x = self.bij(x.astype(np.float32)).numpy()
         x = _inverse_transform(x, self.theta_min, self.theta_max)
         mask = np.isfinite(x).all(axis=-1)
@@ -286,24 +284,19 @@ class MAF(object):
         mins = self.theta_min.astype(np.float32)
         maxs = self.theta_max.astype(np.float32)
 
-        transformed_x = _forward_transform(
-            params, mins, maxs)
+        transformed_x = _forward_transform(params, mins, maxs)
 
         transform_chain = tfb.Chain([
-            tfb.Invert(tfb.NormalCDF()), tfb.Shift(0.001),
-            tfb.Scale((0.999-0.001)/(maxs - mins)), tfb.Shift(-mins)])
+            tfb.Invert(tfb.NormalCDF()),
+            tfb.Scale(1/(maxs - mins)), tfb.Shift(-mins)])
 
         def norm_jac(y):
             return transform_chain.inverse_log_det_jacobian(
                 y, event_ndims=0).numpy()
 
         correction = norm_jac(transformed_x)
-        if params.ndim == 1:
-            logprob = (self.maf.log_prob(transformed_x).numpy() -
-                       np.sum(correction)).astype(np.float64)
-        else:
-            logprob = (self.maf.log_prob(transformed_x).numpy() -
-                       np.sum(correction, axis=1)).astype(np.float64)
+        logprob = (self.maf.log_prob(transformed_x).numpy() -
+                   np.sum(correction, axis=-1)).astype(np.float64)
 
         return logprob
 
