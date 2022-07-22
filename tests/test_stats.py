@@ -35,11 +35,11 @@ def test_maf():
         if stats['Value'][i] < samples.D():
             assert(
                 np.abs(stats['Value'][i]-samples.D())/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=4)
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=3)
         else:
             assert(
                 np.abs(stats['Value'][i]-samples.D())/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=4)
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=3)
 
     bij = MAF(theta, weights)
     bij.train(250)
@@ -49,10 +49,10 @@ def test_maf():
     stats = calculate(bij).statistics()
     [check(i) for i in range(2)]
 
-    """prior = np.random.uniform(-4, 4, (len(x), 5))
+    prior = np.random.uniform(-4, 4, (len(x), 5))
     stats = calculate(bij, prior_samples=prior,
         prior_weights=np.ones_like(len(prior))).statistics()
-    [check(i) for i in range(2)]"""
+    [check(i) for i in range(2)]
 
 def test_maf_kwargs():
 
