@@ -32,13 +32,17 @@ samples, theta, weights, names = load_chains(root)
 def test_maf():
 
     def check(i):
-        if stats['Value'][i] < samples.D():
+        if i ==0:
+            anesthetic_value = samples.D()
+        else:
+            anesthetic_value = samples.d()
+        if stats['Value'][i] < anesthetic_value:
             assert(
-                np.abs(stats['Value'][i]-samples.D())/
+                np.abs(stats['Value'][i]-anesthetic_value)/
                 (stats['Upper Bound'][i] - stats['Value'][i]) <=3)
         else:
             assert(
-                np.abs(stats['Value'][i]-samples.D())/
+                np.abs(stats['Value'][i]-anesthetic_value)/
                 (stats['Value'][i] - stats['Lower Bound'][i]) <=3)
 
     bij = MAF(theta, weights)
@@ -95,14 +99,18 @@ def test_maf_save_load():
 def test_kde():
 
     def check(i):
-        if stats['Value'][i] < samples.D():
+        if i ==0:
+            anesthetic_value = samples.D()
+        else:
+            anesthetic_value = samples.d()
+        if stats['Value'][i] < anesthetic_value:
             assert(
-                np.abs(stats['Value'][i]-samples.D())/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=4)
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=3)
         else:
             assert(
-                np.abs(stats['Value'][i]-samples.D())/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=4)
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=3)
 
     kde = KDE(theta, weights)
     kde.generate_kde()

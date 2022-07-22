@@ -5,6 +5,7 @@ from tensorflow_probability import distributions as tfd
 import margarine
 import warnings
 import pandas as pd
+from margarine.maf import MAF
 
 
 class calculate(object):
@@ -83,17 +84,15 @@ class calculate(object):
 
         min = self.de.theta_min
         max = self.de.theta_max
-        transformed_x = _forward_transform(self.samples, min, max)
-        transformed_theta = _forward_transform(self.theta, min, max)
 
         if isinstance(self.de, margarine.kde.KDE):
-            logprob_func = self.de.kde.logpdf
-            logprob = logprob_func(transformed_x.T)
-            theta_logprob = logprob_func(transformed_theta.T)
+            logprob_func = self.de.log_prob
+            logprob = logprob_func(self.samples)
+            theta_logprob = logprob_func(self.theta)
         elif isinstance(self.de, margarine.maf.MAF):
-            logprob_func = self.de.maf.log_prob
-            logprob = logprob_func(transformed_x).numpy()
-            theta_logprob = logprob_func(transformed_theta).numpy()
+            logprob_func = self.de.log_prob
+            logprob = logprob_func(self.samples)
+            theta_logprob = logprob_func(self.theta)
 
         args = np.argsort(theta_logprob)
         self.theta_weights = self.theta_weights[args]
@@ -109,11 +108,11 @@ class calculate(object):
 
         if self.prior_samples is None:
             self.base = tfd.Blockwise(
-                [tfd.Normal(loc=0, scale=1)
-                for _ in range(self.samples.shape[-1])])
+                [tfd.Uniform(self.de.theta_min[i], self.de.theta_max[i])
+                for i in range(self.samples.shape[-1])])
             prior = self.base.sample(len(self.theta)).numpy()
 
-            theta_base_logprob = self.base.log_prob(transformed_theta).numpy()
+            theta_base_logprob = self.base.log_prob(self.theta).numpy()
 
             base_logprob = self.base.log_prob(prior).numpy()
             prior_wde = [np.sum(self.theta_weights)/len(base_logprob)]*len(base_logprob)
@@ -126,50 +125,34 @@ class calculate(object):
         elif self.prior_de is not None:
             if isinstance(self.prior_de, margarine.kde.KDE):
                 self.base = self.prior_de.copy()
-                base_logprob_func = self.base.generate_kde().logpdf
-                de_prior_samples = self.base.sample(len(self.prior_samples))
-                transformed_prior = _forward_transform(self.prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                transformed_x = _forward_transform(de_prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                theta_base_logprob = base_logprob_func(transformed_prior.T)
-                base_logprob = base_logprob_func(transformed_x.T)
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(self.theta)
             elif isinstance(self.prior_de, margarine.maf.MAF):
                 self.base = self.prior_de.copy()
-                base_logprob_func = self.base.maf.log_prob
-                de_prior_samples = self.base.sample(len(self.prior_samples))
-                transformed_prior = _forward_transform(self.prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                transformed_x = _forward_transform(de_prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                theta_base_logprob = base_logprob_func(transformed_prior).numpy()
-                base_logprob = base_logprob_func(transformed_x).numpy()
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(self.theta)
         else:
             if isinstance(self.de, margarine.kde.KDE):
                 self.base = margarine.kde.KDE(
                     self.prior_samples, self.prior_weights)
-                base_logprob_func = self.base.generate_kde().logpdf
-                de_prior_samples = self.base.sample(len(self.prior_samples))
-                transformed_prior = _forward_transform(self.prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                transformed_x = _forward_transform(de_prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                theta_base_logprob = base_logprob_func(transformed_prior.T)
-                base_logprob = base_logprob_func(transformed_x.T)
-            elif isinstance(self.de, margarine.maf.MAF):
-                self.base = margarine.maf.MAF(
-                    self.prior_samples, self.prior_weights)
-                self.base.train(epochs=100)
-                base_logprob_func = self.base.maf.log_prob
+                self.base.generate_kde()
+                base_logprob_func = self.base.log_prob
                 de_prior_samples = self.base.sample(len(self.theta))
-                transformed_prior = _forward_transform(self.prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                transformed_x = _forward_transform(de_prior_samples,
-                    self.base.theta_min, self.base.theta_max)
-                theta_base_logprob = base_logprob_func(transformed_prior).numpy()
-                base_logprob = base_logprob_func(transformed_x).numpy()
-            print(len(deargs), len(self.theta))
-            print(np.sum(base_logprob))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(de_prior_samples)
+            elif isinstance(self.de, margarine.maf.MAF):
+                self.base = MAF(
+                    self.prior_samples, self.prior_weights)
+                self.base.train(epochs=250)
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(de_prior_samples)
+
             base_logprob = base_logprob[deargs]
             base_logprob = np.interp(
                 np.cumsum(self.theta_weights), np.cumsum(wde), base_logprob)
