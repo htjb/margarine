@@ -2,28 +2,36 @@ import tensorflow as tf
 import numpy as np
 from margarine.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
+import margarine
+import warnings
+import pandas as pd
+from margarine.maf import MAF
 
 
-class maf_calculations(object):
+class calculate(object):
 
     r"""
 
-    This class, once initalised with a trained MAF and samples from
-    that bijector, can be used to calculate marginal KL divergences and
+    This class, once initalised with a trained MAF or KDE and samples,
+    can be used to calculate marginal KL divergences and
     bayesian dimensionalities.
 
     **Paramesters:**
 
-        bij: **instance of MAF class**
-            | This should be a loaded and trained instance of a MAF. Bijectors
-                can be loaded like so
+        de: **instance of MAF class or KDE class**
+            | This should be a loaded and trained instance of a MAF or KDE.
+                Bijectors can be loaded like so
 
                 .. code:: python
 
-                    from ...maf import MAF
+                    from margarine.maf import MAF
+                    from margarine.kde import KDE
 
                     file = '/trained_maf.pkl'
-                    bij = MAF.load(file)
+                    maf = MAF.load(file)
+
+                    file = '/trained_kde.pkl'
+                    kde = KDE.load(file)
 
         samples: **numpy array**
             | This should be the output of the bijector when called to generate
@@ -34,149 +42,155 @@ class maf_calculations(object):
 
                     u = np.random.uniform(0, 1, size=(10000, 5))
                     prior_limits = np.array([[0]*5, [1]*5])
-                    samples = bij(u, prior_limits)
+                    samples = maf(u, prior_limits)
+
+    **Kwargs:**
+
+        prior_samples: **numpy array / default=None**
+            | Can be provided if the prior is non-uniform and will be
+                used to generate a prior density estimator to calcualte
+                prior log-probabilities. If not provided the prior is
+                assumed to be uniform.
+
+        prior_weights: **numpy array / default=None**
+            | Weights associated with the above prior samples.
 
     """
 
-    def __init__(self, bij, samples):
+    def __init__(self, de, **kwargs):
 
-        self.bij = bij
-        self.samples = samples
+        self.de = de
+        self.theta = self.de.theta
+        self.theta_weights = self.de.sample_weights
+        self.samples = self.de.sample(len(self.theta))
 
-    def _calc_logL(self):
+        self.prior_de = kwargs.pop('prior_de', None)
+        self.prior_samples = kwargs.pop('prior_samples', None)
+        self.prior_weights = kwargs.pop('prior_weights', None)
 
-        r"""
+        if self.prior_samples is None:
+            warnings.warn('If prior samples are not provided the prior is ' +
+                'assumed to be uniform and the posterior samples are ' +
+                'are assumed to be from the same uniform space.')
+        else:
+            if self.prior_weights is None:
+                warnings.warn('No prior weights have been provided. ' +
+                    'Assuming there are none.')
 
-        This is a helper function which is used by klDiv() and
-        bayesian_dimensionality() to calculate the difference between the log
-        probability of the replica samples (replica posterior) and the log
-        probability of the base distribution (prior).
+    def statistics(self):
 
-        """
+        def mask_arr(arr):
+            return arr[np.isfinite(arr)], np.isfinite(arr)
 
-        logprob = self.bij.maf.log_prob(
-            _forward_transform(
-                self.samples, self.bij.theta_min, self.bij.theta_max))
-        base_logprob = self.bij.base.log_prob(
-            _forward_transform(
-                self.samples, self.bij.theta_min, self.bij.theta_max))
+        min = self.de.theta_min
+        max = self.de.theta_max
 
-        def mask_tensor(tensor):
-            return tf.boolean_mask(tensor, np.isfinite(tensor))
+        if isinstance(self.de, margarine.kde.KDE):
+            logprob_func = self.de.log_prob
+            logprob = logprob_func(self.samples)
+            theta_logprob = logprob_func(self.theta)
+        elif isinstance(self.de, margarine.maf.MAF):
+            logprob_func = self.de.log_prob
+            logprob = logprob_func(self.samples)
+            theta_logprob = logprob_func(self.theta)
 
-        logprob = mask_tensor(logprob)
-        base_logprob = mask_tensor(base_logprob)
-        logL = logprob - base_logprob
-        return logL
+        args = np.argsort(theta_logprob)
+        self.theta_weights = self.theta_weights[args]
+        theta_logprob = theta_logprob[args]
 
-    def klDiv(self):
+        deargs = np.argsort(logprob)
+        logprob = logprob[deargs]
+        wde = [np.sum(self.theta_weights)/len(logprob)]*len(logprob)
+        logprob = np.interp(
+            np.cumsum(self.theta_weights), np.cumsum(wde), logprob)
 
-        r"""
+        mid_point = np.log((np.exp(logprob) + np.exp(theta_logprob))/2)
 
-        Calculates the kl divergence between samples from the MAF
-        (replica posterior) and the base distribution (prior).
+        if self.prior_samples is None:
+            self.base = tfd.Blockwise(
+                [tfd.Uniform(self.de.theta_min[i], self.de.theta_max[i])
+                for i in range(self.samples.shape[-1])])
+            prior = self.base.sample(len(self.theta)).numpy()
 
-        """
+            theta_base_logprob = self.base.log_prob(self.theta).numpy()
 
-        logL = self._calc_logL()
-        return tf.reduce_mean(logL)
+            base_logprob = self.base.log_prob(prior).numpy()
+            prior_wde = [np.sum(self.theta_weights)/len(base_logprob)]*len(base_logprob)
 
-    def bayesian_dimensionality(self):
+            base_logprob = base_logprob[deargs]
+            base_logprob = np.interp(
+                np.cumsum(self.theta_weights), np.cumsum(prior_wde), base_logprob)
 
-        r"""
+            theta_base_logprob = theta_base_logprob[args]
+        elif self.prior_de is not None:
+            if isinstance(self.prior_de, margarine.kde.KDE):
+                self.base = self.prior_de.copy()
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(self.theta)
+            elif isinstance(self.prior_de, margarine.maf.MAF):
+                self.base = self.prior_de.copy()
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(self.theta)
+        else:
+            if isinstance(self.de, margarine.kde.KDE):
+                self.base = margarine.kde.KDE(
+                    self.prior_samples, self.prior_weights)
+                self.base.generate_kde()
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(de_prior_samples)
+            elif isinstance(self.de, margarine.maf.MAF):
+                self.base = MAF(
+                    self.prior_samples, self.prior_weights)
+                self.base.train(epochs=250)
+                base_logprob_func = self.base.log_prob
+                de_prior_samples = self.base.sample(len(self.theta))
+                theta_base_logprob = base_logprob_func(self.prior_samples)
+                base_logprob = base_logprob_func(de_prior_samples)
 
-        Calculates the bayesian dimensionality of the
-        samples from the MAF.
-        More details on bayesian dimensionality can be found in
-        https://arxiv.org/abs/1903.06682.
+            base_logprob = base_logprob[deargs]
+            base_logprob = np.interp(
+                np.cumsum(self.theta_weights), np.cumsum(wde), base_logprob)
 
-        """
+            base_args = np.argsort(theta_base_logprob)
+            theta_base_logprob = theta_base_logprob[base_args]
+            prior_weights = np.cumsum(self.prior_weights[base_args])
 
-        logL = self._calc_logL()
-        return 2*(tf.reduce_mean(logL**2) - tf.reduce_mean(logL)**2)
+            prior_weights = (np.cumsum(self.theta_weights).max()-
+                np.cumsum(self.theta_weights).min())*(prior_weights -
+                prior_weights.min())/ \
+                (prior_weights.max() - prior_weights.min()) + \
+                np.cumsum(self.theta_weights).min()
 
+            theta_base_logprob = np.interp(np.cumsum(self.theta_weights),
+                prior_weights, theta_base_logprob)
 
-class kde_calculations(object):
+        midbasepoint = np.log((np.exp(base_logprob) + np.exp(theta_base_logprob))/2)
 
-    r"""
+        mid_logL, mask = mask_arr(mid_point - midbasepoint)
+        midkl = np.average(mid_logL, weights=self.theta_weights[mask])
+        midbd = 2*np.cov(mid_logL, aweights=self.theta_weights[mask])
+        de_logL, mask = mask_arr(logprob - base_logprob)
+        dekl = np.average(de_logL, weights=self.theta_weights[mask])
+        debd = 2*np.cov(de_logL, aweights=self.theta_weights[mask])
+        theta_logL, mask = mask_arr(theta_logprob - theta_base_logprob)
+        thetakl = np.average(theta_logL, weights=self.theta_weights[mask])
+        thetabd = 2*np.cov(theta_logL, aweights=self.theta_weights[mask])
 
-    This class, once initalised with KDE and samples from
-    that KDE, can be used to calculate marginal KL divergences and
-    bayesian dimensionalities.
+        kl_array = np.sort([midkl, dekl, thetakl])
+        bd_array = np.sort([midbd, debd, thetabd])
 
-    **Parameters:**
+        results_dict = {'Statistic': ['KL Divergence', 'BMD'],
+            'Value': [kl_array[1], bd_array[1]],
+            'Lower Bound': [kl_array[0], bd_array[0]],
+            'Upper Bound': [kl_array[2], bd_array[2]]}
 
-        kde: **instance of KDE class**
-            | This should be a loaded instance of a KDE. KDEs
-                can be loaded like so
+        results = pd.DataFrame(results_dict)
+        results.set_index('Statistic', inplace=True)
 
-                .. code:: python
-
-                    from ... import KDE
-
-                    file = '/trained_kde.pkl'
-                    kde = KDE.load(file)
-
-        samples: **np.array**
-            | This should be the output of the KDE when called to generate
-                a set of samples from the replicated probability distribution.
-
-    """
-
-    def __init__(self, kde, samples, **kwargs):
-
-        self.kde = kde
-        self.samples = samples
-        self.w = kwargs.pop('weights', np.ones(len(self.samples)))
-
-    def _calc_logL(self):
-
-        r"""
-
-        This is a helper function which is used by klDiv() and
-        bayesian_dimensionality() to calculate the difference between the log
-        probability of the replica samples (replica posterior) and the log
-        probability of the original distribution (prior).
-
-        """
-        logprob = self.kde.kde.logpdf(
-            _forward_transform(
-                self.samples, self.kde.theta_min, self.kde.theta_max).T)
-        self.base = tfd.Blockwise(
-            [tfd.Normal(loc=0, scale=1)
-             for _ in range(self.samples.shape[-1])])
-        base_logprob = self.base.log_prob(
-            _forward_transform(
-                self.samples, self.kde.theta_min, self.kde.theta_max))
-
-        def masking(arr):
-            return arr[np.isfinite(arr)]
-
-        logprob = masking(logprob)
-        base_logprob = masking(base_logprob)
-
-        logL = logprob - base_logprob
-        return logL
-
-    def klDiv(self):
-
-        r"""
-
-        Calculates the kl divergence between samples from the KDE
-        (replica posterior) and the original distribution (prior).
-
-        """
-        logL = self._calc_logL()
-        return tf.reduce_mean(self.w*logL)
-
-    def bayesian_dimensionality(self):
-
-        r"""
-
-        Calculates the bayesian dimensionality of the samples from the KDE.
-
-        """
-
-        logL = self._calc_logL()
-        return 2*(tf.reduce_mean(self.w*logL**2) -
-                  tf.reduce_mean(self.w*logL)**2)
+        return results

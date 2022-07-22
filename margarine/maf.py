@@ -195,6 +195,18 @@ class MAF(object):
         self.phi = phi.copy()
         weights_phi = weights_phi.astype('float32')
 
+        """if self.prior is not None:
+            prior_phi = _forward_transform(self.prior, self.prior_min, self.prior_max)
+
+            mask = np.isfinite(prior_phi).all(axis=-1)
+            prior_phi = prior_phi[mask, :]
+            weights_prior_phi = self.prior_weights[mask]
+            weights_prior_phi /= weights_prior_phi.sum()
+
+            prior_phi = prior_phi.astype('float32')
+            self.prior_phi = prior_phi.copy()
+            weights_prior_phi = weights_prior_phi.astype('float32')"""
+
         self.loss_history = []
         for i in range(epochs):
             loss = self._train_step(phi, weights_phi).numpy()
