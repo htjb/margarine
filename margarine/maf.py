@@ -143,7 +143,7 @@ class MAF(object):
         """
 
         with tf.GradientTape() as tape:
-            loss = -tf.reduce_mean(w*self.maf.log_prob(x))
+            loss = -tf.reduce_sum(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
                 zip(gradients,
