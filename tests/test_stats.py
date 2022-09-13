@@ -39,11 +39,11 @@ def test_maf():
         if stats['Value'][i] < anesthetic_value:
             assert(
                 np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=3)
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
         else:
             assert(
                 np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=3)
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
 
     bij = MAF(theta, weights)
     bij.train(250)
@@ -106,11 +106,11 @@ def test_kde():
         if stats['Value'][i] < anesthetic_value:
             assert(
                 np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=3)
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
         else:
             assert(
                 np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=3)
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
 
     kde = KDE(theta, weights)
     kde.generate_kde()
