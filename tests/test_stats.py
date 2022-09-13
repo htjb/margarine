@@ -1,7 +1,7 @@
 import numpy as np
 from anesthetic.samples import NestedSamples
 from margarine.maf import MAF
-from margarine.marginal_stats import maf_calculations, kde_calculations
+from margarine.marginal_stats import calculate
 import pytest
 from margarine.kde import KDE
 import pytest
@@ -20,31 +20,43 @@ def load_chains(root):
 
     names = ['p' + str(i) for i in range(ndims)]
     theta = samples[names].values
+    weights = samples.weights
 
-    try:
-        weights = samples.weights
-    except:
-        weights = samples.weight
-
-    return samples, theta, weights
+    return samples, theta, weights, names
 
 ndims=5
 
 root = 'tests/test_samples/test'
-samples, theta, weights = load_chains(root)
+samples, theta, weights, names = load_chains(root)
 
 def test_maf():
 
+    def check(i):
+        if i ==0:
+            anesthetic_value = samples.D()
+        else:
+            anesthetic_value = samples.d()
+        if stats['Value'][i] < anesthetic_value:
+            assert(
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
+        else:
+            assert(
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
+
     bij = MAF(theta, weights)
-    bij.train(100)
+    bij.train(250)
 
     x = bij.sample(5000)
 
-    stats = maf_calculations(bij, x)
-    klerr = samples.ns_output()['D'].std()
-    bderr = samples.ns_output()['d'].std()
-    assert((stats.klDiv()-samples.D())/klerr <= 3)
-    assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+    stats = calculate(bij).statistics()
+    [check(i) for i in range(2)]
+
+    prior = np.random.uniform(-4, 4, (len(theta), 5))
+    stats = calculate(bij, prior_samples=prior,
+        prior_weights=np.ones(len(prior))).statistics()
+    [check(i) for i in range(2)]
 
     L = samples.logL.values
     estL = bij.log_like(theta, samples.ns_output()['logZ'].mean())
@@ -86,15 +98,31 @@ def test_maf_save_load():
 
 def test_kde():
 
+    def check(i):
+        if i ==0:
+            anesthetic_value = samples.D()
+        else:
+            anesthetic_value = samples.d()
+        if stats['Value'][i] < anesthetic_value:
+            assert(
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
+        else:
+            assert(
+                np.abs(stats['Value'][i]-anesthetic_value)/
+                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
+
     kde = KDE(theta, weights)
     kde.generate_kde()
     x = kde.sample(5000)
 
-    stats = kde_calculations(kde, x)
-    klerr = samples.ns_output()['D'].std()
-    bderr = samples.ns_output()['d'].std()
-    assert((stats.klDiv()-samples.D())/klerr <= 3)
-    assert((stats.bayesian_dimensionality()-samples.d())/bderr <=3)
+    stats = calculate(kde).statistics()
+    [check(i) for i in range(2)]
+
+    prior = np.random.uniform(-4, 4, (len(theta), 5))
+    stats = calculate(kde, prior_samples=prior,
+        prior_weights=np.ones(len(prior))).statistics()
+    [check(i) for i in range(2)]
 
     L = samples.logL.values
     estL = kde.log_like(theta, samples.ns_output()['logZ'].mean())
