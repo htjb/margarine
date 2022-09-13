@@ -69,8 +69,9 @@ Licence and Citation
 
 The software is available on the MIT licence.
 
-If you use the code for academic purposes we request that you cite the
-`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__
+If you use the code for academic purposes we request that you cite the following
+`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__ and
+the `MaxEnt22 proceedings <https://ui.adsabs.harvard.edu/search/p_=0&q=author%3A%22Bevins%2C%20H.%20T.%20J.%22&sort=date%20desc%2C%20bibcode%20desc>`__
 for which you can use the following bibtex
 
 .. code:: bibtex
@@ -90,6 +91,26 @@ for which you can use the following bibtex
          adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
         adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
+
+and
+
+.. code:: bibtex
+
+  @ARTICLE{2022arXiv220711457B,
+       author = {{Bevins}, Harry and {Handley}, Will and {Lemos}, Pablo and {Sims}, Peter and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia},
+        title = "{Marginal Bayesian Statistics Using Masked Autoregressive Flows and Kernel Density Estimators with Examples in Cosmology}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Instrumentation and Methods for Astrophysics},
+         year = 2022,
+        month = jul,
+          eid = {arXiv:2207.11457},
+        pages = {arXiv:2207.11457},
+  archivePrefix = {arXiv},
+       eprint = {2207.11457},
+  primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220711457B},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+  }
 
 Requirements
 ------------
