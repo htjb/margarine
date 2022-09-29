@@ -41,6 +41,14 @@ class MAF(object):
                 each neural network. The default is two hidden layers with
                 50 nodes each and each network in the chain has the same hidden
                 layer structure.
+                
+        theta_max: **numpy array**
+            | The true upper limits of the priors used to generate the samples
+                that we want the MAF to learn.
+        
+        theta_min: **numpy array**
+            | As above but the true lower limits of the priors.
+        
 
     **Attributes:**
 
@@ -76,12 +84,14 @@ class MAF(object):
                 see the tensorflow documentation.
 
         theta_max: **numpy array**
-            | This is an approximate estimate of the true upper limits of the
-                priors used to generate the samples that we want the
-                MAF to learn (for more info see the ... paper).
+            | The true upper limits of the priors used to generate the samples
+                that we want the MAF to learn. If theta_max is not supplied as a
+                kwarg, then this is is an approximate estimate (for more info see
+                the ... paper).
 
         theta_min: **numpy array**
-            | As above but an estimate of the true lower limits of the priors.
+            | As above but for the true lower limits of the priors. If theta_max is
+                not supplied as a kwarg, then this is is an approximate estimate.
 
         loss_history: **list**
             | This list contains the value of the loss function at each epoch
@@ -92,12 +102,13 @@ class MAF(object):
     def __init__(self, theta, weights, **kwargs):
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         self.sample_weights = weights
+        
         theta_max = np.max(theta, axis=0)
         theta_min = np.min(theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = b
-        self.theta_max = a
+        self.theta_min = kwargs.pop('theta_min', b)
+        self.theta_max = kwargs.pop('theta_max', a)
 
         self.theta = theta
 
