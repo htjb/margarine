@@ -28,6 +28,13 @@ class KDE(object):
 
         bw_method: **str, scalar or callable**
             | The bandwidth for the KDE.
+            
+        theta_max: **numpy array**
+            | The true upper limits of the priors used to generate the samples
+                that we want the MAF to learn.
+        
+        theta_min: **numpy array**
+            | As above but the true lower limits of the priors.
 
     **Attributes:**
 
@@ -56,12 +63,14 @@ class KDE(object):
                 loaded effectively.
 
         theta_max: **numpy array**
-            | This is an approximate estimate of the true upper limits of the
-                priors used to generate the samples that we want the
-                bijector to learn (for more info see the ... paper).
+            | The true upper limits of the priors used to generate the samples
+                that we want the MAF to learn. If theta_max is not supplied as a
+                kwarg, then this is is an approximate estimate (for more info see
+                the ... paper).
 
         theta_min: **numpy array**
-            | As above but an estimate of the true lower limits of the priors.
+            | As above but for the true lower limits of the priors. If theta_max is
+                not supplied as a kwarg, then this is is an approximate estimate.
 
     """
 
@@ -73,10 +82,16 @@ class KDE(object):
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         theta_max = np.max(theta, axis=0)
         theta_min = np.min(theta, axis=0)
-        a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
-        b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = b
-        self.theta_max = a
+        self.theta_min = kwargs.pop('theta_min', None)
+        self.theta_max = kwargs.pop('theta_max', None)
+        if (self.theta_max is None) or np.any(self.theta_max < theta_max):
+            warnings.warn('Estimating theta_max from samples')
+            a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
+            self.theta_max = a
+        if (self.theta_min is None) or np.any(self.theta_min > theta_min):
+            warnings.warn('Estimating theta_min from samples')
+            b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
+            self.theta_min = b
 
         self.bw_method = kwargs.pop('bw_method', 'silverman')
 
