@@ -105,16 +105,10 @@ class MAF(object):
         
         theta_max = np.max(theta, axis=0)
         theta_min = np.min(theta, axis=0)
-        self.theta_min = kwargs.pop('theta_min', None)
-        self.theta_max = kwargs.pop('theta_max', None)
-        if (self.theta_max is None) or np.any(self.theta_max < theta_max):
-            warnings.warn('Estimating theta_max from samples')
-            a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
-            self.theta_max = a
-        if (self.theta_min is None) or np.any(self.theta_min > theta_min):
-            warnings.warn('Estimating theta_min from samples')
-            b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-            self.theta_min = b
+        a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
+        b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
+        self.theta_min = kwargs.pop('theta_min', b)
+        self.theta_max = kwargs.pop('theta_max', a)
 
         self.theta = theta
 
