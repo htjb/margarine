@@ -41,14 +41,14 @@ class MAF(object):
                 each neural network. The default is two hidden layers with
                 50 nodes each and each network in the chain has the same hidden
                 layer structure.
-                
+
         theta_max: **numpy array**
             | The true upper limits of the priors used to generate the samples
                 that we want the MAF to learn.
-        
+
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
-        
+
 
     **Attributes:**
 
@@ -102,7 +102,7 @@ class MAF(object):
     def __init__(self, theta, weights, **kwargs):
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         self.sample_weights = weights
-        
+
         theta_max = np.max(theta, axis=0)
         theta_min = np.min(theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
@@ -205,18 +205,6 @@ class MAF(object):
         phi = phi.astype('float32')
         self.phi = phi.copy()
         weights_phi = weights_phi.astype('float32')
-
-        """if self.prior is not None:
-            prior_phi = _forward_transform(self.prior, self.prior_min, self.prior_max)
-
-            mask = np.isfinite(prior_phi).all(axis=-1)
-            prior_phi = prior_phi[mask, :]
-            weights_prior_phi = self.prior_weights[mask]
-            weights_prior_phi /= weights_prior_phi.sum()
-
-            prior_phi = prior_phi.astype('float32')
-            self.prior_phi = prior_phi.copy()
-            weights_prior_phi = weights_prior_phi.astype('float32')"""
 
         self.loss_history = []
         for i in range(epochs):
