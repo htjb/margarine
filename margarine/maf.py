@@ -143,14 +143,17 @@ class MAF(object):
         """
 
         with tf.GradientTape() as tape:
-            loss = -tf.reduce_sum(w*self.maf.log_prob(x))
+            if loss_type == 'sum':
+                    loss = -tf.reduce_sum(w*self.maf.log_prob(x))
+            elif loss_type == 'mean':
+                    loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
                 zip(gradients,
                     self.maf.trainable_variables))
             return loss
 
-    def train(self, epochs=100, early_stop=False):
+    def train(self, epochs=100, early_stop=False, loss_type='sum'):
         r"""
 
         This function is called to train the MAF once it has been
