@@ -134,7 +134,7 @@ class MAF(object):
         self.optimizer = tf.keras.optimizers.Adam(
             learning_rate=self.learning_rate)
 
-    def _train_step(self, x, w, prior_phi=None, prior_weights=None):
+    def _train_step(self, x, w, loss_type, prior_phi=None, prior_weights=None):
 
         r"""
         This function is used to calculate the loss value at each epoch and
@@ -200,7 +200,7 @@ class MAF(object):
 
         self.loss_history = []
         for i in range(epochs):
-            loss = self._train_step(phi, weights_phi).numpy()
+            loss = self._train_step(phi, weights_phi, loss_type).numpy()
             self.loss_history.append(loss)
             if early_stop:
                 if len(self.loss_history) > 10:
