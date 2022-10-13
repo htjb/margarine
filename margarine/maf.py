@@ -74,10 +74,7 @@ class MAF(object):
 
                 .. code:: python
 
-                    from ...processing import forward_transform
-
-                    log_prob = bij.log_prob(forward_transform(
-                        samples, bij.theta_min, bij.theta_max))
+                    log_prob = bij.log_prob(samples)
 
                 For more information on the attributes associated with
                 ``tensorflow_probability.distributions.TransformedDistribution``
