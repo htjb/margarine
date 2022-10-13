@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 0.2.2
+:Version: 0.3.0
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
@@ -50,16 +50,6 @@ jupyter notebook `notebook/Tutorial.ipynb`, alternatively
 in the compiled documentation or at
 `here <https://mybinder.org/v2/gh/htjb/margarine/7f55f9a9d3f3adb2356cb94b32c599caac8ea1ef?urlpath=lab%2Ftree%2Fnotebook%2FTutorial.ipynb>`_.
 
-Health Warning
---------------
-
-**The code is still in development.**
-
-Currently the master branch assumes, when calculating marginal statistics, that the
-priors are uniformly distributed. If this is not the case marginal KL divergences
-and marginal Bayesian dimensionalities should be calculated with the
-error_analysis branch.
-
 Documentation
 -------------
 
@@ -79,8 +69,9 @@ Licence and Citation
 
 The software is available on the MIT licence.
 
-If you use the code for academic purposes we request that you cite the
-`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__
+If you use the code for academic purposes we request that you cite the following
+`paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__ and
+the `MaxEnt22 proceedings <https://ui.adsabs.harvard.edu/search/p_=0&q=author%3A%22Bevins%2C%20H.%20T.%20J.%22&sort=date%20desc%2C%20bibcode%20desc>`__
 for which you can use the following bibtex
 
 .. code:: bibtex
@@ -100,6 +91,26 @@ for which you can use the following bibtex
          adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
         adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
+
+and
+
+.. code:: bibtex
+
+  @ARTICLE{2022arXiv220711457B,
+       author = {{Bevins}, Harry and {Handley}, Will and {Lemos}, Pablo and {Sims}, Peter and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia},
+        title = "{Marginal Bayesian Statistics Using Masked Autoregressive Flows and Kernel Density Estimators with Examples in Cosmology}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Instrumentation and Methods for Astrophysics},
+         year = 2022,
+        month = jul,
+          eid = {arXiv:2207.11457},
+        pages = {arXiv:2207.11457},
+  archivePrefix = {arXiv},
+       eprint = {2207.11457},
+  primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220711457B},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+  }
 
 Requirements
 ------------
