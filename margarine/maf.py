@@ -74,10 +74,7 @@ class MAF(object):
 
                 .. code:: python
 
-                    from ...processing import forward_transform
-
-                    log_prob = bij.log_prob(forward_transform(
-                        samples, bij.theta_min, bij.theta_max))
+                    log_prob = bij.log_prob(samples)
 
                 For more information on the attributes associated with
                 ``tensorflow_probability.distributions.TransformedDistribution``
@@ -145,7 +142,7 @@ class MAF(object):
         self.optimizer = tf.keras.optimizers.Adam(
             learning_rate=self.learning_rate)
 
-    def _train_step(self, x, w, prior_phi=None, prior_weights=None):
+    def _train_step(self, x, w, loss_type, prior_phi=None, prior_weights=None):
 
         r"""
         This function is used to calculate the loss value at each epoch and
@@ -154,14 +151,17 @@ class MAF(object):
         """
 
         with tf.GradientTape() as tape:
-            loss = -tf.reduce_mean(w*self.maf.log_prob(x))
+            if loss_type == 'sum':
+                    loss = -tf.reduce_sum(w*self.maf.log_prob(x))
+            elif loss_type == 'mean':
+                    loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
                 zip(gradients,
                     self.maf.trainable_variables))
             return loss
 
-    def train(self, epochs=100, early_stop=False):
+    def train(self, epochs=100, early_stop=False, loss_type='sum'):
         r"""
 
         This function is called to train the MAF once it has been
@@ -208,7 +208,7 @@ class MAF(object):
 
         self.loss_history = []
         for i in range(epochs):
-            loss = self._train_step(phi, weights_phi).numpy()
+            loss = self._train_step(phi, weights_phi, loss_type).numpy()
             self.loss_history.append(loss)
             if early_stop:
                 if len(self.loss_history) > 10:
