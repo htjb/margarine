@@ -1,6 +1,4 @@
 from tensorflow_probability import distributions as tfd
-import warnings
-import numpy as np
 
 
 def _forward_transform(x, min=0, max=1):

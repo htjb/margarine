@@ -28,11 +28,11 @@ class KDE(object):
 
         bw_method: **str, scalar or callable**
             | The bandwidth for the KDE.
-            
+
         theta_max: **numpy array**
             | The true upper limits of the priors used to generate the samples
                 that we want the MAF to learn.
-        
+
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
 
@@ -64,13 +64,14 @@ class KDE(object):
 
         theta_max: **numpy array**
             | The true upper limits of the priors used to generate the samples
-                that we want the MAF to learn. If theta_max is not supplied as a
-                kwarg, then this is is an approximate estimate (for more info see
-                the ... paper).
+                that we want the MAF to learn. If theta_max is not
+                supplied as a kwarg, then this is is an approximate
+                estimate.
 
         theta_min: **numpy array**
-            | As above but for the true lower limits of the priors. If theta_max is
-                not supplied as a kwarg, then this is is an approximate estimate.
+            | As above but for the true lower limits of the priors.
+                If theta_max is not supplied as a kwarg, then this
+                is an approximate estimate.
 
     """
 
@@ -86,7 +87,7 @@ class KDE(object):
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
-        
+
         self.bw_method = kwargs.pop('bw_method', 'silverman')
 
     def generate_kde(self):
@@ -193,7 +194,7 @@ class KDE(object):
             params, mins, maxs)
 
         transform_chain = tfb.Chain([
-            tfb.Invert(tfb.NormalCDF()), 
+            tfb.Invert(tfb.NormalCDF()),
             tfb.Scale(1/(maxs - mins)), tfb.Shift(-mins)])
 
         def norm_jac(y):

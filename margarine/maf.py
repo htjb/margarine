@@ -81,14 +81,14 @@ class MAF(object):
                 see the tensorflow documentation.
 
         theta_max: **numpy array**
-            | The true upper limits of the priors used to generate the samples
-                that we want the MAF to learn. If theta_max is not supplied as a
-                kwarg, then this is is an approximate estimate (for more info see
-                the ... paper).
+            | The true upper limits of the priors used to generate the
+                samples that we want the MAF to learn. If theta_max is not
+                supplied as a kwarg, then this is is an approximate estimate.
 
         theta_min: **numpy array**
-            | As above but for the true lower limits of the priors. If theta_max is
-                not supplied as a kwarg, then this is is an approximate estimate.
+            | As above but for the true lower limits of the priors. If
+                theta_max is not supplied as a kwarg, then this is is an
+                approximate estimate.
 
         loss_history: **list**
             | This list contains the value of the loss function at each epoch
@@ -152,9 +152,9 @@ class MAF(object):
 
         with tf.GradientTape() as tape:
             if loss_type == 'sum':
-                    loss = -tf.reduce_sum(w*self.maf.log_prob(x))
+                loss = -tf.reduce_sum(w*self.maf.log_prob(x))
             elif loss_type == 'mean':
-                    loss = -tf.reduce_mean(w*self.maf.log_prob(x))
+                loss = -tf.reduce_mean(w*self.maf.log_prob(x))
             gradients = tape.gradient(loss, self.maf.trainable_variables)
             self.optimizer.apply_gradients(
                 zip(gradients,

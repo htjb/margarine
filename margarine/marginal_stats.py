@@ -1,11 +1,10 @@
-import tensorflow as tf
 import numpy as np
-from margarine.processing import _forward_transform
 from tensorflow_probability import distributions as tfd
 import margarine
 import warnings
 import pandas as pd
 from margarine.maf import MAF
+from margarine.kde import KDE
 
 
 class calculate(object):
@@ -70,20 +69,18 @@ class calculate(object):
 
         if self.prior_samples is None:
             warnings.warn('If prior samples are not provided the prior is ' +
-                'assumed to be uniform and the posterior samples are ' +
-                'are assumed to be from the same uniform space.')
+                          'assumed to be uniform and the' +
+                          'posterior samples are ' +
+                          'are assumed to be from the same uniform space.')
         else:
             if self.prior_weights is None:
                 warnings.warn('No prior weights have been provided. ' +
-                    'Assuming there are none.')
+                              'Assuming there are none.')
 
     def statistics(self):
 
         def mask_arr(arr):
             return arr[np.isfinite(arr)], np.isfinite(arr)
-
-        min = self.de.theta_min
-        max = self.de.theta_max
 
         if isinstance(self.de, margarine.kde.KDE):
             logprob_func = self.de.log_prob
@@ -109,17 +106,19 @@ class calculate(object):
         if self.prior_samples is None:
             self.base = tfd.Blockwise(
                 [tfd.Uniform(self.de.theta_min[i], self.de.theta_max[i])
-                for i in range(self.samples.shape[-1])])
+                 for i in range(self.samples.shape[-1])])
             prior = self.base.sample(len(self.theta)).numpy()
 
             theta_base_logprob = self.base.log_prob(self.theta).numpy()
 
             base_logprob = self.base.log_prob(prior).numpy()
-            prior_wde = [np.sum(self.theta_weights)/len(base_logprob)]*len(base_logprob)
+            prior_wde = [np.sum(self.theta_weights)/len(base_logprob)] * \
+                len(base_logprob)
 
             base_logprob = base_logprob[deargs]
             base_logprob = np.interp(
-                np.cumsum(self.theta_weights), np.cumsum(prior_wde), base_logprob)
+                np.cumsum(self.theta_weights), np.cumsum(prior_wde),
+                base_logprob)
 
             theta_base_logprob = theta_base_logprob[args]
         elif self.prior_de is not None:
@@ -137,7 +136,7 @@ class calculate(object):
                 base_logprob = base_logprob_func(self.theta)
         else:
             if isinstance(self.de, margarine.kde.KDE):
-                self.base = margarine.kde.KDE(
+                self.base = KDE(
                     self.prior_samples, self.prior_weights)
                 self.base.generate_kde()
                 base_logprob_func = self.base.log_prob
@@ -161,16 +160,17 @@ class calculate(object):
             theta_base_logprob = theta_base_logprob[base_args]
             prior_weights = np.cumsum(self.prior_weights[base_args])
 
-            prior_weights = (np.cumsum(self.theta_weights).max()-
-                np.cumsum(self.theta_weights).min())*(prior_weights -
-                prior_weights.min())/ \
-                (prior_weights.max() - prior_weights.min()) + \
+            prior_weights = (np.cumsum(self.theta_weights).max() -
+                             np.cumsum(self.theta_weights).min()) * \
+                            (prior_weights - prior_weights.min()) / \
+                            (prior_weights.max() - prior_weights.min()) + \
                 np.cumsum(self.theta_weights).min()
 
             theta_base_logprob = np.interp(np.cumsum(self.theta_weights),
-                prior_weights, theta_base_logprob)
+                                           prior_weights, theta_base_logprob)
 
-        midbasepoint = np.log((np.exp(base_logprob) + np.exp(theta_base_logprob))/2)
+        midbasepoint = np.log((np.exp(base_logprob) +
+                               np.exp(theta_base_logprob))/2)
 
         mid_logL, mask = mask_arr(mid_point - midbasepoint)
         midkl = np.average(mid_logL, weights=self.theta_weights[mask])
@@ -186,9 +186,9 @@ class calculate(object):
         bd_array = np.sort([midbd, debd, thetabd])
 
         results_dict = {'Statistic': ['KL Divergence', 'BMD'],
-            'Value': [kl_array[1], bd_array[1]],
-            'Lower Bound': [kl_array[0], bd_array[0]],
-            'Upper Bound': [kl_array[2], bd_array[2]]}
+                        'Value': [kl_array[1], bd_array[1]],
+                        'Lower Bound': [kl_array[0], bd_array[0]],
+                        'Upper Bound': [kl_array[2], bd_array[2]]}
 
         results = pd.DataFrame(results_dict)
         results.set_index('Statistic', inplace=True)
