@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import _forward_transform, _inverse_transform
 import pickle
@@ -115,8 +116,11 @@ class MAF(object):
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
-        if type(self.learning_rate) not in [int, float]:
-            raise TypeError("'learning_rate', must be a float.")
+        if not isinstance(self.learning_rate,
+                          (int, float,
+                           keras.optimizers.schedules.LearningRateSchedule)):
+            raise TypeError("'learning_rate', " +
+                            "must be an integer, float or keras scheduler.")
         if type(self.hidden_layers) is not list:
             raise TypeError("'hidden_layers' must be a list of integers.")
         else:

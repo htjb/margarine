@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 0.3.2
+:Version: 0.4.0
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
