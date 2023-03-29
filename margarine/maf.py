@@ -330,8 +330,9 @@ class MAF(object):
 
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
-            prior_logprob = np.prod([1/(self.theta_max[i] - self.theta_min[i])
-                                    for i in range(len(self.theta_min))])
+            prior_logprob = np.log(np.prod(
+                                    [1/(self.theta_max[i] - self.theta_min[i])
+                                    for i in range(len(self.theta_min))]))
         else:
             self.prior = margarine.maf.MAF(prior, prior_weights)
             self.prior.train()
