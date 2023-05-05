@@ -52,6 +52,22 @@ class MAF(object):
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
 
+        clustering: **Bool / default = False**
+            | Whether or not to perform clustering as in
+                https://arxiv.org/abs/2305.02930.
+        
+        cluster_labels: **list / default = None**
+            | If clustering has been performed externally to margarine you can
+                provide a list of labels for the samples theta. The labels
+                should be integers from 0 to k corresponding to the cluster
+                that each sample is in. Clustering is turned on if cluster 
+                labels are supplied.
+        
+        cluster_number: **int / default = None**
+            | If clustering has been performed externally to margarine you
+                need to provide the number of clusters, k, alongside the
+                cluster labels.
+
 
     **Attributes:**
 
@@ -104,9 +120,20 @@ class MAF(object):
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.clustering = kwargs.pop('clustering', False)
-        self.labels = kwargs.pop('cluster_labels', None)
+        self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
 
+        if self.cluster_number is not None:
+            if self.cluster_labels is None:
+                raise ValueError("'cluster_labels' should be provided if " + \
+                                 "'cluster_number' is specified.")
+        else:
+            if self.cluster_labels is not None:
+                raise ValueError("'cluster_number' should be provided if " + \
+                                 "'cluster_labels' is specified.")
+
+        if self.cluster_labels is not None and self.cluster_number is not None:
+            self.clustering = True
         
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         self.sample_weights = weights
@@ -143,9 +170,18 @@ class MAF(object):
             self.gen_mades()
             self.cluster_number = None
         if self.clustering is True:
+            if self.cluster_number is not None:
+                if type(self.cluster_number) is not int:
+                    raise TypeError("'cluster_number' must be an integer.")
+            if self.cluster_labels is not None:
+                if not isinstance(self.cluster_labels, (np.array, list)):
+                    raise TypeError("'cluster_labels' must be an array " + \
+                                    "or a list.")
             self.clustering_call()
 
     def gen_mades(self):
+
+        """Generating the masked autoregressive flow."""
 
         self.mades = [tfb.AutoregressiveNetwork(params=2,
                       hidden_units=self.hidden_layers, activation='tanh',
@@ -164,10 +200,12 @@ class MAF(object):
         return self.bij, self.maf
     
     def clustering_call(self):
+
+        """Generating a piecewise masked autoregressive flow with clustering."""
         
         if self.cluster_number is None:
             from sklearn.metrics import silhouette_score
-            ks = np.arange(2, 21)
+            ks = np.arange(2, 101)
             losses = []
             for k in ks:
                 kmeans = KMeans(k, random_state=0)
@@ -179,17 +217,19 @@ class MAF(object):
             print(self.cluster_number)
 
             kmeans = KMeans(self.cluster_number, random_state=0)
-            self.labels = kmeans.fit(self.theta).predict(self.theta)
+            self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
 
         self.n, split_theta, self.new_theta_max = [], [], []
         self.new_theta_min, split_sample_weights = [], []
         self.bij, self.maf, self.mades = [], [], []
         for i in range(self.cluster_number):
-            theta = self.theta[self.labels == i]
-            split_sample_weights.append(self.sample_weights[self.labels == i])
+            theta = self.theta[self.cluster_labels == i]
+            split_sample_weights.append(
+                self.sample_weights[self.cluster_labels == i])
 
-            self.n.append((np.sum(self.sample_weights[self.labels == i])**2)/ 
-                          (np.sum(self.sample_weights[self.labels == i]**2)))
+            self.n.append(
+                (np.sum(self.sample_weights[self.cluster_labels == i])**2)/ 
+                (np.sum(self.sample_weights[self.cluster_labels == i]**2)))
 
             if not any(isinstance(l, list) for l in self.theta_max):
                 new_theta_max = np.max(theta, axis=0)
@@ -213,7 +253,8 @@ class MAF(object):
                 [tfd.Normal(loc=0, scale=1)
                     for _ in range(self.theta.shape[-1])])
             
-            self.maf.append(tfd.TransformedDistribution(self.base, bijector=self.bij[-1]))
+            self.maf.append(tfd.TransformedDistribution(
+                self.base, bijector=self.bij[-1]))
         self.theta = split_theta
         self.sample_weights = split_sample_weights
         if self.new_theta_max != []:
@@ -224,7 +265,8 @@ class MAF(object):
         r"""
 
         This function is called to train the MAF once it has been
-        initialised. For example
+        initialised. It calls `_training()` for each MAF whether there
+        is only one or whether clustering is turned on. For example
 
         .. code:: python
 
@@ -242,11 +284,10 @@ class MAF(object):
                 | Determines whether or not to implement an early stopping
                     algorithm or
                     train for the set number of epochs. If set to True then the
-                    algorithm will stop training when the
-                    fractional difference
-                    between the current loss
-                    and the average loss value over the
-                    preceeding 10 epochs is < 1e-6.
+                    algorithm will stop training when test loss has not
+                    improved for 2% of the requested epochs. At this point
+                    margarine will roll back to the best model and return this
+                    to the user.
 
         """
         if type(epochs) is not int:
@@ -263,26 +304,14 @@ class MAF(object):
                 self.maf[i] = self._training(self.theta[i], self.sample_weights[i], 
                                self.maf[i], self.theta_min[i],
                                self.theta_max[i])
-                """import matplotlib.pyplot as plt
-                plt.close()
-                plt.plot(self.loss_history, label='loss')
-                plt.plot(self.test_loss_history, label='test')
-                plt.legend()
-                plt.savefig('losses/simple_example_loss_cluster=' + str(i) + '.pdf')
-                plt.show()"""
         else:
             self.maf = self._training(self.theta, self.sample_weights, self.maf,
                            self.theta_min, self.theta_max)
-            """import matplotlib.pyplot as plt
-            plt.close()
-            plt.plot(self.loss_history, label='loss')
-            plt.plot(self.test_loss_history, label='test')
-            plt.legend()
-            plt.savefig('losses/simple_example_loss.pdf')
-            plt.show()"""
 
     def _training(self, theta, sample_weights, maf,
                   theta_min, theta_max):
+        
+        """Function to perform the training of each MAF."""
 
         phi = _forward_transform(theta, theta_min, theta_max)
 
@@ -332,16 +361,6 @@ class MAF(object):
                             c = 0
                     if minimum_model:
                         if c == round((self.epochs/100)*2):
-                            """import matplotlib.pyplot as plt
-                            plt.close()
-                            plt.plot(self.test_loss_history, label='test')
-                            plt.plot(self.loss_history, label='train')
-                            plt.axvline(minimum_epoch+c)
-                            plt.scatter(minimum_epoch, -tf.reduce_sum(
-                                weights_phi_test*minimum_model.log_prob(phi_test)),
-                                marker='*')
-                            plt.legend()
-                            plt.show()"""
                             print('Early stopped. Epochs used = ' + str(i))
                             return minimum_model
         return maf
@@ -381,19 +400,22 @@ class MAF(object):
 
         if self.cluster_number is not None:
             len_thetas = [len(self.theta[i]) for i in range(len(self.theta))]
-            probabilities = [len_thetas[i]/np.sum(len_thetas) for i in range(len(self.theta))]
+            probabilities = [len_thetas[i]/np.sum(len_thetas) 
+                             for i in range(len(self.theta))]
             options = np.arange(0, self.cluster_number)
             choice = np.random.choice(options,
                     p=probabilities, size=len(u))
             
-            totals = [len(choice[choice == options[i]]) for i in range(len(options))]
+            totals = [len(choice[choice == options[i]]) 
+                      for i in range(len(options))]
             totals = np.hstack([0, np.cumsum(totals)])
             
             values = []
             for i in range(len(options)):
                 x = _forward_transform(u[totals[i]:totals[i+1]])
                 x = self.bij[i](x.astype(np.float32)).numpy()
-                values.append(_inverse_transform(x, self.theta_min[i], self.theta_max[i]))
+                values.append(_inverse_transform(x, self.theta_min[i], 
+                                                 self.theta_max[i]))
             
             x = np.concatenate(values)
         else:
@@ -472,7 +494,6 @@ class MAF(object):
                 for j in range(len(probs)):
                     if np.isnan(probs[j]):
                         probs[j] = np.log(1e-300)
-                #probs = np.ma.masked_where(np.isnan(probs), probs)
                 logprob.append(probs)
             logprob = np.array(logprob)
             logprob = logsumexp(logprob, axis=0)
@@ -509,6 +530,9 @@ class MAF(object):
                     required if you want to combine likelihoods from different
                     experiments/data sets. In this case samples and prior
                     samples should be reweighted prior to any training.
+            
+            prior_weights: **numpy array/default=None**
+                | Weights to go with the prior samples.
 
         """
 
@@ -532,7 +556,8 @@ class MAF(object):
     def save(self, filename):
         r"""
 
-        This function can be used to save an instance of a trained MAF as
+        This function can be used to save an instance of a trained MAF
+        or piecewise MAF as
         a pickled class so that it can be loaded and used in differnt scripts.
 
         **Parameters:**
@@ -560,7 +585,7 @@ class MAF(object):
                             self.theta_min,
                             self.theta_max,
                             self.cluster_number,
-                            self.labels], f)
+                            self.cluster_labels], f)
             else:
                 pickle.dump([self.theta,
                             nn_weights,
