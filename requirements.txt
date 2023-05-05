@@ -3,4 +3,4 @@ tensorflow
 tensorflow_probability
 scipy
 pandas
-sklearn
+scikit-learn
