@@ -1,2 +1,2 @@
-anesthetic==2.0.0b11
+git@github.com:handley-lab/anesthetic.git
 pandas
