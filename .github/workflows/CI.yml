@@ -37,7 +37,7 @@ jobs:
         flake8 margarine --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        coverage run --source=margarine -m pytest
+        python -m pytest -cov=margarine tests
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
