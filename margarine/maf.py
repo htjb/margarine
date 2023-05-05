@@ -214,9 +214,7 @@ class MAF(object):
                 labels = kmeans.fit(self.theta).predict(self.theta)
                 losses.append(-silhouette_score(self.theta, labels))
             losses = np.array(losses)
-            print(ks, losses)
             self.cluster_number = ks[np.where(losses == losses.min())[0][0]]
-            print(self.cluster_number)
 
             kmeans = KMeans(self.cluster_number, random_state=0)
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
@@ -333,8 +331,6 @@ class MAF(object):
 
         phi_train, phi_test, weights_phi_train, weights_phi_test = \
             train_test_split(phi, weights_phi, test_size=0.2)
-
-        print(len(phi_test), len(phi_train))
 
         self.loss_history = []
         self.test_loss_history = []
