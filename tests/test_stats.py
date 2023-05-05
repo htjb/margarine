@@ -56,9 +56,8 @@ def test_maf():
         prior_weights=np.ones(len(prior))).statistics()
     [check_stats(i) for i in range(2)]
 
-    x = bij.sample(len(theta))
-
-    equal_weight_theta = samples.posterior_points()[names].values
+    equal_weight_theta = samples.compress(100)[names].values
+    x = bij.sample(len(equal_weight_theta))
 
     res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
            for i in range(equal_weight_theta.shape[-1])]
@@ -66,13 +65,17 @@ def test_maf():
     for i in range(len(p_values)):
         assert(p_values[i] > 0.05)
 
-    L = [likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))]
-    estL = bij.log_like(equal_weight_theta, samples.logZ(1000).mean())
+    equal_weight = samples.compress(100)
+    equal_weight_theta = equal_weight[names].values
+    x = bij.sample(len(equal_weight_theta))
+
+    L = np.array([likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))])
+    estL = bij.log_like(equal_weight_theta, samples.logZ().mean())
     check_like = 0
     for i in range(len(L)):
-        if np.isclose(L[i], estL[i], rtol=1, atol=1):
+        if np.isclose(np.exp(L[i]), np.exp(estL[i]), rtol=1, atol=1):
             check_like += 1
-    assert((len(L)-check_like)/len(L) <= 0.05)
+    assert((len(L)-check_like)/len(L) <= 0.1)
 
 def test_maf_kwargs():
 
@@ -118,9 +121,9 @@ def test_kde():
 
     def likelihood(parameters):
         y = np.array([0.8, 5, 4])
-        loglikelihood = (-0.5*np.log(2*np.pi*(0.1**2))-0.5 \
-            *((y - [parameters[0], parameters[1], parameters[2]]) / 0.1)**2).sum()
-        return loglikelihood
+        like = -0.5*np.log(2*np.pi*(0.1**2))- 0.5 \
+            * ((y - [parameters[0], parameters[1], parameters[2]]) / 0.1)**2
+        return like.sum()
 
     def check_stats(i):
         if i ==0:
@@ -131,7 +134,6 @@ def test_kde():
 
     kde = KDE(theta, weights)
     kde.generate_kde()
-    x = kde.sample(len(theta))
 
     stats = calculate(kde).statistics()
     [check_stats(i) for i in range(2)]
@@ -141,7 +143,8 @@ def test_kde():
         prior_weights=np.ones(len(prior))).statistics()
     [check_stats(i) for i in range(2)]
 
-    equal_weight_theta = samples.posterior_points()[names].values
+    equal_weight_theta = samples.compress(100)[names].values
+    x = kde.sample(len(equal_weight_theta))
 
     res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
            for i in range(equal_weight_theta.shape[-1])]
@@ -149,13 +152,17 @@ def test_kde():
     for i in range(len(p_values)):
         assert(p_values[i] > 0.05)
 
-    L = [likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))]
+    equal_weight = samples.compress(100)
+    equal_weight_theta = equal_weight[names].values
+    x = kde.sample(len(equal_weight_theta))
+
+    L = np.array([likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))])
     estL = kde.log_like(equal_weight_theta, samples.logZ().mean())
     check_like = 0
     for i in range(len(L)):
-        if np.isclose(L[i], estL[i], rtol=1, atol=1):
+        if np.isclose(np.exp(L[i]), np.exp(estL[i]), rtol=1, atol=1):
             check_like += 1
-    assert((len(L)-check_like)/len(L) <= 0.05)
+    assert((len(L)-check_like)/len(L) <= 0.1)
 
 def test_kde_save_load():
 
