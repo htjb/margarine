@@ -172,10 +172,10 @@ class MAF(object):
             self.cluster_number = None
         if self.clustering is True:
             if self.cluster_number is not None:
-                if type(self.cluster_number) is not int:
-                    raise TypeError("'cluster_number' must be an integer.")
+                if self.cluster_number%1!=0:
+                    raise TypeError("'cluster_number' must be a whole number.")
             if self.cluster_labels is not None:
-                if not isinstance(self.cluster_labels, (np.array, list)):
+                if not isinstance(self.cluster_labels, (np.ndarray, list)):
                     raise TypeError("'cluster_labels' must be an array " +
                                     "or a list.")
             self.clustering_call()
