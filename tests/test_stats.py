@@ -4,7 +4,6 @@ from margarine.maf import MAF
 from margarine.marginal_stats import calculate
 import pytest
 from margarine.kde import KDE
-import pytest
 from numpy.testing import assert_equal, assert_allclose
 from scipy.stats import ks_2samp
 
@@ -46,7 +45,7 @@ def test_maf():
         assert_allclose(stats['Value'][i], anesthetic_value, rtol=1, atol=1)
 
     bij = MAF(theta, weights)
-    bij.train(10000, early_stop=True)
+    bij.train(1000, early_stop=True)
 
     stats = calculate(bij).statistics()
     [check_stats(i) for i in range(2)]
@@ -64,10 +63,6 @@ def test_maf():
     p_values = [res[i].pvalue for i in range(len(res))]
     for i in range(len(p_values)):
         assert(p_values[i] > 0.05)
-
-    equal_weight = samples.compress(100)
-    equal_weight_theta = equal_weight[names].values
-    x = bij.sample(len(equal_weight_theta))
 
     L = np.array([likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))])
     estL = bij.log_like(equal_weight_theta, samples.logZ().mean())
@@ -151,10 +146,6 @@ def test_kde():
     p_values = [res[i].pvalue for i in range(len(res))]
     for i in range(len(p_values)):
         assert(p_values[i] > 0.05)
-
-    equal_weight = samples.compress(100)
-    equal_weight_theta = equal_weight[names].values
-    x = kde.sample(len(equal_weight_theta))
 
     L = np.array([likelihood(equal_weight_theta[i]) for i in range(len(equal_weight_theta))])
     estL = kde.log_like(equal_weight_theta, samples.logZ().mean())

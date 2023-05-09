@@ -44,7 +44,7 @@ def test_maf_clustering():
         assert_allclose(stats['Value'][i], anesthetic_value, rtol=1, atol=1)
 
     bij = MAF(theta, weights, clustering=True)
-    bij.train(10000, early_stop=True)
+    bij.train(1000, early_stop=True)
 
     stats = calculate(bij).statistics()
     [check_stats(i) for i in range(2)]
