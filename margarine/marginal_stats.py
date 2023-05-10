@@ -59,8 +59,18 @@ class calculate(object):
     def __init__(self, de, **kwargs):
 
         self.de = de
-        self.theta = self.de.theta
-        self.theta_weights = self.de.sample_weights
+
+        try:
+            self.theta = np.concatenate(self.de.theta)
+            self.theta_weights = np.concatenate(self.de.sample_weights)
+            self.theta_min = np.min(self.de.theta_min, axis=1)
+            self.theta_max = np.max(self.de.theta_max, axis=1)
+        except ValueError:
+            self.theta = self.de.theta
+            self.theta_weights = self.de.sample_weights
+            self.theta_min = self.de.theta_min
+            self.theta_max = self.de.theta_max
+    
         self.samples = self.de.sample(len(self.theta))
 
         self.prior_de = kwargs.pop('prior_de', None)
@@ -105,7 +115,7 @@ class calculate(object):
 
         if self.prior_samples is None:
             self.base = tfd.Blockwise(
-                [tfd.Uniform(self.de.theta_min[i], self.de.theta_max[i])
+                [tfd.Uniform(self.theta_min[i], self.theta_max[i])
                  for i in range(self.samples.shape[-1])])
             prior = self.base.sample(len(self.theta)).numpy()
 
@@ -173,7 +183,6 @@ class calculate(object):
                                np.exp(theta_base_logprob))/2)
 
         mid_logL, mask = mask_arr(mid_point - midbasepoint)
-        print(np.sum(self.theta_weights[mask]))
         midkl = np.average(mid_logL, weights=self.theta_weights[mask])
         midbd = 2*np.cov(mid_logL, aweights=self.theta_weights[mask])
         de_logL, mask = mask_arr(logprob - base_logprob)
