@@ -41,8 +41,6 @@ def test_maf_clustering():
             assert_equal(bij.mades[i][j].get_weights(),
                 loaded_bijector.mades[i][j].get_weights())
 
-def test_statistics():
-
     def check_stats(i):
         if i ==0:
             value = samples_kl
@@ -50,13 +48,9 @@ def test_statistics():
             value = samples_d
         assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
 
-    bij = MAF.load('saved_maf_cluster.pkl')
     stats = calculate(bij).statistics()
     [check_stats(i) for i in range(2)]
 
-def test_sampling():
-
-    bij = MAF.load('saved_maf_cluster.pkl')
     equal_weight_theta = samples.compress(100)[names].values
     x = bij.sample(len(equal_weight_theta))
 
