@@ -164,7 +164,7 @@ class MAF(object):
                         "One or more valus in 'hidden_layers'" +
                         "is not an integer.")
 
-        self.optimizer = tf.keras.optimizers.Adam(
+        self.optimizer = tf.keras.optimizers.legacy.Adam(
                 learning_rate=self.learning_rate)
 
         if self.clustering is False:
