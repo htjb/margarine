@@ -72,7 +72,9 @@ The software is available on the MIT licence.
 If you use the code for academic purposes we request that you cite the following
 `paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__ and
 the `MaxEnt22 proceedings <https://ui.adsabs.harvard.edu/search/p_=0&q=author%3A%22Bevins%2C%20H.%20T.%20J.%22&sort=date%20desc%2C%20bibcode%20desc>`__
-for which you can use the following bibtex
+If you use the clustering implementation please cite the following
+`prepring <https://arxiv.org/abs/2305.02930>`__.
+You can use the following bibtex
 
 .. code:: bibtex
 
@@ -111,6 +113,28 @@ and
        adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220711457B},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
   }
+
+and
+
+.. code:: bibtex
+
+  @ARTICLE{2023arXiv230502930B,
+        author = {{Bevins}, Harry and {Handley}, Will},
+          title = "{Piecewise Normalizing Flows}",
+        journal = {arXiv e-prints},
+      keywords = {Statistics - Machine Learning, Computer Science - Machine Learning},
+          year = 2023,
+          month = may,
+            eid = {arXiv:2305.02930},
+          pages = {arXiv:2305.02930},
+            doi = {10.48550/arXiv.2305.02930},
+  archivePrefix = {arXiv},
+        eprint = {2305.02930},
+  primaryClass = {stat.ML},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv230502930B},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+  }
+
 
 Requirements
 ------------
