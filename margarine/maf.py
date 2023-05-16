@@ -3,9 +3,12 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import _forward_transform, _inverse_transform
+from sklearn.cluster import KMeans
 import pickle
 import warnings
 import margarine
+from scipy.special import logsumexp
+from sklearn.model_selection import train_test_split
 
 
 class MAF(object):
@@ -49,6 +52,22 @@ class MAF(object):
 
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
+
+        clustering: **Bool / default = False**
+            | Whether or not to perform clustering as in
+                https://arxiv.org/abs/2305.02930.
+
+        cluster_labels: **list / default = None**
+            | If clustering has been performed externally to margarine you can
+                provide a list of labels for the samples theta. The labels
+                should be integers from 0 to k corresponding to the cluster
+                that each sample is in. Clustering is turned on if cluster
+                labels are supplied.
+
+        cluster_number: **int / default = None**
+            | If clustering has been performed externally to margarine you
+                need to provide the number of clusters, k, alongside the
+                cluster labels.
 
 
     **Attributes:**
@@ -98,6 +117,25 @@ class MAF(object):
     """
 
     def __init__(self, theta, weights, **kwargs):
+        self.number_networks = kwargs.pop('number_networks', 6)
+        self.learning_rate = kwargs.pop('learning_rate', 1e-3)
+        self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
+        self.clustering = kwargs.pop('clustering', False)
+        self.cluster_labels = kwargs.pop('cluster_labels', None)
+        self.cluster_number = kwargs.pop('cluster_number', None)
+
+        if self.cluster_number is not None:
+            if self.cluster_labels is None:
+                raise ValueError("'cluster_labels' should be provided if " +
+                                 "'cluster_number' is specified.")
+        else:
+            if self.cluster_labels is not None:
+                raise ValueError("'cluster_number' should be provided if " +
+                                 "'cluster_labels' is specified.")
+
+        if self.cluster_labels is not None and self.cluster_number is not None:
+            self.clustering = True
+
         self.n = (np.sum(weights)**2)/(np.sum(weights**2))
         self.sample_weights = weights
 
@@ -109,10 +147,6 @@ class MAF(object):
         self.theta_max = kwargs.pop('theta_max', a)
 
         self.theta = theta
-
-        self.number_networks = kwargs.pop('number_networks', 6)
-        self.learning_rate = kwargs.pop('learning_rate', 1e-3)
-        self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -130,6 +164,26 @@ class MAF(object):
                         "One or more valus in 'hidden_layers'" +
                         "is not an integer.")
 
+        self.optimizer = tf.keras.optimizers.legacy.Adam(
+                learning_rate=self.learning_rate)
+
+        if self.clustering is False:
+            self.gen_mades()
+            self.cluster_number = None
+        if self.clustering is True:
+            if self.cluster_number is not None:
+                if self.cluster_number%1!=0:
+                    raise TypeError("'cluster_number' must be a whole number.")
+            if self.cluster_labels is not None:
+                if not isinstance(self.cluster_labels, (np.ndarray, list)):
+                    raise TypeError("'cluster_labels' must be an array " +
+                                    "or a list.")
+            self.clustering_call()
+
+    def gen_mades(self):
+
+        """Generating the masked autoregressive flow."""
+
         self.mades = [tfb.AutoregressiveNetwork(params=2,
                       hidden_units=self.hidden_layers, activation='tanh',
                       input_order='random')
@@ -140,36 +194,82 @@ class MAF(object):
 
         self.base = tfd.Blockwise(
             [tfd.Normal(loc=0, scale=1)
-             for _ in range(len(theta_min))])
+             for _ in range(len(self.theta_min))])
+
         self.maf = tfd.TransformedDistribution(self.base, bijector=self.bij)
 
-        self.optimizer = tf.keras.optimizers.Adam(
-            learning_rate=self.learning_rate)
+        return self.bij, self.maf
 
-    def _train_step(self, x, w, loss_type, prior_phi=None, prior_weights=None):
+    def clustering_call(self):
 
-        r"""
-        This function is used to calculate the loss value at each epoch and
-        adjust the weights and biases of the neural networks via the
-        optimizer algorithm.
-        """
+        """Generating a piecewise masked autoregressive
+        flow with clustering."""
 
-        with tf.GradientTape() as tape:
-            if loss_type == 'sum':
-                loss = -tf.reduce_sum(w*self.maf.log_prob(x))
-            elif loss_type == 'mean':
-                loss = -tf.reduce_mean(w*self.maf.log_prob(x))
-            gradients = tape.gradient(loss, self.maf.trainable_variables)
-            self.optimizer.apply_gradients(
-                zip(gradients,
-                    self.maf.trainable_variables))
-            return loss
+        if self.cluster_number is None:
+            from sklearn.metrics import silhouette_score
+            ks = np.arange(2, 101)
+            losses = []
+            for k in ks:
+                kmeans = KMeans(k, random_state=0)
+                labels = kmeans.fit(self.theta).predict(self.theta)
+                losses.append(-silhouette_score(self.theta, labels))
+            losses = np.array(losses)
+            self.cluster_number = ks[np.where(losses == losses.min())[0][0]]
+
+            kmeans = KMeans(self.cluster_number, random_state=0)
+            self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+
+        self.n, split_theta, self.new_theta_max = [], [], []
+        self.new_theta_min, split_sample_weights = [], []
+        self.bij, self.maf, self.mades = [], [], []
+        for i in range(self.cluster_number):
+            theta = self.theta[self.cluster_labels == i]
+            split_sample_weights.append(
+                self.sample_weights[self.cluster_labels == i])
+
+            self.n.append(
+                (np.sum(self.sample_weights[self.cluster_labels == i])**2) /
+                (np.sum(self.sample_weights[self.cluster_labels == i]**2)))
+
+            if not any(isinstance(tm, list) for tm in self.theta_max):
+                new_theta_max = np.max(theta, axis=0)
+                new_theta_min = np.min(theta, axis=0)
+                a = ((self.n[-1]-2)*new_theta_max-new_theta_min)/(self.n[-1]-3)
+                b = ((self.n[-1]-2)*new_theta_min-new_theta_max)/(self.n[-1]-3)
+                self.new_theta_min.append(b)
+                self.new_theta_max.append(a)
+
+            split_theta.append(theta)
+
+            self.mades.append(
+                [tfb.AutoregressiveNetwork(
+                            params=2,
+                            hidden_units=self.hidden_layers, activation='tanh',
+                            input_order='random')
+                    for _ in range(self.number_networks)])
+
+            self.bij.append(tfb.Chain([
+                tfb.MaskedAutoregressiveFlow(made)
+                for made in self.mades[-1]]))
+
+            self.base = tfd.Blockwise(
+                [tfd.Normal(loc=0, scale=1)
+                    for _ in range(self.theta.shape[-1])])
+
+            self.maf.append(tfd.TransformedDistribution(
+                self.base, bijector=self.bij[-1]))
+        self.theta = split_theta
+        self.sample_weights = split_sample_weights
+        if self.new_theta_max != []:
+            self.theta_max = self.new_theta_max
+            self.theta_min = self.new_theta_min
 
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
         r"""
 
         This function is called to train the MAF once it has been
-        initialised. For example
+        initialised. It calls `_training()` for each MAF whether there
+        is only one or whether clustering is turned on. For example
 
         .. code:: python
 
@@ -187,11 +287,10 @@ class MAF(object):
                 | Determines whether or not to implement an early stopping
                     algorithm or
                     train for the set number of epochs. If set to True then the
-                    algorithm will stop training when the
-                    fractional difference
-                    between the current loss
-                    and the average loss value over the
-                    preceeding 10 epochs is < 1e-6.
+                    algorithm will stop training when test loss has not
+                    improved for 2% of the requested epochs. At this point
+                    margarine will roll back to the best model and return this
+                    to the user.
 
         """
         if type(epochs) is not int:
@@ -199,32 +298,95 @@ class MAF(object):
         if type(early_stop) is not bool:
             raise TypeError("'early_stop' must be a boolean.")
 
-        phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
+        self.epochs = epochs
+        self.early_stop = early_stop
+        self.loss_type = loss_type
+
+        if self.cluster_number is not None:
+            for i in range(len(self.theta)):
+                self.maf[i] = self._training(self.theta[i],
+                                             self.sample_weights[i],
+                                             self.maf[i], self.theta_min[i],
+                                             self.theta_max[i])
+        else:
+            self.maf = self._training(self.theta,
+                                      self.sample_weights, self.maf,
+                                      self.theta_min, self.theta_max)
+
+    def _training(self, theta, sample_weights, maf,
+                  theta_min, theta_max):
+
+        """Function to perform the training of each MAF."""
+
+        phi = _forward_transform(theta, theta_min, theta_max)
 
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
-        weights_phi = self.sample_weights[mask]
+        weights_phi = sample_weights[mask]
         weights_phi /= weights_phi.sum()
 
         phi = phi.astype('float32')
         self.phi = phi.copy()
         weights_phi = weights_phi.astype('float32')
 
+        phi_train, phi_test, weights_phi_train, weights_phi_test = \
+            train_test_split(phi, weights_phi, test_size=0.2)
+
         self.loss_history = []
-        for i in range(epochs):
-            loss = self._train_step(phi, weights_phi, loss_type).numpy()
+        self.test_loss_history = []
+        c = 0
+        for i in range(self.epochs):
+            loss = self._train_step(phi_train,
+                                    weights_phi_train,
+                                    self.loss_type, maf).numpy()
             self.loss_history.append(loss)
-            if early_stop:
-                if len(self.loss_history) > 10:
-                    delta = (
-                        self.loss_history[-1] -
-                        np.mean(self.loss_history[-11:-1])) \
-                        / np.mean(self.loss_history[-11:-1])
-                    if np.abs(delta) < 1e-6:
-                        print('Early Stopped:' +
-                              ' (Loss[-1] - Mean(Loss[-11:-1]))' +
-                              '/Mean(Loss[-11:-1]) < 1e-6')
-                        break
+
+            if self.loss_type == 'sum':
+                loss_test = -tf.reduce_sum(
+                    weights_phi_test*maf.log_prob(phi_test))
+            elif self.loss_type == 'mean':
+                loss_test = -tf.reduce_mean(
+                    weights_phi_test*maf.log_prob(phi_test))
+
+            self.test_loss_history.append(loss_test)
+
+            if self.early_stop:
+                c += 1
+                if i == 0:
+                    minimum_loss = self.test_loss_history[-1]
+                    minimum_epoch = i
+                    minimum_model = None
+                else:
+                    if self.test_loss_history[-1] < minimum_loss:
+                        minimum_loss = self.test_loss_history[-1]
+                        minimum_epoch = i
+                        minimum_model = maf.copy()
+                        c = 0
+                if minimum_model:
+                    if c == round((self.epochs/100)*2):
+                        print('Early stopped. Epochs used = ' + str(i) +
+                              '. Minimum at epoch = ' + str(minimum_epoch))
+                        return minimum_model
+        return maf
+
+    def _train_step(self, x, w, loss_type, maf):
+
+        r"""
+        This function is used to calculate the loss value at each epoch and
+        adjust the weights and biases of the neural networks via the
+        optimizer algorithm.
+        """
+
+        with tf.GradientTape() as tape:
+            if loss_type == 'sum':
+                loss = -tf.reduce_sum(w*maf.log_prob(x))
+            elif loss_type == 'mean':
+                loss = -tf.reduce_mean(w*maf.log_prob(x))
+            gradients = tape.gradient(loss, maf.trainable_variables)
+            self.optimizer.apply_gradients(
+                zip(gradients,
+                    maf.trainable_variables))
+            return loss
 
     def __call__(self, u):
 
@@ -240,9 +402,31 @@ class MAF(object):
 
         """
 
-        x = _forward_transform(u)
-        x = self.bij(x.astype(np.float32)).numpy()
-        x = _inverse_transform(x, self.theta_min, self.theta_max)
+        if self.cluster_number is not None:
+            len_thetas = [len(self.theta[i]) for i in range(len(self.theta))]
+            probabilities = [len_thetas[i]/np.sum(len_thetas)
+                             for i in range(len(self.theta))]
+            options = np.arange(0, self.cluster_number)
+            choice = np.random.choice(options,
+                                      p=probabilities, size=len(u))
+
+            totals = [len(choice[choice == options[i]])
+                      for i in range(len(options))]
+            totals = np.hstack([0, np.cumsum(totals)])
+
+            values = []
+            for i in range(len(options)):
+                x = _forward_transform(u[totals[i]:totals[i+1]])
+                x = self.bij[i](x.astype(np.float32)).numpy()
+                values.append(_inverse_transform(x, self.theta_min[i],
+                                                 self.theta_max[i]))
+
+            x = np.concatenate(values)
+        else:
+            x = _forward_transform(u)
+            x = self.bij(x.astype(np.float32)).numpy()
+            x = _inverse_transform(x, self.theta_min, self.theta_max)
+
         mask = np.isfinite(x).all(axis=-1)
         return x[mask, ...]
 
@@ -263,7 +447,10 @@ class MAF(object):
         if type(length) is not int:
             raise TypeError("'length' must be an integer.")
 
-        u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
+        if self.cluster_number is not None:
+            u = np.random.uniform(0, 1, size=(length, self.theta[0].shape[-1]))
+        else:
+            u = np.random.uniform(0, 1, size=(length, self.theta.shape[-1]))
         return self(u)
 
     def log_prob(self, params):
@@ -284,22 +471,42 @@ class MAF(object):
                     probability.
 
         """
-        mins = self.theta_min.astype(np.float32)
-        maxs = self.theta_max.astype(np.float32)
 
-        transformed_x = _forward_transform(params, mins, maxs)
+        def calc_log_prob(mins, maxs, maf):
 
-        transform_chain = tfb.Chain([
-            tfb.Invert(tfb.NormalCDF()),
-            tfb.Scale(1/(maxs - mins)), tfb.Shift(-mins)])
+            """Function to calculate log-probability for a given MAF."""
 
-        def norm_jac(y):
-            return transform_chain.inverse_log_det_jacobian(
-                y, event_ndims=0).numpy()
+            def norm_jac(y):
+                return transform_chain.inverse_log_det_jacobian(
+                    y, event_ndims=0).numpy()
 
-        correction = norm_jac(transformed_x)
-        logprob = (self.maf.log_prob(transformed_x).numpy() -
-                   np.sum(correction, axis=-1)).astype(np.float64)
+            transformed_x = _forward_transform(params, mins, maxs)
+
+            transform_chain = tfb.Chain([
+                tfb.Invert(tfb.NormalCDF()),
+                tfb.Scale(1/(maxs - mins)), tfb.Shift(-mins)])
+
+            correction = norm_jac(transformed_x)
+            logprob = (maf.log_prob(transformed_x).numpy() -
+                       np.sum(correction, axis=-1)).astype(np.float64)
+            return logprob
+
+        if self.clustering is True:
+            logprob = []
+            for i in range(len(self.theta_min)):
+                mins = self.theta_min[i].astype(np.float32)
+                maxs = self.theta_max[i].astype(np.float32)
+                probs = calc_log_prob(mins, maxs, self.maf[i])
+                for j in range(len(probs)):
+                    if np.isnan(probs[j]):
+                        probs[j] = np.log(1e-300)
+                logprob.append(probs)
+            logprob = np.array(logprob)
+            logprob = logsumexp(logprob, axis=0)
+        else:
+            mins = self.theta_min.astype(np.float32)
+            maxs = self.theta_max.astype(np.float32)
+            logprob = calc_log_prob(mins, maxs, self.maf)
 
         return logprob
 
@@ -330,13 +537,16 @@ class MAF(object):
                     experiments/data sets. In this case samples and prior
                     samples should be reweighted prior to any training.
 
+            prior_weights: **numpy array/default=None**
+                | Weights to go with the prior samples.
+
         """
 
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
-            prior_logprob = np.log(np.prod(
-                                    [1/(self.theta_max[i] - self.theta_min[i])
-                                    for i in range(len(self.theta_min))]))
+            prior_logprob = np.log(
+                np.prod([1/(self.theta_max[i] - self.theta_min[i])
+                         for i in range(len(self.theta_min))]))
         else:
             self.prior = margarine.maf.MAF(prior, prior_weights)
             self.prior.train()
@@ -352,7 +562,8 @@ class MAF(object):
     def save(self, filename):
         r"""
 
-        This function can be used to save an instance of a trained MAF as
+        This function can be used to save an instance of a trained MAF
+        or piecewise MAF as
         a pickled class so that it can be loaded and used in differnt scripts.
 
         **Parameters:**
@@ -361,14 +572,35 @@ class MAF(object):
                 | Path in which to save the pickled MAF.
 
         """
-        nn_weights = [made.get_weights() for made in self.mades]
+        if self.cluster_number is None:
+            nn_weights = [made.get_weights() for made in self.mades]
+        else:
+            nn_weights = {}
+            for i in range(self.cluster_number):
+                made = self.mades[i]
+                w = [m.get_weights() for m in made]
+                nn_weights[i] = w
         with open(filename, 'wb') as f:
-            pickle.dump([self.theta,
-                         nn_weights,
-                         self.sample_weights,
-                         self.number_networks,
-                         self.hidden_layers,
-                         self.learning_rate], f)
+            if self.clustering is True:
+                pickle.dump([self.theta,
+                            nn_weights,
+                            self.sample_weights,
+                            self.number_networks,
+                            self.hidden_layers,
+                            self.learning_rate,
+                            self.theta_min,
+                            self.theta_max,
+                            self.cluster_number,
+                            self.cluster_labels], f)
+            else:
+                pickle.dump([self.theta,
+                            nn_weights,
+                            self.sample_weights,
+                            self.number_networks,
+                            self.hidden_layers,
+                            self.learning_rate,
+                            self.theta_min,
+                            self.theta_max], f)
 
     @classmethod
     def load(cls, filename):
@@ -391,17 +623,50 @@ class MAF(object):
         """
 
         with open(filename, 'rb') as f:
-            theta, nn_weights, \
-                sample_weights, \
-                number_networks, \
-                hidden_layers, \
-                learning_rate = pickle.load(f)
+            data = pickle.load(f)
+            try:
+                theta, nn_weights, \
+                    sample_weights, \
+                    number_networks, \
+                    hidden_layers, \
+                    learning_rate, theta_min, theta_max = data
+                cluster_number = None
+            except Exception:
+                theta, nn_weights, \
+                    sample_weights, \
+                    number_networks, \
+                    hidden_layers, \
+                    learning_rate, theta_min, theta_max, \
+                    cluster_number, \
+                    labels = data
 
-        bijector = cls(
-            theta, sample_weights, number_networks=number_networks,
-            learning_rate=learning_rate, hidden_layers=hidden_layers)
-        bijector(np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
-        for made, nn_weights in zip(bijector.mades, nn_weights):
-            made.set_weights(nn_weights)
+        if cluster_number is None:
+            bijector = cls(
+                theta, sample_weights, number_networks=number_networks,
+                learning_rate=learning_rate, hidden_layers=hidden_layers,
+                theta_min=theta_min, theta_max=theta_max)
+            bijector(
+                np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
+            for made, nn_weights in zip(bijector.mades, nn_weights):
+                made.set_weights(nn_weights)
+        else:
+            # have to sort labels because theta is reordered when
+            # it gets concatenated
+            labels.sort()
+            theta = np.concatenate(theta)
+            sample_weights = np.concatenate(sample_weights)
+            bijector = cls(
+                theta, sample_weights, number_networks=number_networks,
+                learning_rate=learning_rate, hidden_layers=hidden_layers,
+                clustering=True,
+                cluster_number=cluster_number, cluster_labels=labels,
+                theta_min=theta_min, theta_max=theta_max)
+            bijector(
+                np.random.uniform(0, 1, size=(len(theta), theta.shape[-1])))
+            for i in range(cluster_number):
+                mades = bijector.mades[i]
+                weights = nn_weights[i]
+                for m, w in zip(mades, weights):
+                    m.set_weights(w)
 
         return bijector

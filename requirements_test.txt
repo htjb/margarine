@@ -1,2 +1,3 @@
-anesthetic==2.0.0b11
+https://github.com/handley-lab/anesthetic/archive/master.zip
 pandas
+torch

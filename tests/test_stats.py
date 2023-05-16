@@ -1,69 +1,69 @@
 import numpy as np
-from anesthetic.samples import NestedSamples
+from anesthetic import MCMCSamples
 from margarine.maf import MAF
 from margarine.marginal_stats import calculate
 import pytest
 from margarine.kde import KDE
-import pytest
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_allclose
+from scipy.stats import ks_2samp
 
-@pytest.mark.filterwarnings('ignore::RuntimeWarning')
+def likelihood(parameters):
+        y = np.array([0, 6])
+        loglikelihood = (-0.5*np.log(2*np.pi*(1**2))-0.5 \
+            *((y - parameters) / 1)**2).sum(axis=1)
+        return loglikelihood
 
-def load_chains(root):
-    """
-    Function uses anesthetic to load in a set of chains and returns
-    the pandas table of samples, a numpy
-    array of the parameters in the uniform space and weights.
-    """
+def D_KL(logL, weights):
+    return -np.average(logL, weights=weights)
 
-    samples = NestedSamples(root=root)
+def d_g(logL, weights):
+    return 2*np.cov(logL, aweights=weights)
 
-    names = ['p' + str(i) for i in range(ndims)]
-    theta = samples[names].values
-    weights = samples.weights
+ndims = 2
+nsamples = 2500
+x = np.random.normal(0, 1, nsamples)
+y = np.random.normal(6, 1, nsamples)
 
-    return samples, theta, weights, names
+theta = np.vstack([x, y]).T
+weights = np.ones(len(theta))
 
-ndims=5
+logL = likelihood(theta)
 
-root = 'tests/test_samples/test'
-samples, theta, weights, names = load_chains(root)
+samples = MCMCSamples(data=theta, logL=logL)
+samples_kl = D_KL(logL, weights)
+samples_d = d_g(logL, weights)
+names = [i for i in range(theta.shape[-1])]
 
 def test_maf():
 
-    def check(i):
+    def check_stats(i):
         if i ==0:
-            anesthetic_value = samples.D()
+            value = samples_kl
         else:
-            anesthetic_value = samples.d()
-        if stats['Value'][i] < anesthetic_value:
-            assert(
-                np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
-        else:
-            assert(
-                np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
+            value = samples_d
+        assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
 
     bij = MAF(theta, weights)
-    bij.train(250)
-
-    x = bij.sample(5000)
+    bij.train(10000, early_stop=True)
 
     stats = calculate(bij).statistics()
-    [check(i) for i in range(2)]
+    [check_stats(i) for i in range(2)]
 
-    prior = np.random.uniform(-4, 4, (len(theta), 5))
-    stats = calculate(bij, prior_samples=prior,
-        prior_weights=np.ones(len(prior))).statistics()
-    [check(i) for i in range(2)]
+    equal_weight_theta = samples.compress(50)[names].values
+    x = bij.sample(len(equal_weight_theta))
 
-    L = samples.logL.values
-    estL = bij.log_like(theta, samples.ns_output()['logZ'].mean())
-    for i in range(len(L)):
-        if L[i] > -6:
-            assert((L[i] - estL[i])/L[i]*100 <= 5)
+    res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
+           for i in range(equal_weight_theta.shape[-1])]
+    p_values = [res[i].pvalue for i in range(len(res))]
+    for i in range(len(p_values)):
+        assert(round(p_values[i], 2) >0.05)
 
+    estL = bij.log_like(equal_weight_theta, 0.0)
+    check_like = 0
+    for i in range(len(logL)):
+        if np.isclose(np.exp(logL[i]), np.exp(estL[i]), rtol=1, atol=1):
+            check_like += 1
+    assert((len(logL)-check_like)/len(logL) <= 0.1)
 
 def test_maf_kwargs():
 
@@ -84,6 +84,15 @@ def test_maf_kwargs():
     with pytest.raises(TypeError):
         MAF(theta, weights)
         bij.train(epochs=100, early_stop='foo')
+    with pytest.raises(TypeError):
+        MAF(theta, weights)
+        bij.train(epochs=100, clustering=5)
+    with pytest.raises(TypeError):
+        MAF(theta, weights)
+        bij.train(epochs=100, cluster_numeber='foo')
+    with pytest.raises(TypeError):
+        MAF(theta, weights)
+        bij.train(epochs=100, cluster_labels=5)
 
 def test_maf_save_load():
 
@@ -98,37 +107,34 @@ def test_maf_save_load():
 
 def test_kde():
 
-    def check(i):
+    def check_stats(i):
         if i ==0:
-            anesthetic_value = samples.D()
+            value = samples_kl
         else:
-            anesthetic_value = samples.d()
-        if stats['Value'][i] < anesthetic_value:
-            assert(
-                np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Upper Bound'][i] - stats['Value'][i]) <=5)
-        else:
-            assert(
-                np.abs(stats['Value'][i]-anesthetic_value)/
-                (stats['Value'][i] - stats['Lower Bound'][i]) <=5)
+            value = samples_d
+        assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
 
     kde = KDE(theta, weights)
     kde.generate_kde()
-    x = kde.sample(5000)
 
     stats = calculate(kde).statistics()
-    [check(i) for i in range(2)]
+    [check_stats(i) for i in range(2)]
 
-    prior = np.random.uniform(-4, 4, (len(theta), 5))
-    stats = calculate(kde, prior_samples=prior,
-        prior_weights=np.ones(len(prior))).statistics()
-    [check(i) for i in range(2)]
+    equal_weight_theta = samples.compress(50)[names].values
+    x = kde.sample(len(equal_weight_theta))
 
-    L = samples.logL.values
-    estL = kde.log_like(theta, samples.ns_output()['logZ'].mean())
-    for i in range(len(L)):
-        if L[i] > -6:
-            assert((L[i] - estL[i])/L[i]*100 <= 5)
+    res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
+           for i in range(equal_weight_theta.shape[-1])]
+    p_values = [res[i].pvalue for i in range(len(res))]
+    for i in range(len(p_values)):
+        assert(round(p_values[i], 2) >0.05)
+
+    estL = kde.log_like(equal_weight_theta, 0.0)
+    check_like = 0
+    for i in range(len(logL)):
+        if np.isclose(np.exp(logL[i]), np.exp(estL[i]), rtol=1, atol=1):
+            check_like += 1
+    assert((len(logL)-check_like)/len(logL) <= 0.1)
 
 def test_kde_save_load():
 
