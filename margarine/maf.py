@@ -124,6 +124,13 @@ class MAF(object):
         self.clustering = kwargs.pop('clustering', False)
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
+        self.parameter_names = kwargs.pop('parameter_names', None)
+
+        if isinstance(theta, 
+                      ('anesthetic.samples.NestedSamples', 
+                       'anesthetic.samples.MCMCSamples')):
+            theta = theta['parameter_names'].values
+            self.sample_weights = theta.get_weights()
 
         if self.cluster_number is not None:
             if self.cluster_labels is None:
