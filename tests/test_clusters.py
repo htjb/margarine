@@ -72,3 +72,13 @@ def test_maf_cluster_kwargs():
     bij = MAF(theta, weights, cluster_number=2, 
               cluster_labels=labels)
     assert_equal(bij.clustering, True)
+
+def test_cluster_size():
+    # testing the while loop for cluster size
+    def draw(ndims):
+        return np.random.multivariate_normal(
+                np.zeros(ndims), np.eye(ndims), ndims*10)
+
+    samples = draw(3)
+    flow = MAF(samples, np.ones(len(samples)), clustering=True)
+    return 0

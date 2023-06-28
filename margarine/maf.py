@@ -207,17 +207,49 @@ class MAF(object):
 
         if self.cluster_number is None:
             from sklearn.metrics import silhouette_score
-            ks = np.arange(2, 101)
+            ks = np.arange(2, 21)
             losses = []
             for k in ks:
                 kmeans = KMeans(k, random_state=0)
                 labels = kmeans.fit(self.theta).predict(self.theta)
                 losses.append(-silhouette_score(self.theta, labels))
             losses = np.array(losses)
-            self.cluster_number = ks[np.where(losses == losses.min())[0][0]]
+            minimum_index = np.argmin(losses)
+            self.cluster_number = ks[minimum_index]
 
             kmeans = KMeans(self.cluster_number, random_state=0)
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+        
+        if self.cluster_number == 20:
+            warnings.warn("The number of clusters is 20. This is the maximum "+
+                            "number of clusters that can be used. If you " +
+                            "require more clusters, please specify the " +
+                            "'cluster_number' kwarg. margarine will continue "+
+                            "with 20 clusters.")
+        
+        if np.array(list(self.cluster_labels)).dtype == 'float':
+            # convert cluster labels to integers
+            self.cluster_labels = self.cluster_labels.astype(int)
+        # count the number of times a cluster label appears in cluster_labels
+        self.cluster_count = np.bincount(self.cluster_labels)
+        # While loop to make sure clusters are not too small
+        while self.cluster_count.min() < 100:
+            warnings.warn("One or more clusters are too small " +
+                          "(n_cluster < 100). " +
+                          "Reducing the number of clusters by 1.")
+            minimum_index -= 1
+            self.cluster_number = ks[minimum_index]
+            kmeans = KMeans(self.cluster_number, random_state=0)
+            self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+            self.cluster_count = np.bincount(self.cluster_labels)
+            if self.cluster_number == 2:
+                # break if two clusters
+                warnings.warn("The number of clusters is 2. This is the " +
+                            "minimum number of clusters that can be used. " +
+                            "Some clusters may be too small and the " +
+                            "train/test split may fail." +
+                            "Try running without clusting. ")
+                break
 
         self.n, split_theta, self.new_theta_max = [], [], []
         self.new_theta_min, split_sample_weights = [], []
