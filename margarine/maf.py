@@ -117,7 +117,6 @@ class MAF(object):
     """
 
     def __init__(self, theta, **kwargs):
-        self.sample_weights = kwargs.pop('weights', np.ones(len(theta)))
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
@@ -131,7 +130,9 @@ class MAF(object):
                        'anesthetic.samples.MCMCSamples')):
             theta = theta['parameter_names'].values
             self.sample_weights = theta.get_weights()
-
+        else:
+            self.sample_weights = kwargs.pop('weights', np.ones(len(theta)))
+        
         if self.cluster_number is not None:
             if self.cluster_labels is None:
                 raise ValueError("'cluster_labels' should be provided if " +
