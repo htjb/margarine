@@ -226,7 +226,10 @@ class MAF(object):
                             "require more clusters, please specify the " +
                             "'cluster_number' kwarg. margarine will continue "+
                             "with 20 clusters.")
-
+        
+        if np.array(list(self.cluster_labels)).dtype == 'float':
+            # convert cluster labels to integers
+            self.cluster_labels = self.cluster_labels.astype(int)
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = np.bincount(self.cluster_labels)
         # While loop to make sure clusters are not too small
