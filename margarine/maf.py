@@ -229,6 +229,7 @@ class MAF(object):
 
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = np.bincount(self.cluster_labels)
+        print(self.cluster_count)
         # While loop to make sure clusters are not too small
         while self.cluster_count.min() < 100:
             warnings.warn("One or more clusters are too small " +
@@ -242,10 +243,10 @@ class MAF(object):
             if self.cluster_number == 2:
                 # break if two clusters
                 warnings.warn("The number of clusters is 2. This is the " +
-                                "minimum number of clusters that can be used. " +
-                                "Some clusters may be too small and the " +
-                                "train/test split may fail." +
-                                "Try running without clusting. ")
+                            "minimum number of clusters that can be used. " +
+                            "Some clusters may be too small and the " +
+                            "train/test split may fail." +
+                            "Try running without clusting. ")
                 break
 
         self.n, split_theta, self.new_theta_max = [], [], []
