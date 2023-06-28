@@ -24,10 +24,10 @@ class MAF(object):
             | The samples from the probability distribution that we require the
                 MAF to learn.
 
-        weights: **numpy array**
-            | The weights associated with the samples above.
-
     **kwargs:**
+
+        weights: **numpy array / default=np.ones(len(theta))**
+            | The weights associated with the samples above.
 
         number_networks: **int / default = 6**
             | The bijector is built by chaining a series of
@@ -116,7 +116,8 @@ class MAF(object):
 
     """
 
-    def __init__(self, theta, weights, **kwargs):
+    def __init__(self, theta, **kwargs):
+        self.sample_weights = kwargs.pop('weights', np.ones(len(theta)))
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
@@ -136,8 +137,7 @@ class MAF(object):
         if self.cluster_labels is not None and self.cluster_number is not None:
             self.clustering = True
 
-        self.n = (np.sum(weights)**2)/(np.sum(weights**2))
-        self.sample_weights = weights
+        self.n = np.sum(self.sample_weights)**2/np.sum(self.sample_weights**2)
 
         theta_max = np.max(theta, axis=0)
         theta_min = np.min(theta, axis=0)
