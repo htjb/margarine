@@ -229,7 +229,6 @@ class MAF(object):
 
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = np.bincount(self.cluster_labels)
-        print(self.cluster_count)
         # While loop to make sure clusters are not too small
         while self.cluster_count.min() < 100:
             warnings.warn("One or more clusters are too small " +
