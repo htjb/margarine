@@ -10,6 +10,7 @@ import margarine
 from scipy.special import logsumexp
 from sklearn.model_selection import train_test_split
 
+import tqdm 
 
 class MAF(object):
 
@@ -367,7 +368,7 @@ class MAF(object):
         self.loss_history = []
         self.test_loss_history = []
         c = 0
-        for i in range(self.epochs):
+        for i in tqdm.tqdm(range(self.epochs)):
             loss = self._train_step(phi_train,
                                     weights_phi_train,
                                     self.loss_type, maf).numpy()
@@ -400,7 +401,8 @@ class MAF(object):
                               '. Minimum at epoch = ' + str(minimum_epoch))
                         return minimum_model
         return maf
-
+    
+    @tf.function(jit_compile=True)
     def _train_step(self, x, w, loss_type, maf):
 
         r"""
