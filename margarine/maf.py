@@ -420,6 +420,13 @@ class MAF(object):
                     maf.trainable_variables))
             return loss
 
+    @tf.function(jit_compile=True)
+    def call_bij(self, bij, u, min, max):
+        x = _forward_transform(u)
+        x = bij(x)
+        x = _inverse_transform(x, min, max)
+        return x
+    
     def __call__(self, u):
 
         r"""
@@ -433,13 +440,6 @@ class MAF(object):
                 | Samples on the uniform hypercube.
 
         """
-
-        @tf.function(jit_compile=True)
-        def call_bij(bij, u, min=self.theta_min, max=self.theta_max):
-            x = _forward_transform(u)
-            x = bij(x)
-            x = _inverse_transform(x, min, max)
-            return x
 
 
         if self.cluster_number is not None:
@@ -456,12 +456,15 @@ class MAF(object):
 
             values = []
             for i in range(len(options)):
-                x = call_bij(self.bij[i], u, min=self.theta_min[i], max=self.theta_max[i]).numpy()
+                x = self.call_bij(self.bij[i], u, 
+                                  min=self.theta_min[i], 
+                                  max=self.theta_max[i]).numpy()
                 values.append(x)
 
             x = np.concatenate(values)
         else:
-            x = call_bij(self.bij, u).numpy()
+            x = self.call_bij(self.bij, u, self.theta_min, 
+                              self.theta_max).numpy()
 
         mask = np.isfinite(x).all(axis=-1)
         return x[mask, ...]

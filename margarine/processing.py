@@ -26,6 +26,8 @@ def _forward_transform(x, min=0, max=1):
 
     """
     x = tf.cast(x, tf.float32)
+    min = tf.cast(min, tf.float32)
+    max = tf.cast(max, tf.float32)
     x = tfd.Uniform(min, max).cdf(x)
     x = tfd.Normal(0, 1).quantile(x)
     return x
@@ -54,7 +56,6 @@ def _inverse_transform(x, min, max):
 
     """
     x = tfd.Normal(0, 1).cdf(x)
-    print(min)
     min = tf.cast(min, tf.float32)
     max = tf.cast(max, tf.float32)
     x = tfd.Uniform(min, max).quantile(x)
