@@ -1,4 +1,5 @@
 from tensorflow_probability import distributions as tfd
+import tensorflow as tf
 
 
 def _forward_transform(x, min=0, max=1):
@@ -24,8 +25,9 @@ def _forward_transform(x, min=0, max=1):
                 values...)
 
     """
-    x = tfd.Uniform(min, max).cdf(x).numpy()
-    x = tfd.Normal(0, 1).quantile(x).numpy()
+    x = tf.cast(x, tf.float32)
+    x = tfd.Uniform(min, max).cdf(x)
+    x = tfd.Normal(0, 1).quantile(x)
     return x
 
 
@@ -51,6 +53,9 @@ def _inverse_transform(x, min, max):
                 values...)
 
     """
-    x = tfd.Normal(0, 1).cdf(x).numpy()
-    x = tfd.Uniform(min, max).quantile(x).numpy()
+    x = tfd.Normal(0, 1).cdf(x)
+    print(min)
+    min = tf.cast(min, tf.float32)
+    max = tf.cast(max, tf.float32)
+    x = tfd.Uniform(min, max).quantile(x)
     return x

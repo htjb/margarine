@@ -97,7 +97,7 @@ class KDE(object):
         space and then generates a weighted KDE.
         """
 
-        phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
+        phi = _forward_transform(self.theta, self.theta_min, self.theta_max).numpy()
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
         weights_phi = self.sample_weights[mask]
@@ -145,7 +145,7 @@ class KDE(object):
                     bracket=(mu[:, i].min()*2, mu[:, i].max()*2),
                     method='bisect').root
             transformed_samples.append(
-                _inverse_transform(y, self.theta_min, self.theta_max))
+                _inverse_transform(y, self.theta_min, self.theta_max).numpy())
         transformed_samples = np.array(transformed_samples)
         return transformed_samples
 
@@ -167,7 +167,7 @@ class KDE(object):
 
         """
         x = self.kde.resample(length).T
-        return _inverse_transform(x, self.theta_min, self.theta_max)
+        return _inverse_transform(x, self.theta_min, self.theta_max).numpy()
 
     def log_prob(self, params):
 
@@ -191,7 +191,7 @@ class KDE(object):
         maxs = self.theta_max.astype(np.float32)
 
         transformed_x = _forward_transform(
-            params, mins, maxs)
+            params, mins, maxs).numpy()
 
         transform_chain = tfb.Chain([
             tfb.Invert(tfb.NormalCDF()),

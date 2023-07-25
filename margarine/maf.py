@@ -350,7 +350,7 @@ class MAF(object):
 
         """Function to perform the training of each MAF."""
 
-        phi = _forward_transform(theta, theta_min, theta_max)
+        phi = _forward_transform(theta, theta_min, theta_max).numpy()
 
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
@@ -434,6 +434,14 @@ class MAF(object):
 
         """
 
+        @tf.function(jit_compile=True)
+        def call_bij(bij, u, min=self.theta_min, max=self.theta_max):
+            x = _forward_transform(u)
+            x = bij(x)
+            x = _inverse_transform(x, min, max)
+            return x
+
+
         if self.cluster_number is not None:
             len_thetas = [len(self.theta[i]) for i in range(len(self.theta))]
             probabilities = [len_thetas[i]/np.sum(len_thetas)
@@ -448,16 +456,12 @@ class MAF(object):
 
             values = []
             for i in range(len(options)):
-                x = _forward_transform(u[totals[i]:totals[i+1]])
-                x = self.bij[i](x.astype(np.float32)).numpy()
-                values.append(_inverse_transform(x, self.theta_min[i],
-                                                 self.theta_max[i]))
+                x = call_bij(self.bij[i], u, min=self.theta_min[i], max=self.theta_max[i]).numpy()
+                values.append(x)
 
             x = np.concatenate(values)
         else:
-            x = _forward_transform(u)
-            x = self.bij(x.astype(np.float32)).numpy()
-            x = _inverse_transform(x, self.theta_min, self.theta_max)
+            x = call_bij(self.bij, u).numpy()
 
         mask = np.isfinite(x).all(axis=-1)
         return x[mask, ...]
@@ -512,7 +516,7 @@ class MAF(object):
                 return transform_chain.inverse_log_det_jacobian(
                     y, event_ndims=0).numpy()
 
-            transformed_x = _forward_transform(params, mins, maxs)
+            transformed_x = _forward_transform(params, mins, maxs).numpy()
 
             transform_chain = tfb.Chain([
                 tfb.Invert(tfb.NormalCDF()),
