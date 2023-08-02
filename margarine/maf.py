@@ -9,8 +9,8 @@ import warnings
 import margarine
 from scipy.special import logsumexp
 from sklearn.model_selection import train_test_split
-
 import tqdm 
+
 
 class MAF(object):
 
@@ -402,7 +402,7 @@ class MAF(object):
                         return minimum_model
         return maf
     
-    @tf.function(jit_compile=True)
+    #@tf.function(jit_compile=True)
     def _train_step(self, x, w, loss_type, maf):
 
         r"""
@@ -410,17 +410,17 @@ class MAF(object):
         adjust the weights and biases of the neural networks via the
         optimizer algorithm.
         """
-
+        
         with tf.GradientTape() as tape:
             if loss_type == 'sum':
                 loss = -tf.reduce_sum(w*maf.log_prob(x))
             elif loss_type == 'mean':
                 loss = -tf.reduce_mean(w*maf.log_prob(x))
-            gradients = tape.gradient(loss, maf.trainable_variables)
-            self.optimizer.apply_gradients(
-                zip(gradients,
-                    maf.trainable_variables))
-            return loss
+        gradients = tape.gradient(loss, maf.trainable_variables)
+        self.optimizer.apply_gradients(
+            zip(gradients,
+                maf.trainable_variables))
+        return loss
 
     def __call__(self, u):
 
