@@ -4,7 +4,6 @@ import margarine
 import warnings
 import pandas as pd
 from margarine.maf import MAF
-from margarine.kde import KDE
 
 
 class calculate(object):
