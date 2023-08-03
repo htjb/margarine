@@ -2,7 +2,7 @@ from typing import Any
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
-from margarine.new_processing import (_forward_transform, _inverse_transform,
+from margarine.processing import (_forward_transform, _inverse_transform,
                                       pure_tf_train_test_split)
 from sklearn.model_selection import train_test_split
 import numpy as np

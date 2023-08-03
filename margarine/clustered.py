@@ -2,7 +2,7 @@ from scipy.special import logsumexp
 from sklearn.cluster import KMeans
 import margarine
 from tensorflow import keras
-from margarine.new_maf import MAF
+from margarine.maf import MAF
 import numpy as np
 import tensorflow as tf
 import warnings
