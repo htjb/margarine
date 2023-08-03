@@ -169,7 +169,6 @@ class MAF():
                 maf.trainable_variables))
         return loss
     
-    @tf.function(jit_compile=True)
     def __call__(self, u):
         r"""
 
@@ -193,7 +192,6 @@ class MAF():
     
         return x
     
-    @tf.function(jit_compile=True)
     def sample(self, length=1000):
 
         r"""
