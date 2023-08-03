@@ -58,7 +58,7 @@ def test_maf():
     for i in range(len(p_values)):
         assert(round(p_values[i], 2) >0.05)
 
-    estL = bij.log_like(equal_weight_theta, 0.0)
+    estL = bij.log_like(equal_weight_theta.astype(np.float32), 0.0)
     check_like = 0
     for i in range(len(logL)):
         if np.isclose(np.exp(logL[i]), np.exp(estL[i]), rtol=1, atol=1):
