@@ -18,7 +18,17 @@ class clusterMAF():
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
         self.theta = theta
-        self.weights = weights
+        self.sample_weights = weights
+
+        # needed for marginal stats
+        self.n = np.sum(self.sample_weights)**2/ \
+            np.sum(self.sample_weights**2)
+        theta_max = np.max(self.theta, axis=0)
+        theta_min = np.min(self.theta, axis=0)
+        a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
+        b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
+        self.theta_min = kwargs.pop('theta_min', b)
+        self.theta_max = kwargs.pop('theta_max', a)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -38,7 +48,7 @@ class clusterMAF():
 
         mask = np.isfinite(theta).all(axis=-1)
         self.theta = self.theta[mask]
-        self.weights = self.weights[mask]
+        self.sample_weights = self.sample_weights[mask]
 
         if self.cluster_number is not None:
             if self.cluster_labels is None:
@@ -108,7 +118,7 @@ class clusterMAF():
         for i in range(self.cluster_number):
             split_theta.append(self.theta[self.cluster_labels == i])
             split_sample_weights.append(
-                self.weights[self.cluster_labels == i])
+                self.sample_weights[self.cluster_labels == i])
         
         self.split_theta = split_theta
         self.split_sample_weights = split_sample_weights
@@ -134,12 +144,12 @@ class clusterMAF():
         logprob = []
         for flow in self.flow:
             probs = flow.log_prob(params).numpy()
-            print(probs)
             for j in range(len(probs)):
                 if np.isnan(probs[j]):
                     probs[j] = np.log(1e-300)
-                logprob.append(probs)
+            logprob.append(probs)
         logprob = np.array(logprob)
+        print(logprob.shape)
         logprob = logsumexp(logprob, axis=0)
 
         return logprob
@@ -149,7 +159,7 @@ class clusterMAF():
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
 
-            n = (np.sum(self.weights)**2)/(np.sum(self.weights**2))
+            n = (np.sum(self.sample_weights)**2)/(np.sum(self.sample_weights**2))
 
             theta_max = np.max(self.theta, axis=0)
             theta_min = np.min(self.theta, axis=0)
@@ -204,7 +214,7 @@ class clusterMAF():
         with open(filename, 'wb') as f:
             pickle.dump([self.theta,
                         nn_weights,
-                        self.weights,
+                        self.sample_weights,
                         self.number_networks,
                         self.hidden_layers,
                         self.learning_rate,
