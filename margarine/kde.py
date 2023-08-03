@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import gaussian_kde, norm
 from margarine.processing import _forward_transform, _inverse_transform
 from scipy.optimize import root_scalar
+import tensorflow as tf
 import pickle
 import warnings
 from tensorflow_probability import bijectors as tfb
@@ -96,8 +97,11 @@ class KDE(object):
         Function noramlises the input data into a standard normal parameter
         space and then generates a weighted KDE.
         """
+        theta = tf.convert_to_tensor(self.theta, dtype=tf.float32)
+        theta_min = tf.convert_to_tensor(self.theta_min, dtype=tf.float32)
+        theta_max = tf.convert_to_tensor(self.theta_max, dtype=tf.float32)
 
-        phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
+        phi = _forward_transform(theta, theta_min, theta_max).numpy()
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
         weights_phi = self.sample_weights[mask]
@@ -145,7 +149,10 @@ class KDE(object):
                     bracket=(mu[:, i].min()*2, mu[:, i].max()*2),
                     method='bisect').root
             transformed_samples.append(
-                _inverse_transform(y, self.theta_min, self.theta_max))
+                _inverse_transform(
+                tf.convert_to_tensor(y, dtype=tf.float32),
+                tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
+                tf.convert_to_tensor(self.theta_max, dtype=tf.float32)))
         transformed_samples = np.array(transformed_samples)
         return transformed_samples
 
@@ -167,7 +174,10 @@ class KDE(object):
 
         """
         x = self.kde.resample(length).T
-        return _inverse_transform(x, self.theta_min, self.theta_max)
+        return _inverse_transform(
+            tf.convert_to_tensor(x, dtype='float32'),
+            tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
+            tf.convert_to_tensor(self.theta_max, dtype=tf.float32))
 
     def log_prob(self, params):
 
@@ -191,7 +201,9 @@ class KDE(object):
         maxs = self.theta_max.astype(np.float32)
 
         transformed_x = _forward_transform(
-            params, mins, maxs)
+            tf.convert_to_tensor(params, dtype=tf.float32),
+            tf.convert_to_tensor(mins, dtype=tf.float32),
+            tf.convert_to_tensor(maxs, dtype=tf.float32)).numpy()
 
         transform_chain = tfb.Chain([
             tfb.Invert(tfb.NormalCDF()),
