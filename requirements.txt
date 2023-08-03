@@ -1,5 +1,6 @@
 numpy
-tensorflow
+tensorflow-macos; sys_platform == 'darwin'
+tensorflow; sys_platform != 'darwin'
 tensorflow_probability
 scipy
 pandas
