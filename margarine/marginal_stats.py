@@ -60,46 +60,31 @@ class calculate(object):
 
         self.de = de
 
-        try:
-            self.theta = np.concatenate(self.de.theta)
-            self.theta_weights = np.concatenate(self.de.sample_weights)
-            self.theta_min = np.min(self.de.theta_min, axis=1)
-            self.theta_max = np.max(self.de.theta_max, axis=1)
-        except ValueError:
-            self.theta = self.de.theta
-            self.theta_weights = self.de.sample_weights
-            self.theta_min = self.de.theta_min
-            self.theta_max = self.de.theta_max
+        self.theta = self.de.theta
+        self.theta_weights = self.de.sample_weights
+        self.theta_min = self.de.theta_min
+        self.theta_max = self.de.theta_max
+
+        if isinstance(self.de, MAF):
+            self.theta_weights = self.theta_weights.numpy()
+            self.theta_min = self.theta_min.numpy()
+            self.theta_max = self.theta_max.numpy()
     
         self.samples = self.de.sample(len(self.theta))
 
         self.prior_de = kwargs.pop('prior_de', None)
-        self.prior_samples = kwargs.pop('prior_samples', None)
-        self.prior_weights = kwargs.pop('prior_weights', None)
-
-        if self.prior_samples is None:
-            warnings.warn('If prior samples are not provided the prior is ' +
-                          'assumed to be uniform and the' +
-                          'posterior samples are ' +
-                          'are assumed to be from the same uniform space.')
-        else:
-            if self.prior_weights is None:
-                warnings.warn('No prior weights have been provided. ' +
-                              'Assuming there are none.')
 
     def statistics(self):
 
         def mask_arr(arr):
             return arr[np.isfinite(arr)], np.isfinite(arr)
+        
+        logprob = self.de.log_prob(self.samples)
+        theta_logprob = self.de.log_prob(self.theta)
 
-        if isinstance(self.de, margarine.kde.KDE):
-            logprob_func = self.de.log_prob
-            logprob = logprob_func(self.samples)
-            theta_logprob = logprob_func(self.theta)
-        elif isinstance(self.de, margarine.maf.MAF):
-            logprob_func = self.de.log_prob
-            logprob = logprob_func(self.samples)
-            theta_logprob = logprob_func(self.theta)
+        if isinstance(self.de, MAF):
+            logprob = logprob.numpy()
+            theta_logprob = theta_logprob.numpy()
 
         args = np.argsort(theta_logprob)
         self.theta_weights = self.theta_weights[args]
@@ -113,15 +98,15 @@ class calculate(object):
 
         mid_point = np.log((np.exp(logprob) + np.exp(theta_logprob))/2)
 
-        if self.prior_samples is None:
+        if self.prior_de is None:
             self.base = tfd.Blockwise(
                 [tfd.Uniform(self.theta_min[i], self.theta_max[i])
                  for i in range(self.samples.shape[-1])])
             prior = self.base.sample(len(self.theta)).numpy()
 
             theta_base_logprob = self.base.log_prob(self.theta).numpy()
-
             base_logprob = self.base.log_prob(prior).numpy()
+
             prior_wde = [np.sum(self.theta_weights)/len(base_logprob)] * \
                 len(base_logprob)
 
@@ -132,35 +117,14 @@ class calculate(object):
 
             theta_base_logprob = theta_base_logprob[args]
         elif self.prior_de is not None:
-            if isinstance(self.prior_de, margarine.kde.KDE):
-                self.base = self.prior_de.copy()
-                base_logprob_func = self.base.log_prob
-                de_prior_samples = self.base.sample(len(self.theta))
-                theta_base_logprob = base_logprob_func(self.prior_samples)
-                base_logprob = base_logprob_func(self.theta)
-            elif isinstance(self.prior_de, margarine.maf.MAF):
-                self.base = self.prior_de.copy()
-                base_logprob_func = self.base.log_prob
-                de_prior_samples = self.base.sample(len(self.theta))
-                theta_base_logprob = base_logprob_func(self.prior_samples)
-                base_logprob = base_logprob_func(self.theta)
-        else:
-            if isinstance(self.de, margarine.kde.KDE):
-                self.base = KDE(
-                    self.prior_samples, self.prior_weights)
-                self.base.generate_kde()
-                base_logprob_func = self.base.log_prob
-                de_prior_samples = self.base.sample(len(self.theta))
-                theta_base_logprob = base_logprob_func(self.prior_samples)
-                base_logprob = base_logprob_func(de_prior_samples)
-            elif isinstance(self.de, margarine.maf.MAF):
-                self.base = MAF(
-                    self.prior_samples, self.prior_weights)
-                self.base.train(epochs=250)
-                base_logprob_func = self.base.log_prob
-                de_prior_samples = self.base.sample(len(self.theta))
-                theta_base_logprob = base_logprob_func(self.prior_samples)
-                base_logprob = base_logprob_func(de_prior_samples)
+            self.base = self.prior_de.copy()
+            de_prior_samples = self.base.sample(len(self.theta))
+            theta_base_logprob = self.base.log_prob(self.prior_samples)
+            base_logprob = self.base.log_prob(self.theta)
+
+            if isinstance(self.prior_de, MAF):
+                theta_base_logprob = theta_base_logprob.numpy()
+                base_logprob = base_logprob.numpy()
 
             base_logprob = base_logprob[deargs]
             base_logprob = np.interp(
