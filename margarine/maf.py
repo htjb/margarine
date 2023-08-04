@@ -18,14 +18,17 @@ class MAF():
 
     **Parameters:**
 
-        theta: **numpy array**
+        theta: **numpy array or anesthetic.samples**
             | The samples from the probability distribution that we require the
-                MAF to learn.
-
-        weights: **numpy array**
-            | The weights associated with the samples above.
+                MAF to learn. This can either be a numpy array or an anesthetic
+                NestedSamples or MCMCSamples object.
 
     **kwargs:**
+
+        weights: **numpy array / default=np.ones(len(theta))**
+            | The weights associated with the samples above. If an anesthetic
+                NestedSamples or MCMCSamples object is passed the code
+                draws the weights from this.
 
         number_networks: **int / default = 6**
             | The bijector is built by chaining a series of
@@ -50,6 +53,10 @@ class MAF():
 
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
+            
+        parameter_names: **list of strings**
+            | A list of the relevant parameters to train on. Required if
+                theta is an anesthetic pandas table.
 
     **Attributes:**
 
@@ -71,11 +78,19 @@ class MAF():
 
     """
 
-    def __init__(self, theta, weights, **kwargs):
-
+    def __init__(self, theta, **kwargs):
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
+        self.parameter_names = kwargs.pop('parameter_names', None)
+
+        if isinstance(theta, 
+                      ('anesthetic.samples.NestedSamples', 
+                       'anesthetic.samples.MCMCSamples')):
+            theta = theta['parameter_names'].values
+            self.sample_weights = theta.get_weights()
+        else:
+            self.sample_weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = tf.convert_to_tensor(theta, dtype=tf.float32)
         self.sample_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
