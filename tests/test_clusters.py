@@ -30,7 +30,7 @@ names = [i for i in range(theta.shape[-1])]
 
 def test_maf_clustering():
 
-    bij = clusterMAF(theta, weights)
+    bij = clusterMAF(theta, weights=weights)
     bij.train(10000, early_stop=True)
     file = 'saved_maf_cluster.pkl'
     bij.save(file)
@@ -63,9 +63,10 @@ def test_maf_clustering():
 def test_maf_cluster_kwargs():
 
     with pytest.raises(ValueError):
-        bij = clusterMAF(theta, weights, cluster_number=3)
+        bij = clusterMAF(theta, weights=weights, cluster_number=3)
     with pytest.raises(ValueError):
-        bij = clusterMAF(theta, weights, cluster_labels=np.ones(len(theta)))
+        bij = clusterMAF(theta, weightes=weights, 
+                         cluster_labels=np.ones(len(theta)))
     
     labels = np.ones(len(theta))
     labels[:len(theta)//2] = 0
@@ -77,5 +78,4 @@ def test_cluster_size():
                 np.zeros(ndims), np.eye(ndims), ndims*10)
 
     samples = draw(3)
-    flow = clusterMAF(samples, np.ones(len(samples)))
-    return 0
+    flow = clusterMAF(samples)

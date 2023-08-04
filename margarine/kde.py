@@ -7,6 +7,7 @@ import pickle
 import warnings
 from tensorflow_probability import bijectors as tfb
 import margarine
+import anesthetic
 
 
 class KDE(object):
@@ -18,14 +19,17 @@ class KDE(object):
 
     **Parameters:**
 
-        theta: **numpy array**
+        theta: **numpy array or anesthetic.samples**
             | The samples from the probability distribution that we require the
-                bijector to learn.
-
-        weights: **numpy array**
-            | The weights associated with the samples above.
+                MAF to learn. This can either be a numpy array or an anesthetic
+                NestedSamples or MCMCSamples object.
 
     **kwargs:**
+
+        weights: **numpy array / default=np.ones(len(theta))**
+            | The weights associated with the samples above. If an anesthetic
+                NestedSamples or MCMCSamples object is passed the code
+                draws the weights from this.
 
         bw_method: **str, scalar or callable**
             | The bandwidth for the KDE.
@@ -37,6 +41,10 @@ class KDE(object):
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
 
+        parameters: **list of strings**
+            | A list of the relevant parameters to train on. Only needed
+                if theta is an anestehetic samples object. If not provided,
+                all parameters will be used.
     **Attributes:**
 
     A list of some key attributes accessible to the user.
@@ -76,7 +84,25 @@ class KDE(object):
 
     """
 
-    def __init__(self, theta, weights, **kwargs):
+    def __init__(self, theta, **kwargs):
+
+        self.parameters = kwargs.pop('parameters', None)
+
+        if isinstance(theta, 
+                      (anesthetic.samples.NestedSamples, 
+                       anesthetic.samples.MCMCSamples)):
+            weights = theta.get_weights()
+            if self.parameters:
+                theta = theta[self.parameters].values
+            else:
+                if isinstance(theta, anesthetic.samples.NestedSamples):
+                    self.parameters = theta.columns[:-3].values
+                    theta = theta[theta.columns[:-3]].values
+                else:
+                    self.parameters = theta.columns[:-1].values
+                    theta = theta[theta.columns[:-1]].values
+        else:
+            weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = theta
         self.sample_weights = weights
@@ -307,7 +333,7 @@ class KDE(object):
         with open(filename, 'rb') as f:
             theta, sample_weights, kde = pickle.load(f)
 
-        kde_class = cls(theta, sample_weights)
+        kde_class = cls(theta, weights=sample_weights)
         kde_class.kde = kde
         kde_class(np.random.uniform(0, 1, size=(2, theta.shape[-1])))
 

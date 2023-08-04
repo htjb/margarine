@@ -2,6 +2,7 @@ from scipy.special import logsumexp
 from sklearn.cluster import KMeans
 from tensorflow import keras
 from margarine.maf import MAF
+import anesthetic
 import numpy as np
 import tensorflow as tf
 import warnings
@@ -20,14 +21,17 @@ class clusterMAF():
 
     **Parameters:**
 
-        theta: **numpy array**
+        theta: **numpy array or anesthetic.samples**
             | The samples from the probability distribution that we require the
-                MAF to learn.
-
-        weights: **numpy array**
-            | The weights associated with the samples above.
+                MAF to learn. This can either be a numpy array or an anesthetic
+                NestedSamples or MCMCSamples object.
 
     **kwargs:**
+
+        weights: **numpy array / default=np.ones(len(theta))**
+            | The weights associated with the samples above. If an anesthetic
+                NestedSamples or MCMCSamples object is passed the code
+                draws the weights from this.
 
         number_networks: **int / default = 6**
             | The bijector is built by chaining a series of
@@ -57,15 +61,38 @@ class clusterMAF():
                 need to provide the number of clusters, k, alongside the
                 cluster labels.
 
+        parameters: **list of strings**
+            | A list of the relevant parameters to train on. Only needed
+                if theta is an anestehetic samples object. If not provided,
+                all parameters will be used.
+
     """
 
-    def __init__(self, theta, weights, **kwargs):
+    def __init__(self, theta, **kwargs):
 
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
+        self.parameters = kwargs.pop('parameters', None)
+
+        if isinstance(theta, 
+                      (anesthetic.samples.NestedSamples, 
+                       anesthetic.samples.MCMCSamples)):
+            weights = theta.get_weights()
+            if self.parameters:
+                theta = theta[self.parameters].values
+            else:
+                if isinstance(theta, anesthetic.samples.NestedSamples):
+                    self.parameters = theta.columns[:-3].values
+                    theta = theta[theta.columns[:-3]].values
+                else:
+                    self.parameters = theta.columns[:-1].values
+                    theta = theta[theta.columns[:-1]].values
+        else:
+            weights = kwargs.pop('weights', np.ones(len(theta)))
+
         self.theta = theta
         self.sample_weights = weights
 
@@ -178,7 +205,8 @@ class clusterMAF():
 
         self.flow = []
         for i in range(len(split_theta)):
-            self.flow.append(MAF(split_theta[i], split_sample_weights[i],
+            self.flow.append(MAF(split_theta[i], 
+                                 weights=split_sample_weights[i],
                                  number_networks=self.number_networks,
                                  learning_rate=self.learning_rate,
                                  hidden_layers=self.hidden_layers))
@@ -193,7 +221,7 @@ class clusterMAF():
 
             from margarine.clustered import clusterMAF
 
-            bij = clusterMAF(theta, weights)
+            bij = clusterMAF(theta, weights=weights)
             bij.train()
 
         **Kwargs:**
@@ -421,7 +449,7 @@ class clusterMAF():
                 cluster_number, \
                 labels = data
 
-        maf = cls(theta, sample_weights,
+        maf = cls(theta, weights=sample_weights,
                   number_networks=number_networks,
                   hidden_layers=hidden_layers,
                   learning_rate=learning_rate,

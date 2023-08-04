@@ -7,6 +7,7 @@ import numpy as np
 import tqdm
 import warnings
 import pickle
+import anesthetic
 
 
 class MAF():
@@ -54,10 +55,11 @@ class MAF():
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
             
-        parameter_names: **list of strings**
-            | A list of the relevant parameters to train on. Required if
-                theta is an anesthetic pandas table.
-
+        parameters: **list of strings**
+            | A list of the relevant parameters to train on. Only needed
+                if theta is an anestehetic samples object. If not provided,
+                all parameters will be used.
+            
     **Attributes:**
 
     A list of some key attributes accessible to the user.
@@ -82,15 +84,23 @@ class MAF():
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
-        self.parameter_names = kwargs.pop('parameter_names', None)
+        self.parameters = kwargs.pop('parameters', None)
 
         if isinstance(theta, 
-                      ('anesthetic.samples.NestedSamples', 
-                       'anesthetic.samples.MCMCSamples')):
-            theta = theta['parameter_names'].values
-            self.sample_weights = theta.get_weights()
+                      (anesthetic.samples.NestedSamples, 
+                       anesthetic.samples.MCMCSamples)):
+            weights = theta.get_weights()
+            if self.parameters:
+                theta = theta[self.parameters].values
+            else:
+                if isinstance(theta, anesthetic.samples.NestedSamples):
+                    self.parameters = theta.columns[:-3].values
+                    theta = theta[theta.columns[:-3]].values
+                else:
+                    self.parameters = theta.columns[:-1].values
+                    theta = theta[theta.columns[:-1]].values
         else:
-            self.sample_weights = kwargs.pop('weights', np.ones(len(theta)))
+            weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = tf.convert_to_tensor(theta, dtype=tf.float32)
         self.sample_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
@@ -163,7 +173,7 @@ class MAF():
 
             from margarine.maf import MAF
 
-            bij = MAF(theta, weights)
+            bij = MAF(theta, weights=weights)
             bij.train()
 
         **Kwargs:**
@@ -461,7 +471,7 @@ class MAF():
                 learning_rate, theta_min, theta_max = data
 
         bijector = cls(
-            theta, sample_weights, number_networks=number_networks,
+            theta, weights=sample_weights, number_networks=number_networks,
             learning_rate=learning_rate, hidden_layers=hidden_layers,
             theta_min=theta_min, theta_max=theta_max)
         bijector(

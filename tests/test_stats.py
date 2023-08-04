@@ -4,6 +4,7 @@ from margarine.maf import MAF
 from margarine.marginal_stats import calculate
 import pytest
 from margarine.kde import KDE
+from margarine.clustered import clusterMAF
 from numpy.testing import assert_equal, assert_allclose
 from scipy.stats import ks_2samp
 
@@ -29,7 +30,7 @@ weights = np.ones(len(theta))
 
 logL = likelihood(theta)
 
-samples = MCMCSamples(data=theta, logL=logL)
+mcmc_samples = MCMCSamples(data=theta, logL=logL)
 samples_kl = D_KL(logL, weights)
 samples_d = d_g(logL, weights)
 names = [i for i in range(theta.shape[-1])]
@@ -43,13 +44,13 @@ def test_maf():
             value = samples_d
         assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
 
-    bij = MAF(theta, weights)
+    bij = MAF(theta, weights=weights)
     bij.train(10000, early_stop=True)
 
     stats = calculate(bij).statistics()
     [check_stats(i) for i in range(2)]
 
-    equal_weight_theta = samples.compress(50)[names].values
+    equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = bij.sample(len(equal_weight_theta))
 
     res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
@@ -68,35 +69,35 @@ def test_maf():
 def test_maf_kwargs():
 
     with pytest.raises(TypeError):
-        bij = MAF(theta, weights)
+        bij = MAF(theta, weights=weights)
         bij.sample(4.5)
     with pytest.raises(TypeError):
-        MAF(theta, weights, number_networks=4.4)
+        MAF(theta, weights=weights, number_networks=4.4)
     with pytest.raises(TypeError):
-        MAF(theta, weights, learning_rate='foobar')
+        MAF(theta, weights=weights, learning_rate='foobar')
     with pytest.raises(TypeError):
-        MAF(theta, weights, hidden_layers='foobar')
+        MAF(theta, weights=weights, hidden_layers='foobar')
     with pytest.raises(TypeError):
-        MAF(theta, weights, hidden_layers=[4.5, 50])
+        MAF(theta, weights=weights, hidden_layers=[4.5, 50])
     with pytest.raises(TypeError):
-        MAF(theta, weights)
+        MAF(theta, weights=weights)
         bij.train(epochs=4.5)
     with pytest.raises(TypeError):
-        MAF(theta, weights)
+        MAF(theta, weights=weights)
         bij.train(epochs=100, early_stop='foo')
     with pytest.raises(TypeError):
-        MAF(theta, weights)
+        MAF(theta, weights=weights)
         bij.train(epochs=100, clustering=5)
     with pytest.raises(TypeError):
-        MAF(theta, weights)
+        MAF(theta, weights=weights)
         bij.train(epochs=100, cluster_numeber='foo')
     with pytest.raises(TypeError):
-        MAF(theta, weights)
+        MAF(theta, weights=weights)
         bij.train(epochs=100, cluster_labels=5)
 
 def test_maf_save_load():
 
-    bij = MAF(theta, weights)
+    bij = MAF(theta, weights=weights)
     bij.train(100)
     file = 'saved_maf.pkl'
     bij.save(file)
@@ -114,13 +115,13 @@ def test_kde():
             value = samples_d
         assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
 
-    kde = KDE(theta, weights)
+    kde = KDE(theta, weights=weights)
     kde.generate_kde()
 
     stats = calculate(kde).statistics()
     [check_stats(i) for i in range(2)]
 
-    equal_weight_theta = samples.compress(50)[names].values
+    equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = kde.sample(len(equal_weight_theta))
 
     res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
@@ -138,9 +139,22 @@ def test_kde():
 
 def test_kde_save_load():
 
-    kde = KDE(theta, weights)
+    kde = KDE(theta, weights=weights)
     kde.generate_kde()
     file = 'saved_maf.pkl'
     kde.save(file)
     loaded_kde = KDE.load(file)
     assert_equal(kde.kde.covariance, loaded_kde.kde.covariance)
+
+def test_anesthetic():
+
+    kde = KDE(mcmc_samples, parameters=names)
+    maf = MAF(mcmc_samples, parameters=names)
+    cmaf = clusterMAF(mcmc_samples)
+
+    assert_equal(kde.parameters, names)
+    assert_equal(maf.parameters, names)
+
+    # not providing parametes here but deriving them from the 
+    # anesthetic object columns
+    assert(np.all(cmaf.parameters == np.array(names)))
