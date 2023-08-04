@@ -1,6 +1,6 @@
 import numpy as np
 from anesthetic import MCMCSamples
-from margarine.maf import MAF
+from margarine.clustered import clusterMAF
 from margarine.marginal_stats import calculate
 import pytest
 from numpy.testing import assert_equal, assert_allclose
@@ -30,16 +30,16 @@ names = [i for i in range(theta.shape[-1])]
 
 def test_maf_clustering():
 
-    bij = MAF(theta, weights, clustering=True)
+    bij = clusterMAF(theta, weights=weights)
     bij.train(10000, early_stop=True)
     file = 'saved_maf_cluster.pkl'
     bij.save(file)
 
-    loaded_bijector = MAF.load('saved_maf_cluster.pkl')
-    for i in range(len(bij.mades)):
-        for j in range(len(bij.mades[i])):
-            assert_equal(bij.mades[i][j].get_weights(),
-                loaded_bijector.mades[i][j].get_weights())
+    loaded_bijector = clusterMAF.load('saved_maf_cluster.pkl')
+    for f in range(len(bij.flow)):
+        for i in range(len(bij.flow[f].mades)):
+            assert_equal(bij.flow[f].mades[i].get_weights(),
+                loaded_bijector.flow[f].mades[i].get_weights())
 
     def check_stats(i):
         if i ==0:
@@ -63,15 +63,13 @@ def test_maf_clustering():
 def test_maf_cluster_kwargs():
 
     with pytest.raises(ValueError):
-        bij = MAF(theta, weights, cluster_number=3)
+        bij = clusterMAF(theta, weights=weights, cluster_number=3)
     with pytest.raises(ValueError):
-        bij = MAF(theta, weights, cluster_labels=np.ones(len(theta)))
+        bij = clusterMAF(theta, weightes=weights, 
+                         cluster_labels=np.ones(len(theta)))
     
     labels = np.ones(len(theta))
     labels[:len(theta)//2] = 0
-    bij = MAF(theta, weights, cluster_number=2, 
-              cluster_labels=labels)
-    assert_equal(bij.clustering, True)
 
 def test_cluster_size():
     # testing the while loop for cluster size
@@ -80,5 +78,4 @@ def test_cluster_size():
                 np.zeros(ndims), np.eye(ndims), ndims*10)
 
     samples = draw(3)
-    flow = MAF(samples, np.ones(len(samples)), clustering=True)
-    return 0
+    flow = clusterMAF(samples)

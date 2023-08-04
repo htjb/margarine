@@ -2,10 +2,12 @@ import numpy as np
 from scipy.stats import gaussian_kde, norm
 from margarine.processing import _forward_transform, _inverse_transform
 from scipy.optimize import root_scalar
+import tensorflow as tf
 import pickle
 import warnings
 from tensorflow_probability import bijectors as tfb
 import margarine
+import anesthetic
 
 
 class KDE(object):
@@ -17,14 +19,17 @@ class KDE(object):
 
     **Parameters:**
 
-        theta: **numpy array**
+        theta: **numpy array or anesthetic.samples**
             | The samples from the probability distribution that we require the
-                bijector to learn.
-
-        weights: **numpy array**
-            | The weights associated with the samples above.
+                MAF to learn. This can either be a numpy array or an anesthetic
+                NestedSamples or MCMCSamples object.
 
     **kwargs:**
+
+        weights: **numpy array / default=np.ones(len(theta))**
+            | The weights associated with the samples above. If an anesthetic
+                NestedSamples or MCMCSamples object is passed the code
+                draws the weights from this.
 
         bw_method: **str, scalar or callable**
             | The bandwidth for the KDE.
@@ -36,6 +41,10 @@ class KDE(object):
         theta_min: **numpy array**
             | As above but the true lower limits of the priors.
 
+        parameters: **list of strings**
+            | A list of the relevant parameters to train on. Only needed
+                if theta is an anestehetic samples object. If not provided,
+                all parameters will be used.
     **Attributes:**
 
     A list of some key attributes accessible to the user.
@@ -75,7 +84,25 @@ class KDE(object):
 
     """
 
-    def __init__(self, theta, weights, **kwargs):
+    def __init__(self, theta, **kwargs):
+
+        self.parameters = kwargs.pop('parameters', None)
+
+        if isinstance(theta, 
+                      (anesthetic.samples.NestedSamples, 
+                       anesthetic.samples.MCMCSamples)):
+            weights = theta.get_weights()
+            if self.parameters:
+                theta = theta[self.parameters].values
+            else:
+                if isinstance(theta, anesthetic.samples.NestedSamples):
+                    self.parameters = theta.columns[:-3].values
+                    theta = theta[theta.columns[:-3]].values
+                else:
+                    self.parameters = theta.columns[:-1].values
+                    theta = theta[theta.columns[:-1]].values
+        else:
+            weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = theta
         self.sample_weights = weights
@@ -96,8 +123,11 @@ class KDE(object):
         Function noramlises the input data into a standard normal parameter
         space and then generates a weighted KDE.
         """
+        theta = tf.convert_to_tensor(self.theta, dtype=tf.float32)
+        theta_min = tf.convert_to_tensor(self.theta_min, dtype=tf.float32)
+        theta_max = tf.convert_to_tensor(self.theta_max, dtype=tf.float32)
 
-        phi = _forward_transform(self.theta, self.theta_min, self.theta_max)
+        phi = _forward_transform(theta, theta_min, theta_max).numpy()
         mask = np.isfinite(phi).all(axis=-1)
         phi = phi[mask, :]
         weights_phi = self.sample_weights[mask]
@@ -145,7 +175,10 @@ class KDE(object):
                     bracket=(mu[:, i].min()*2, mu[:, i].max()*2),
                     method='bisect').root
             transformed_samples.append(
-                _inverse_transform(y, self.theta_min, self.theta_max))
+                _inverse_transform(
+                    tf.convert_to_tensor(y, dtype=tf.float32),
+                    tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
+                    tf.convert_to_tensor(self.theta_max, dtype=tf.float32)))
         transformed_samples = np.array(transformed_samples)
         return transformed_samples
 
@@ -167,7 +200,10 @@ class KDE(object):
 
         """
         x = self.kde.resample(length).T
-        return _inverse_transform(x, self.theta_min, self.theta_max)
+        return _inverse_transform(
+            tf.convert_to_tensor(x, dtype='float32'),
+            tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
+            tf.convert_to_tensor(self.theta_max, dtype=tf.float32))
 
     def log_prob(self, params):
 
@@ -191,7 +227,9 @@ class KDE(object):
         maxs = self.theta_max.astype(np.float32)
 
         transformed_x = _forward_transform(
-            params, mins, maxs)
+            tf.convert_to_tensor(params, dtype=tf.float32),
+            tf.convert_to_tensor(mins, dtype=tf.float32),
+            tf.convert_to_tensor(maxs, dtype=tf.float32)).numpy()
 
         transform_chain = tfb.Chain([
             tfb.Invert(tfb.NormalCDF()),
@@ -243,7 +281,7 @@ class KDE(object):
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = np.log(np.prod(
-                                    [1/(self.theta_max[i] - self.theta_min[i])
+                                   [1/(self.theta_max[i] - self.theta_min[i])
                                     for i in range(len(self.theta_min))]))
         else:
             self.prior = margarine.kde.KDE(prior, prior_weights)
@@ -280,7 +318,7 @@ class KDE(object):
 
         .. code:: python
 
-            from bayesstats.kde import KDE
+            from margarine.kde import KDE
 
             file = 'path/to/pickled/bijector.pkl'
             KDE_class = KDE.load(file)
@@ -295,7 +333,7 @@ class KDE(object):
         with open(filename, 'rb') as f:
             theta, sample_weights, kde = pickle.load(f)
 
-        kde_class = cls(theta, sample_weights)
+        kde_class = cls(theta, weights=sample_weights)
         kde_class.kde = kde
         kde_class(np.random.uniform(0, 1, size=(2, theta.shape[-1])))
 
