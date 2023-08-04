@@ -46,8 +46,7 @@ Details/Examples
 feasible given a set of samples from an MCMC or nested sampling run.
 
 An example of how to use the code can be found on the github in the
-jupyter notebook `notebook/Tutorial.ipynb`, alternatively
-in the compiled documentation or at
+jupyter notebook `notebook/Tutorial.ipynb` or alternatively at
 `here <https://mybinder.org/v2/gh/htjb/margarine/7f55f9a9d3f3adb2356cb94b32c599caac8ea1ef?urlpath=lab%2Ftree%2Fnotebook%2FTutorial.ipynb>`_.
 
 Documentation
@@ -62,7 +61,11 @@ To compile it locally you can run
   cd docs
   sphinx-build source html-build
 
-after cloning the repo and installing the relevant packages.
+after cloning the repo and installing the relevant packages with
+
+.. code:: bash
+
+  pip install sphinx numpydoc sphinx_rtd_theme
 
 Licence and Citation
 --------------------
