@@ -17,19 +17,23 @@ class calculate(object):
     **Paramesters:**
 
         de: **instance of MAF class or KDE class**
-            | This should be a loaded and trained instance of a MAF or KDE.
-                Bijectors can be loaded like so
+            | This should be a loaded and trained instance of a MAF, clusterMAF
+                or KDE.Bijectors can be loaded like so
 
                 .. code:: python
 
                     from margarine.maf import MAF
                     from margarine.kde import KDE
+                    from margarine.clustered import clusterMAF
 
                     file = '/trained_maf.pkl'
                     maf = MAF.load(file)
 
                     file = '/trained_kde.pkl'
                     kde = KDE.load(file)
+
+                    file = '/trained_clustered_maf.pkl'
+                    clustered_maf = clusterMAF.load(file)
 
         samples: **numpy array**
             | This should be the output of the bijector when called to generate
@@ -44,14 +48,10 @@ class calculate(object):
 
     **Kwargs:**
 
-        prior_samples: **numpy array / default=None**
-            | Can be provided if the prior is non-uniform and will be
-                used to generate a prior density estimator to calcualte
-                prior log-probabilities. If not provided the prior is
-                assumed to be uniform.
-
-        prior_weights: **numpy array / default=None**
-            | Weights associated with the above prior samples.
+        prior_de: **instance of MAF class, clusterMAF class or KDE class**
+            | This should be a loaded and trained instance of a MAF, clusterMAF
+                or KDE for the prior. 
+                If not provided, a uniform prior will be used.
 
     """
 
@@ -74,6 +74,11 @@ class calculate(object):
         self.prior_de = kwargs.pop('prior_de', None)
 
     def statistics(self):
+
+        """
+        Calculate marginal bayesian KL divergence and dimensionality with
+        approximate errors.
+        """
 
         def mask_arr(arr):
             return arr[np.isfinite(arr)], np.isfinite(arr)
