@@ -71,20 +71,22 @@ def pure_tf_train_test_split(a, b, test_size=0.2):
 
         a: **array**
             | Samples to be split.
-        
+
         b: **array**
             | Weights to be split.
-        
+
         test_size: **float**
             | Fraction of data to be used for testing.
     """
 
     idx = random.sample(range(len(a)), int(len(a)*test_size))
 
-    a_train = tf.gather(a, 
-            tf.convert_to_tensor(list(set(range(len(a))) - set(idx))))
-    b_train = tf.gather(b, 
-            tf.convert_to_tensor(list(set(range(len(b))) - set(idx))))
+    a_train = tf.gather(a,
+                        tf.convert_to_tensor(
+                            list(set(range(len(a))) - set(idx))))
+    b_train = tf.gather(b,
+                        tf.convert_to_tensor(
+                            list(set(range(len(b))) - set(idx))))
     a_test = tf.gather(a, tf.convert_to_tensor(idx))
     b_test = tf.gather(b, tf.convert_to_tensor(idx))
 

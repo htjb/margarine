@@ -1,7 +1,5 @@
 import numpy as np
 from tensorflow_probability import distributions as tfd
-import margarine
-import warnings
 import pandas as pd
 from margarine.maf import MAF
 
@@ -50,7 +48,7 @@ class calculate(object):
 
         prior_de: **instance of MAF class, clusterMAF class or KDE class**
             | This should be a loaded and trained instance of a MAF, clusterMAF
-                or KDE for the prior. 
+                or KDE for the prior.
                 If not provided, a uniform prior will be used.
 
     """
@@ -68,7 +66,7 @@ class calculate(object):
             self.theta_weights = self.theta_weights.numpy()
             self.theta_min = self.theta_min.numpy()
             self.theta_max = self.theta_max.numpy()
-    
+
         self.samples = self.de.sample(len(self.theta))
 
         self.prior_de = kwargs.pop('prior_de', None)
@@ -82,7 +80,7 @@ class calculate(object):
 
         def mask_arr(arr):
             return arr[np.isfinite(arr)], np.isfinite(arr)
-        
+
         logprob = self.de.log_prob(self.samples)
         theta_logprob = self.de.log_prob(self.theta)
 
@@ -123,7 +121,7 @@ class calculate(object):
         elif self.prior_de is not None:
             self.base = self.prior_de.copy()
             de_prior_samples = self.base.sample(len(self.theta))
-            theta_base_logprob = self.base.log_prob(self.prior_samples)
+            theta_base_logprob = self.base.log_prob(de_prior_samples)
             base_logprob = self.base.log_prob(self.theta)
 
             if isinstance(self.prior_de, MAF):
@@ -136,7 +134,7 @@ class calculate(object):
 
             base_args = np.argsort(theta_base_logprob)
             theta_base_logprob = theta_base_logprob[base_args]
-            prior_weights = np.cumsum(self.prior_weights[base_args])
+            prior_weights = np.cumsum(self.prior_de.sample_weights[base_args])
 
             prior_weights = (np.cumsum(self.theta_weights).max() -
                              np.cumsum(self.theta_weights).min()) * \

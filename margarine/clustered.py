@@ -1,6 +1,5 @@
 from scipy.special import logsumexp
 from sklearn.cluster import KMeans
-import margarine
 from tensorflow import keras
 from margarine.maf import MAF
 import numpy as np
@@ -71,13 +70,13 @@ class clusterMAF():
         self.sample_weights = weights
 
         # needed for marginal stats
-        self.n = np.sum(self.sample_weights)**2/ \
+        self.n = np.sum(self.sample_weights)**2 / \
             np.sum(self.sample_weights**2)
         theta_max = np.max(self.theta, axis=0)
         theta_min = np.min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min  = b
+        self.theta_min = b
         self.theta_max = a
 
         if type(self.number_networks) is not int:
@@ -108,9 +107,9 @@ class clusterMAF():
             if self.cluster_labels is not None:
                 raise ValueError("'cluster_number' should be provided if " +
                                  "'cluster_labels' is specified.")
-        
+
         if self.cluster_number is not None:
-            if self.cluster_number%1!=0:
+            if self.cluster_number % 1 != 0:
                 raise TypeError("'cluster_number' must be a whole number.")
         if self.cluster_labels is not None:
             if not isinstance(self.cluster_labels, (np.ndarray, list)):
@@ -133,14 +132,16 @@ class clusterMAF():
 
             kmeans = KMeans(self.cluster_number, random_state=0)
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
-        
+
         if self.cluster_number == 20:
-            warnings.warn("The number of clusters is 20. This is the maximum "+
-                            "number of clusters that can be used. If you " +
-                            "require more clusters, please specify the " +
-                            "'cluster_number' kwarg. margarine will continue "+
-                            "with 20 clusters.")
-        
+            warnings.warn("The number of clusters is 20. " +
+                          "This is the maximum " +
+                          "number of clusters that can be used. If you " +
+                          "require more clusters, please specify the " +
+                          "'cluster_number' kwarg. " +
+                          "margarine will continue " +
+                          "with 20 clusters.")
+
         if np.array(list(self.cluster_labels)).dtype == 'float':
             # convert cluster labels to integers
             self.cluster_labels = self.cluster_labels.astype(int)
@@ -159,29 +160,29 @@ class clusterMAF():
             if self.cluster_number == 2:
                 # break if two clusters
                 warnings.warn("The number of clusters is 2. This is the " +
-                            "minimum number of clusters that can be used. " +
-                            "Some clusters may be too small and the " +
-                            "train/test split may fail." +
-                            "Try running without clusting. ")
+                              "minimum number of clusters that can be used. " +
+                              "Some clusters may be too small and the " +
+                              "train/test split may fail." +
+                              "Try running without clusting. ")
                 break
-        
+
         split_theta = []
         split_sample_weights = []
         for i in range(self.cluster_number):
             split_theta.append(self.theta[self.cluster_labels == i])
             split_sample_weights.append(
                 self.sample_weights[self.cluster_labels == i])
-        
+
         self.split_theta = split_theta
         self.split_sample_weights = split_sample_weights
-        
+
         self.flow = []
         for i in range(len(split_theta)):
             self.flow.append(MAF(split_theta[i], split_sample_weights[i],
                                  number_networks=self.number_networks,
                                  learning_rate=self.learning_rate,
                                  hidden_layers=self.hidden_layers))
-        
+
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
         r"""
@@ -208,7 +209,7 @@ class clusterMAF():
                     improved for 2% of the requested epochs. At this point
                     margarine will roll back to the best model and return this
                     to the user.
-            
+
             loss_type: **string / default = 'sum'**
                 | Determines whether to use the sum or mean of the weighted
                     log probabilities to calculate the loss function.
@@ -216,9 +217,9 @@ class clusterMAF():
         """
 
         for i in range(len(self.flow)):
-            self.flow[i].train(epochs=epochs, early_stop=early_stop, 
+            self.flow[i].train(epochs=epochs, early_stop=early_stop,
                                loss_type=loss_type)
-    
+
     def log_prob(self, params):
 
         """
@@ -238,7 +239,7 @@ class clusterMAF():
                     probability.
 
         """
-        
+
         # currently working with numpy not tensorflow
         # nan repalacement with 0 difficult in tensorflow
         logprob = []
@@ -253,7 +254,7 @@ class clusterMAF():
         logprob = logsumexp(logprob, axis=0)
 
         return logprob
-    
+
     def log_like(self, params, logevidence, prior_de=None):
 
         r"""
@@ -282,11 +283,12 @@ class clusterMAF():
                     values of the parameters.
 
         """
-        
+
         if prior_de is None:
             warnings.warn('Assuming prior is uniform!')
 
-            n = (np.sum(self.sample_weights)**2)/(np.sum(self.sample_weights**2))
+            n = (np.sum(self.sample_weights)**2) / \
+                (np.sum(self.sample_weights**2))
 
             theta_max = np.max(self.theta, axis=0)
             theta_min = np.min(self.theta, axis=0)
@@ -303,7 +305,7 @@ class clusterMAF():
         loglike = posterior_logprob + prior_logprob - logevidence
 
         return loglike
-    
+
     @tf.function(jit_compile=True)
     def __call__(self, u):
 
@@ -319,16 +321,16 @@ class clusterMAF():
 
         """
 
-        len_thetas = [len(self.split_theta[i]) 
+        len_thetas = [len(self.split_theta[i])
                       for i in range(len(self.split_theta))]
         probabilities = [len_thetas[i]/np.sum(len_thetas)
-                            for i in range(len(self.split_theta))]
+                         for i in range(len(self.split_theta))]
         options = np.arange(0, self.cluster_number)
         choice = np.random.choice(options,
-                                    p=probabilities, size=len(u))
+                                  p=probabilities, size=len(u))
 
         totals = [len(choice[choice == options[i]])
-                    for i in range(len(options))]
+                  for i in range(len(options))]
         totals = np.hstack([0, np.cumsum(totals)])
 
         values = []
@@ -338,7 +340,7 @@ class clusterMAF():
 
         x = tf.concat(values, axis=0)
         return x
-    
+
     def sample(self, length=1000):
 
         r"""
@@ -356,12 +358,12 @@ class clusterMAF():
 
         u = np.random.uniform(size=(length, self.theta.shape[-1]))
         return self(u)
-    
+
     def save(self, filename):
 
         r"""
 
-        This function can be used to save an instance of 
+        This function can be used to save an instance of
         a trained clusterMAF as
         a pickled class so that it can be loaded and used in differnt scripts.
 
@@ -387,7 +389,7 @@ class clusterMAF():
                         self.learning_rate,
                         self.cluster_number,
                         self.cluster_labels], f)
-    
+
     @classmethod
     def load(cls, filename):
 
@@ -420,14 +422,14 @@ class clusterMAF():
                 labels = data
 
         maf = cls(theta, sample_weights,
-                    number_networks=number_networks,
-                    hidden_layers=hidden_layers,
-                    learning_rate=learning_rate,
-                    cluster_number=cluster_number,
-                    cluster_labels=labels)
+                  number_networks=number_networks,
+                  hidden_layers=hidden_layers,
+                  learning_rate=learning_rate,
+                  cluster_number=cluster_number,
+                  cluster_labels=labels)
         maf(np.random.uniform(size=(1, theta.shape[-1])))
         for j in range(len(maf.flow)):
             for made, nnw in zip(maf.flow[j].mades, nn_weights[j]):
-                    made.set_weights(nnw)
+                made.set_weights(nnw)
 
         return maf

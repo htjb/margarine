@@ -1,14 +1,11 @@
-from typing import Any
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import (_forward_transform, _inverse_transform,
-                                      pure_tf_train_test_split)
-from sklearn.model_selection import train_test_split
+                                  pure_tf_train_test_split)
 import numpy as np
 import tqdm
 import warnings
-import margarine
 import pickle
 
 
@@ -85,18 +82,20 @@ class MAF():
 
         mask = np.isfinite(theta).all(axis=-1)
         self.theta = tf.boolean_mask(self.theta, mask, axis=0)
-        self.sample_weights = tf.boolean_mask(self.sample_weights, mask, axis=0)
+        self.sample_weights = tf.boolean_mask(
+                                              self.sample_weights,
+                                              mask, axis=0)
 
-        self.n = tf.math.reduce_sum(self.sample_weights)**2/ \
+        self.n = tf.math.reduce_sum(self.sample_weights)**2 / \
             tf.math.reduce_sum(self.sample_weights**2)
-        
+
         theta_max = tf.math.reduce_max(self.theta, axis=0)
         theta_min = tf.math.reduce_min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
-        
+
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
         if not isinstance(self.learning_rate,
@@ -112,12 +111,12 @@ class MAF():
                     raise TypeError(
                         "One or more valus in 'hidden_layers'" +
                         "is not an integer.")
-        
+
         self.optimizer = tf.keras.optimizers.legacy.Adam(
                 learning_rate=self.learning_rate)
-        
+
         self.gen_mades()
-        
+
     def gen_mades(self):
 
         """Generating the masked autoregressive flow."""
@@ -137,7 +136,7 @@ class MAF():
         self.maf = tfd.TransformedDistribution(self.base, bijector=self.bij)
 
         return self.bij, self.maf
-    
+
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
         r"""
@@ -165,14 +164,14 @@ class MAF():
                     improved for 2% of the requested epochs. At this point
                     margarine will roll back to the best model and return this
                     to the user.
-            
+
             loss_type: **string / default = 'sum'**
                 | Determines whether to use the sum or mean of the weighted
                     log probabilities to calculate the loss function.
 
 
         """
-        
+
         if type(epochs) is not int:
             raise TypeError("'epochs' is not an integer.")
         if type(early_stop) is not bool:
@@ -183,20 +182,20 @@ class MAF():
         self.loss_type = loss_type
 
         self.maf = self._training(self.theta,
-                                    self.sample_weights, self.maf,
-                                    self.theta_min, self.theta_max)
-    
+                                  self.sample_weights, self.maf,
+                                  self.theta_min, self.theta_max)
+
     def _training(self, theta, sample_weights, maf,
                   theta_min, theta_max):
-        
+
         """Training the masked autoregressive flow."""
-        
+
         phi = _forward_transform(theta, theta_min, theta_max)
         weights_phi = sample_weights/tf.reduce_sum(sample_weights)
 
         phi_train, phi_test, weights_phi_train, weights_phi_test = \
             pure_tf_train_test_split(phi, weights_phi, test_size=0.2)
-        
+
         self.loss_history = []
         self.test_loss_history = []
         c = 0
@@ -206,9 +205,9 @@ class MAF():
                                     self.loss_type, maf)
             self.loss_history.append(loss)
 
-            self.test_loss_history.append(self._test_step(phi_test, 
-                                        weights_phi_test,
-                                        self.loss_type, maf))
+            self.test_loss_history.append(self._test_step(phi_test,
+                                          weights_phi_test,
+                                          self.loss_type, maf))
 
             if self.early_stop:
                 c += 1
@@ -228,9 +227,9 @@ class MAF():
                               '. Minimum at epoch = ' + str(minimum_epoch))
                         return minimum_model
         return maf
-    
+
     @tf.function(jit_compile=True)
-    def _test_step(self,x, w, loss_type, maf):
+    def _test_step(self, x, w, loss_type, maf):
 
         r"""
         This function is used to calculate the test loss value at each epoch
@@ -238,7 +237,7 @@ class MAF():
         """
 
         if loss_type == 'sum':
-                loss = -tf.reduce_sum(w*maf.log_prob(x))
+            loss = -tf.reduce_sum(w*maf.log_prob(x))
         elif loss_type == 'mean':
             loss = -tf.reduce_mean(w*maf.log_prob(x))
         return loss
@@ -251,7 +250,7 @@ class MAF():
         adjust the weights and biases of the neural networks via the
         optimizer algorithm.
         """
-        
+
         with tf.GradientTape() as tape:
             if loss_type == 'sum':
                 loss = -tf.reduce_sum(w*maf.log_prob(x))
@@ -262,7 +261,7 @@ class MAF():
             zip(gradients,
                 maf.trainable_variables))
         return loss
-    
+
     @tf.function(jit_compile=True)
     def __call__(self, u):
         r"""
@@ -278,13 +277,12 @@ class MAF():
         """
         u = tf.cast(u, dtype=tf.float32)
 
-        
         x = _forward_transform(u)
         x = self.bij(x)
         x = _inverse_transform(x, self.theta_min, self.theta_max)
-    
+
         return x
-    
+
     @tf.function(jit_compile=True)
     def sample(self, length=1000):
 
@@ -302,10 +300,10 @@ class MAF():
         """
         if type(length) is not int:
             raise TypeError("'length' must be an integer.")
-        
+
         u = tf.random.uniform((length, len(self.theta_min)))
         return self(u)
-    
+
     @tf.function(jit_compile=True)
     def log_prob(self, params):
 
@@ -344,9 +342,9 @@ class MAF():
             logprob = (maf.log_prob(transformed_x) -
                        tf.reduce_sum(correction, axis=-1))
             return logprob
-        
+
         logprob = calc_log_prob(self.theta_min, self.theta_max, self.maf)
-        
+
         return logprob
 
     def log_like(self, params, logevidence, prior_de=None):
@@ -377,12 +375,15 @@ class MAF():
                     values of the parameters.
 
         """
-    
+
         if prior_de is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = tf.math.log(
-                tf.math.reduce_prod([1/(self.theta_max[i] - self.theta_min[i])
-                         for i in range(len(self.theta_min))]))
+                                        tf.math.reduce_prod(
+                                            [1/(self.theta_max[i] -
+                                                self.theta_min[i])
+                                                for i in range(
+                                                    len(self.theta_min))]))
         else:
             prior_logprob = self.prior_de.log_prob(params)
 
@@ -391,7 +392,7 @@ class MAF():
         loglike = posterior_logprob + logevidence - prior_logprob
 
         return loglike
-    
+
     def save(self, filename):
         r"""
 
@@ -407,15 +408,15 @@ class MAF():
 
         nn_weights = [made.get_weights() for made in self.mades]
         with open(filename, 'wb') as f:
-                pickle.dump([self.theta,
-                            nn_weights,
-                            self.sample_weights,
-                            self.number_networks,
-                            self.hidden_layers,
-                            self.learning_rate,
-                            self.theta_min,
-                            self.theta_max], f)
-                
+            pickle.dump([self.theta,
+                        nn_weights,
+                        self.sample_weights,
+                        self.number_networks,
+                        self.hidden_layers,
+                        self.learning_rate,
+                        self.theta_min,
+                        self.theta_max], f)
+
     @classmethod
     def load(cls, filename):
         r"""
@@ -443,7 +444,7 @@ class MAF():
                 number_networks, \
                 hidden_layers, \
                 learning_rate, theta_min, theta_max = data
-            
+
         bijector = cls(
             theta, sample_weights, number_networks=number_networks,
             learning_rate=learning_rate, hidden_layers=hidden_layers,

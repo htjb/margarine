@@ -150,9 +150,9 @@ class KDE(object):
                     method='bisect').root
             transformed_samples.append(
                 _inverse_transform(
-                tf.convert_to_tensor(y, dtype=tf.float32),
-                tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
-                tf.convert_to_tensor(self.theta_max, dtype=tf.float32)))
+                    tf.convert_to_tensor(y, dtype=tf.float32),
+                    tf.convert_to_tensor(self.theta_min, dtype=tf.float32),
+                    tf.convert_to_tensor(self.theta_max, dtype=tf.float32)))
         transformed_samples = np.array(transformed_samples)
         return transformed_samples
 
@@ -255,7 +255,7 @@ class KDE(object):
         if prior is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = np.log(np.prod(
-                                    [1/(self.theta_max[i] - self.theta_min[i])
+                                   [1/(self.theta_max[i] - self.theta_min[i])
                                     for i in range(len(self.theta_min))]))
         else:
             self.prior = margarine.kde.KDE(prior, prior_weights)
