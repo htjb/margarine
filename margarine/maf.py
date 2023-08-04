@@ -14,7 +14,94 @@ import pickle
 
 class MAF():
 
+    r"""
+
+    This class is used to train, load and call instances of a bijector
+    built from a series of autoregressive neural networks.
+
+    **Parameters:**
+
+        theta: **numpy array**
+            | The samples from the probability distribution that we require the
+                MAF to learn.
+
+        weights: **numpy array**
+            | The weights associated with the samples above.
+
+    **kwargs:**
+
+        number_networks: **int / default = 6**
+            | The bijector is built by chaining a series of
+                autoregressive neural
+                networks together and this parameter is used to determine
+                how many networks there are in the chain.
+
+        learning_rate: **float / default = 1e-3**
+            | The learning rate determines the 'step size' of the optimization
+                algorithm used to train the MAF. Its value can effect the
+                quality of emulation.
+
+        hidden_layers: **list / default = [50, 50]**
+            | The number of layers and number of nodes in each hidden layer for
+                each neural network. The default is two hidden layers with
+                50 nodes each and each network in the chain has the same hidden
+                layer structure.
+
+        theta_max: **numpy array**
+            | The true upper limits of the priors used to generate the samples
+                that we want the MAF to learn.
+
+        theta_min: **numpy array**
+            | As above but the true lower limits of the priors.
+
+    **Attributes:**
+
+    A list of some key attributes accessible to the user.
+
+        maf: **Instance of tfd.TransformedDistribution**
+            | By loading a trained instance of this class and accessing the
+                ``maf`` (masked autoregressive flow) attribute, which is an
+                instance of
+                ``tensorflow_probability.distributions.TransformedDistribution``,
+                the used can sample the trained MAF. e.g.
+
+                .. code:: python
+
+                    from ...maf import MAF
+
+                    file = '/trained_maf.pkl'
+                    bij = MAF.load(file)
+
+                    samples = bij.maf.sample(1000)
+
+                It can also be used to calculate log probabilities via
+
+                .. code:: python
+
+                    log_prob = bij.log_prob(samples)
+
+                For more information on the attributes associated with
+                ``tensorflow_probability.distributions.TransformedDistribution``
+                see the tensorflow documentation.
+
+        theta_max: **numpy array**
+            | The true upper limits of the priors used to generate the
+                samples that we want the MAF to learn. If theta_max is not
+                supplied as a kwarg, then this is is an approximate estimate.
+
+        theta_min: **numpy array**
+            | As above but for the true lower limits of the priors. If
+                theta_max is not supplied as a kwarg, then this is is an
+                approximate estimate.
+
+        loss_history: **list**
+            | This list contains the value of the loss function at each epoch
+                during training.
+
+    """
+
     def __init__(self, theta, weights, **kwargs):
+
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
@@ -78,6 +165,39 @@ class MAF():
         return self.bij, self.maf
     
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
+
+        r"""
+
+        This function is called to train the MAF once it has been
+        initialised. It calls the `_training()` function.
+
+        .. code:: python
+
+            from ...maf import MAF
+
+            bij = MAF(theta, weights)
+            bij.train()
+
+        **Kwargs:**
+
+            epochs: **int / default = 100**
+                | The number of iterations to train the neural networks for.
+
+            early_stop: **boolean / default = False**
+                | Determines whether or not to implement an early stopping
+                    algorithm or
+                    train for the set number of epochs. If set to True then the
+                    algorithm will stop training when test loss has not
+                    improved for 2% of the requested epochs. At this point
+                    margarine will roll back to the best model and return this
+                    to the user.
+            
+            loss_type: **string / default = 'sum'**
+                | Determines whether to use the sum or mean of the weighted
+                    log probabilities to calculate the loss function.
+
+
+        """
         
         if type(epochs) is not int:
             raise TypeError("'epochs' is not an integer.")
@@ -182,8 +302,6 @@ class MAF():
                 | Samples on the uniform hypercube.
 
         """
-        #print(u)
-        #u = tf.convert_to_tensor(u, dtype=tf.float32)
         u = tf.cast(u, dtype=tf.float32)
 
         
@@ -257,7 +375,7 @@ class MAF():
         
         return logprob
 
-    def log_like(self, params, logevidence, prior=None, prior_weights=None):
+    def log_like(self, params, logevidence, prior_de=None):
 
         r"""
         This function should return the log-likelihood for a given set of
@@ -265,7 +383,7 @@ class MAF():
 
         It requires the logevidence from the original nested sampling run
         in order to do this and in the case that the prior is non-uniform
-        prior samples should be provided.
+        a trained prior density estimator should be provided.
 
         **Parameters:**
 
@@ -277,28 +395,22 @@ class MAF():
                 | Should be the log-evidence from the full nested sampling
                     run with nuisance parameters.
 
-            prior: **numpy array/default=None**
-                | An array of prior samples corresponding to the prior. Default
-                    assumption is that the prior is uniform which is
-                    required if you want to combine likelihoods from different
-                    experiments/data sets. In this case samples and prior
-                    samples should be reweighted prior to any training.
-
-            prior_weights: **numpy array/default=None**
-                | Weights to go with the prior samples.
+            prior_de: **margarine.maf.MAF / default=None**
+                | If the prior is non-uniform then a trained prior density
+                    estimator should be provided. Otherwise the prior
+                    is assumed to be uniform and the prior probability
+                    is calculated analytically from the minimum and maximum
+                    values of the parameters.
 
         """
     
-        if prior is None:
+        if prior_de is None:
             warnings.warn('Assuming prior is uniform!')
             prior_logprob = tf.math.log(
                 tf.math.reduce_prod([1/(self.theta_max[i] - self.theta_min[i])
                          for i in range(len(self.theta_min))]))
         else:
-            self.prior = margarine.maf.MAF(prior, prior_weights)
-            self.prior.train()
-            prior_logprob_func = self.prior.log_prob
-            prior_logprob = prior_logprob_func(params)
+            prior_logprob = self.prior_de.log_prob(params)
 
         posterior_logprob = self.log_prob(params)
 
@@ -309,8 +421,7 @@ class MAF():
     def save(self, filename):
         r"""
 
-        This function can be used to save an instance of a trained MAF
-        or piecewise MAF as
+        This function can be used to save an instance of a trained MAF as
         a pickled class so that it can be loaded and used in differnt scripts.
 
         **Parameters:**
