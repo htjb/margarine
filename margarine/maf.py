@@ -147,7 +147,7 @@ class MAF():
 
         .. code:: python
 
-            from ...maf import MAF
+            from margarine.maf import MAF
 
             bij = MAF(theta, weights)
             bij.train()

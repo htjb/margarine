@@ -292,7 +292,7 @@ class KDE(object):
 
         .. code:: python
 
-            from bayesstats.kde import KDE
+            from margarine.kde import KDE
 
             file = 'path/to/pickled/bijector.pkl'
             KDE_class = KDE.load(file)

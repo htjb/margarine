@@ -184,6 +184,37 @@ class clusterMAF():
         
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
+        r"""
+        This function is called to train the clusterMAF once it has been
+        initialised. It calls the `train()` function for each flow.
+
+        .. code:: python
+
+            from margarine.clustered import clusterMAF
+
+            bij = clusterMAF(theta, weights)
+            bij.train()
+
+        **Kwargs:**
+
+            epochs: **int / default = 100**
+                | The number of iterations to train the neural networks for.
+
+            early_stop: **boolean / default = False**
+                | Determines whether or not to implement an early stopping
+                    algorithm or
+                    train for the set number of epochs. If set to True then the
+                    algorithm will stop training when test loss has not
+                    improved for 2% of the requested epochs. At this point
+                    margarine will roll back to the best model and return this
+                    to the user.
+            
+            loss_type: **string / default = 'sum'**
+                | Determines whether to use the sum or mean of the weighted
+                    log probabilities to calculate the loss function.
+
+        """
+
         for i in range(len(self.flow)):
             self.flow[i].train(epochs=epochs, early_stop=early_stop, 
                                loss_type=loss_type)
