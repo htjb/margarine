@@ -77,6 +77,8 @@ class clusterMAF():
         theta_min = np.min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
+        self.theta_min  = b
+        self.theta_max = a
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
