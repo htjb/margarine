@@ -8,22 +8,23 @@ margarine.maf.MAF()
 ~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: margarine.maf.MAF()
-    :members: _train_step, train, __call__, sample, save, load
+    :members: gen_mades, train, _train_step, _test_step, _training, __call__, sample, log_prob, log_like, save, load
 
 margarine.kde.KDE()
 ~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: margarine.kde.KDE()
-    :members: generate_kde, __call__, sample, save, load
+    :members: generate_kde, __call__, sample, log_prob, log_like, save, load
 
-margarine.marginal_stats.maf_calculations()
+margarine.clustered.clusterMAF()
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: margarine.clustered.clusterMAF()
+    :members: train, __call__, sample, log_prob, log_like, save, load
+
+margarine.marginal_stats.calculate()
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: margarine.marginal_stats.maf_calculations
-    :members: _calc_logL, klDiv, bayesian_dimensionality
+.. automodule:: margarine.marginal_stats.calculate
+    :members: statistics
 
-margarine.marginal_stats.kde_calculations()
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: margarine.marginal_stats.kde_calculations
-    :members: _calc_logL, klDiv, bayesian_dimensionality

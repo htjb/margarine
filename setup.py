@@ -9,7 +9,7 @@ def readme(short=False):
 
 setup(
     name='margarine',
-    version='0.5.1',
+    version='1.0.0',
     description='margarine: Posterior Sampling and Marginal Bayesian Statistics',
     long_description=readme(),
     author='Harry T. J. Bevins',
