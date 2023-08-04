@@ -58,32 +58,6 @@ class MAF():
 
     A list of some key attributes accessible to the user.
 
-        maf: **Instance of tfd.TransformedDistribution**
-            | By loading a trained instance of this class and accessing the
-                ``maf`` (masked autoregressive flow) attribute, which is an
-                instance of
-                ``tensorflow_probability.distributions.TransformedDistribution``,
-                the used can sample the trained MAF. e.g.
-
-                .. code:: python
-
-                    from ...maf import MAF
-
-                    file = '/trained_maf.pkl'
-                    bij = MAF.load(file)
-
-                    samples = bij.maf.sample(1000)
-
-                It can also be used to calculate log probabilities via
-
-                .. code:: python
-
-                    log_prob = bij.log_prob(samples)
-
-                For more information on the attributes associated with
-                ``tensorflow_probability.distributions.TransformedDistribution``
-                see the tensorflow documentation.
-
         theta_max: **numpy array**
             | The true upper limits of the priors used to generate the
                 samples that we want the MAF to learn. If theta_max is not
@@ -450,7 +424,7 @@ class MAF():
 
         .. code:: python
 
-            from ...maf import MAF
+            from margarine.maf import MAF
 
             file = 'path/to/pickled/MAF.pkl'
             bij = MAF.load(file)

@@ -11,7 +11,57 @@ import pickle
 
 class clusterMAF():
 
+    r"""
+
+    This class is used to train, load and call a piecewise normalising flow
+    built from a set of masked autoregressive flows. The class
+    is essentially a wrapper around the MAF class with some additional
+    clustering functionality. This class has all the same
+    functionality as the MAF class and can be used in the same way.
+
+    **Parameters:**
+
+        theta: **numpy array**
+            | The samples from the probability distribution that we require the
+                MAF to learn.
+
+        weights: **numpy array**
+            | The weights associated with the samples above.
+
+    **kwargs:**
+
+        number_networks: **int / default = 6**
+            | The bijector is built by chaining a series of
+                autoregressive neural
+                networks together and this parameter is used to determine
+                how many networks there are in the chain.
+
+        learning_rate: **float / default = 1e-3**
+            | The learning rate determines the 'step size' of the optimization
+                algorithm used to train the MAF. Its value can effect the
+                quality of emulation.
+
+        hidden_layers: **list / default = [50, 50]**
+            | The number of layers and number of nodes in each hidden layer for
+                each neural network. The default is two hidden layers with
+                50 nodes each and each network in the chain has the same hidden
+                layer structure.
+
+        cluster_labels: **list / default = None**
+            | If clustering has been performed externally to margarine you can
+                provide a list of labels for the samples theta. The labels
+                should be integers from 0 to k corresponding to the cluster
+                that each sample is in.
+
+        cluster_number: **int / default = None**
+            | If clustering has been performed externally to margarine you
+                need to provide the number of clusters, k, alongside the
+                cluster labels.
+
+    """
+
     def __init__(self, theta, weights, **kwargs):
+
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
@@ -27,8 +77,6 @@ class clusterMAF():
         theta_min = np.min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = kwargs.pop('theta_min', b)
-        self.theta_max = kwargs.pop('theta_max', a)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -68,6 +116,8 @@ class clusterMAF():
                                 "or a list.")
 
         if self.cluster_number is None:
+            # this code currently performs the clustering with
+            # kmeans but we could have anything here.
             from sklearn.metrics import silhouette_score
             ks = np.arange(2, 21)
             losses = []
@@ -125,7 +175,6 @@ class clusterMAF():
         
         self.flow = []
         for i in range(len(split_theta)):
-            # need to ba able to pass number networks etc here
             self.flow.append(MAF(split_theta[i], split_sample_weights[i],
                                  number_networks=self.number_networks,
                                  learning_rate=self.learning_rate,
@@ -138,6 +187,24 @@ class clusterMAF():
                                loss_type=loss_type)
     
     def log_prob(self, params):
+
+        """
+        Function to caluclate the log-probability for a given clusterMAF and
+        set of parameters.
+
+        While each density estimator has its own built in log probability
+        function, a correction has to be applied for the transformation of
+        variables that is used to improve accuracy when learning and we
+        have to sum probabilities over the series of flows. The
+        correction and the sum are implemented here.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+        """
         
         # currently working with numpy not tensorflow
         # nan repalacement with 0 difficult in tensorflow
@@ -154,9 +221,36 @@ class clusterMAF():
 
         return logprob
     
-    def log_like(self, params, logevidence, prior=None):
+    def log_like(self, params, logevidence, prior_de=None):
+
+        r"""
+        This function should return the log-likelihood for a given set of
+        parameters.
+
+        It requires the logevidence from the original nested sampling run
+        in order to do this and in the case that the prior is non-uniform
+        a trained prior density estimator should be provided.
+
+        **Parameters:**
+
+            params: **numpy array**
+                | The set of samples for which to calculate the log
+                    probability.
+
+            logevidence: **float**
+                | Should be the log-evidence from the full nested sampling
+                    run with nuisance parameters.
+
+            prior_de: **margarine.maf.MAF / default=None**
+                | If the prior is non-uniform then a trained prior density
+                    estimator should be provided. Otherwise the prior
+                    is assumed to be uniform and the prior probability
+                    is calculated analytically from the minimum and maximum
+                    values of the parameters.
+
+        """
         
-        if prior is None:
+        if prior_de is None:
             warnings.warn('Assuming prior is uniform!')
 
             n = (np.sum(self.sample_weights)**2)/(np.sum(self.sample_weights**2))
@@ -169,7 +263,7 @@ class clusterMAF():
                 np.prod([1/(a - b)
                          for i in range(len(b))]))
         else:
-            prior_logprob = prior.log_prob(params).numpy()
+            prior_logprob = prior_de.log_prob(params).numpy()
 
         posterior_logprob = self.log_prob(params)
 
@@ -179,6 +273,18 @@ class clusterMAF():
     
     @tf.function(jit_compile=True)
     def __call__(self, u):
+
+        r"""
+
+        This function is used when calling the clusterMAF class to transform
+        samples from the unit hypercube to samples on the clusterMAF.
+
+        **Parameters:**
+
+            u: **numpy array**
+                | Samples on the uniform hypercube.
+
+        """
 
         len_thetas = [len(self.split_theta[i]) 
                       for i in range(len(self.split_theta))]
@@ -201,10 +307,38 @@ class clusterMAF():
         return x
     
     def sample(self, length=1000):
+
+        r"""
+
+        This function is used to generate samples on the clusterMAF via the
+        clusterMAF __call__ function.
+
+        **Kwargs:**
+
+            length: **int / default=1000**
+                | This should be an integer and is used to determine how many
+                    samples are generated when calling the clusterMAF.
+
+        """
+
         u = np.random.uniform(size=(length, self.theta.shape[-1]))
         return self(u)
     
     def save(self, filename):
+
+        r"""
+
+        This function can be used to save an instance of 
+        a trained clusterMAF as
+        a pickled class so that it can be loaded and used in differnt scripts.
+
+        **Parameters:**
+
+            filename: **string**
+                | Path in which to save the pickled MAF.
+
+        """
+
         nn_weights = {}
         for i in range(self.cluster_number):
             made = self.flow[i].mades
@@ -223,16 +357,17 @@ class clusterMAF():
     
     @classmethod
     def load(cls, filename):
+
         r"""
 
         This function can be used to load a saved MAF. For example
 
         .. code:: python
 
-            from ...maf import MAF
+            from margarine.clustered import clusterMAF
 
             file = 'path/to/pickled/MAF.pkl'
-            bij = MAF.load(file)
+            bij = clusterMAF.load(file)
 
         **Parameters:**
 
