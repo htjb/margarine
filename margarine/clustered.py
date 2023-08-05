@@ -278,7 +278,6 @@ class clusterMAF():
                     probs[j] = np.log(1e-300)
             logprob.append(probs)
         logprob = np.array(logprob)
-        print(logprob.shape)
         logprob = logsumexp(logprob, axis=0)
 
         return logprob
