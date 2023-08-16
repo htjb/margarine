@@ -349,6 +349,9 @@ class MAF():
 
         """
 
+        # Enforce float32 dtype
+        params = tf.convert_to_tensor(params, dtype=tf.float32)
+
         def calc_log_prob(mins, maxs, maf):
 
             """Function to calculate log-probability for a given MAF."""
