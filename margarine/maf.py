@@ -350,7 +350,7 @@ class MAF():
         """
 
         # Enforce float32 dtype
-        params = tf.convert_to_tensor(params, dtype=tf.float32)
+        params = tf.cast(params, tf.float32)
 
         def calc_log_prob(mins, maxs, maf):
 
