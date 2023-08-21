@@ -120,8 +120,12 @@ class MAF():
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
-        self.theta_min = tf.convert_to_tensor(theta_min, dtype=tf.float32)
-        self.theta_max = tf.convert_to_tensor(theta_max, dtype=tf.float32)
+
+        # Convert to tensors if not already
+        if not isinstance(self.theta_min, tf.Tensor):
+            self.theta_min = tf.convert_to_tensor(self.theta_min, dtype=tf.float32)
+        if not isinstance(self.theta_max, tf.Tensor):
+            self.theta_max = tf.convert_to_tensor(self.theta_max, dtype=tf.float32)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -331,7 +335,7 @@ class MAF():
         u = tf.random.uniform((length, len(self.theta_min)))
         return self(u)
 
-    @tf.function(jit_compile=True)
+    @tf.function(jit_compile=True, reduce_retracing=True)
     def log_prob(self, params):
 
         """
@@ -352,7 +356,8 @@ class MAF():
         """
 
         # Enforce float32 dtype
-        params = tf.cast(params, tf.float32)
+        if params.dtype != tf.float32:
+            params = tf.cast(params, tf.float32)
 
         def calc_log_prob(mins, maxs, maf):
 
