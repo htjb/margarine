@@ -103,8 +103,12 @@ class clusterMAF():
         theta_min = np.min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = b
-        self.theta_max = a
+        self.theta_min = kwargs.pop('theta_min', b)
+        self.theta_max = kwargs.pop('theta_max', a)
+
+        # Convert min and max to float 32
+        self.theta_min = tf.cast(self.theta_min, tf.float32)
+        self.theta_max = tf.cast(self.theta_max, tf.float32)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -274,7 +278,7 @@ class clusterMAF():
         # nan repalacement with 0 difficult in tensorflow
         logprob = []
         for flow in self.flow:
-            probs = flow.log_prob(params).numpy()
+            probs = flow.log_prob(params).numpy() - np.log(self.cluster_number)
             logprob.append(probs)
         logprob = np.array(logprob)
         logprob = logsumexp(logprob, axis=0)
