@@ -209,7 +209,9 @@ class clusterMAF():
                                  weights=split_sample_weights[i],
                                  number_networks=self.number_networks,
                                  learning_rate=self.learning_rate,
-                                 hidden_layers=self.hidden_layers))
+                                 hidden_layers=self.hidden_layers,
+                                 theta_min=self.theta_min,
+                                 theta_max=self.theta_max))
 
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
@@ -273,9 +275,6 @@ class clusterMAF():
         logprob = []
         for flow in self.flow:
             probs = flow.log_prob(params).numpy()
-            for j in range(len(probs)):
-                if np.isnan(probs[j]):
-                    probs[j] = np.log(1e-300)
             logprob.append(probs)
         logprob = np.array(logprob)
         logprob = logsumexp(logprob, axis=0)
