@@ -154,14 +154,14 @@ class clusterMAF():
             ks = np.arange(2, 21)
             losses = []
             for k in ks:
-                kmeans = KMeans(k, random_state=0)
+                kmeans = KMeans(k, random_state=0, n_init='auto')
                 labels = kmeans.fit(self.theta).predict(self.theta)
                 losses.append(-silhouette_score(self.theta, labels))
             losses = np.array(losses)
             minimum_index = np.argmin(losses)
             self.cluster_number = ks[minimum_index]
 
-            kmeans = KMeans(self.cluster_number, random_state=0)
+            kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
 
         if self.cluster_number == 20:
@@ -185,7 +185,7 @@ class clusterMAF():
                           "Reducing the number of clusters by 1.")
             minimum_index -= 1
             self.cluster_number = ks[minimum_index]
-            kmeans = KMeans(self.cluster_number, random_state=0)
+            kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
             self.cluster_count = np.bincount(self.cluster_labels)
             if self.cluster_number == 2:
