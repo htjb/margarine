@@ -278,7 +278,9 @@ class clusterMAF():
         # nan repalacement with 0 difficult in tensorflow
         logprob = []
         for flow in self.flow:
-            probs = flow.log_prob(params).numpy() - np.log(self.cluster_number)
+            probs = (flow.log_prob(
+                tf.convert_to_tensor(params, dtype=tf.float32)).numpy() -
+                     np.log(self.cluster_number))
             logprob.append(probs)
         logprob = np.array(logprob)
         logprob = logsumexp(logprob, axis=0)
