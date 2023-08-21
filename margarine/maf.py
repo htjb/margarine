@@ -120,6 +120,8 @@ class MAF():
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
+        self.theta_min = tf.convert_to_tensor(theta_min, dtype=tf.float32)
+        self.theta_max = tf.convert_to_tensor(theta_max, dtype=tf.float32)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
