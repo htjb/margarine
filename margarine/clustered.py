@@ -276,11 +276,17 @@ class clusterMAF():
 
         # currently working with numpy not tensorflow
         # nan repalacement with 0 difficult in tensorflow
+
+        flow_weights = [np.sum(weights) for weights in
+                        self.split_sample_weights]
+        flow_weights = np.array(flow_weights)
+        flow_weights = flow_weights / np.sum(flow_weights)
+
         logprob = []
-        for flow in self.flow:
-            probs = (flow.log_prob(
-                tf.convert_to_tensor(params, dtype=tf.float32)).numpy() -
-                     np.log(self.cluster_number))
+        for flow, weight in zip(self.flow, flow_weights):
+            flow_prob = flow.log_prob(
+                tf.convert_to_tensor(params, dtype=tf.float32)).numpy()
+            probs = flow_prob + np.log(weight)
             logprob.append(probs)
         logprob = np.array(logprob)
         logprob = logsumexp(logprob, axis=0)
@@ -353,10 +359,10 @@ class clusterMAF():
 
         """
 
-        len_thetas = [len(self.split_theta[i])
-                      for i in range(len(self.split_theta))]
-        probabilities = [len_thetas[i]/np.sum(len_thetas)
-                         for i in range(len(self.split_theta))]
+        flow_weights = [np.sum(weights) for weights in
+                        self.split_sample_weights]
+        flow_weights = np.array(flow_weights)
+        probabilities = flow_weights / np.sum(flow_weights)
         options = np.arange(0, self.cluster_number)
         choice = np.random.choice(options,
                                   p=probabilities, size=len(u))
