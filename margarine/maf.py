@@ -127,6 +127,15 @@ class MAF():
         if not isinstance(self.theta_max, tf.Tensor):
             self.theta_max = tf.convert_to_tensor(self.theta_max, dtype=tf.float32)
 
+        # Discard samples outside the prior range, provide a warning if any
+        # are discarded
+        mask = (self.theta >= self.theta_min) & (self.theta <= self.theta_max)
+        if not mask.all():
+            warnings.warn('Some samples are outside the user specified prior range '
+                          'and will be discarded!')
+            self.theta = tf.boolean_mask(self.theta, mask, axis=0)
+            self.sample_weights = tf.boolean_mask(self.sample_weights, mask, axis=0)
+
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
         if not isinstance(self.learning_rate,
