@@ -132,7 +132,8 @@ class MAF():
         mask = (self.theta >= self.theta_min) & (self.theta <= self.theta_max)
         if not mask.all():
             warnings.warn('Some samples are outside the user specified prior range '
-                          'and will be discarded!')
+                          'and will be discarded! The specified range is likely smaller ' 
+                          'than the range covered by the samples.')
             self.theta = tf.boolean_mask(self.theta, mask, axis=0)
             self.sample_weights = tf.boolean_mask(self.sample_weights, mask, axis=0)
 
