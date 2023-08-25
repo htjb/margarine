@@ -124,21 +124,11 @@ class MAF():
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
 
-        # Avoids unintended side effects outside the class
-        if isinstance(self.theta_min, tf.Tensor):
-            self.theta_min = self.theta_min.clone()
-        else:
-            self.theta_min = self.theta_min.copy()
-        if isinstance(self.theta_max, tf.Tensor):
-            self.theta_max = self.theta_max.clone()
-        else:
-            self.theta_max = self.theta_max.copy()
-
         # Convert to tensors if not already
         if not isinstance(self.theta_min, tf.Tensor):
-            self.theta_min = tf.convert_to_tensor(self.theta_min, dtype=tf.float32)
+            self.theta_min = tf.convert_to_tensor(self.theta_min.copy(), dtype=tf.float32)
         if not isinstance(self.theta_max, tf.Tensor):
-            self.theta_max = tf.convert_to_tensor(self.theta_max, dtype=tf.float32)
+            self.theta_max = tf.convert_to_tensor(self.theta_max.copy(), dtype=tf.float32)
 
         # Discard samples outside the prior range, provide a warning if any
         # are discarded
