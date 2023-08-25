@@ -86,6 +86,9 @@ class MAF():
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.parameters = kwargs.pop('parameters', None)
 
+        # Avoids unintended side effects outside of the class
+        theta = theta.copy()
+
         if isinstance(theta, 
                       (anesthetic.samples.NestedSamples, 
                        anesthetic.samples.MCMCSamples)):
@@ -103,7 +106,7 @@ class MAF():
             weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = tf.convert_to_tensor(theta, dtype=tf.float32)
-        self.sample_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
+        self.sample_weights = tf.convert_to_tensor(weights.copy(), dtype=tf.float32)
 
         mask = np.isfinite(theta).all(axis=-1)
         self.theta = tf.boolean_mask(self.theta, mask, axis=0)
@@ -120,6 +123,10 @@ class MAF():
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
+
+        # Avoids unintended side effects outside of the class
+        self.theta_min = self.theta_min.copy()
+        self.theta_max = self.theta_max.copy()
 
         # Convert to tensors if not already
         if not isinstance(self.theta_min, tf.Tensor):

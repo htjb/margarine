@@ -70,12 +70,16 @@ class clusterMAF():
 
     def __init__(self, theta, **kwargs):
 
+        # Unpack kwargs
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
         self.parameters = kwargs.pop('parameters', None)
+
+        # Avoid unintended side effects by copying theta
+        theta = theta.copy()
 
         if isinstance(theta, 
                       (anesthetic.samples.NestedSamples, 
@@ -94,7 +98,7 @@ class clusterMAF():
             weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = theta
-        self.sample_weights = weights
+        self.sample_weights = weights.copy()
 
         # needed for marginal stats
         self.n = np.sum(self.sample_weights)**2 / \
@@ -105,6 +109,10 @@ class clusterMAF():
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
+
+        # Avoid unintended side effects by copying theta_min and theta_max
+        self.theta_min = self.theta_min.copy()
+        self.theta_max = self.theta_max.copy()
 
         # Convert min and max to float 32
         self.theta_min = tf.cast(self.theta_min, tf.float32)
