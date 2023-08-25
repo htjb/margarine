@@ -86,7 +86,7 @@ class MAF():
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.parameters = kwargs.pop('parameters', None)
 
-        # Avoids unintended side effects outside of the class
+        # Avoids unintended side effects outside the class
         theta = theta.copy()
 
         if isinstance(theta, 
@@ -124,9 +124,15 @@ class MAF():
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
 
-        # Avoids unintended side effects outside of the class
-        self.theta_min = self.theta_min.copy()
-        self.theta_max = self.theta_max.copy()
+        # Avoids unintended side effects outside the class
+        if isinstance(self.theta_min, tf.Tensor):
+            self.theta_min = self.theta_min.clone()
+        else:
+            self.theta_min = self.theta_min.copy()
+        if isinstance(self.theta_max, tf.Tensor):
+            self.theta_max = self.theta_max.clone()
+        else:
+            self.theta_max = self.theta_max.copy()
 
         # Convert to tensors if not already
         if not isinstance(self.theta_min, tf.Tensor):

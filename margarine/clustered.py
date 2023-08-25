@@ -111,8 +111,14 @@ class clusterMAF():
         self.theta_max = kwargs.pop('theta_max', a)
 
         # Avoid unintended side effects by copying theta_min and theta_max
-        self.theta_min = self.theta_min.copy()
-        self.theta_max = self.theta_max.copy()
+        if isinstance(self.theta_min, tf.Tensor):
+            self.theta_min = self.theta_min.clone()
+        else:
+            self.theta_min = self.theta_min.copy()
+        if isinstance(self.theta_max, tf.Tensor):
+            self.theta_max = self.theta_max.clone()
+        else:
+            self.theta_max = self.theta_max.copy()
 
         # Convert min and max to float 32
         self.theta_min = tf.cast(self.theta_min, tf.float32)
