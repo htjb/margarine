@@ -316,7 +316,9 @@ class MAF():
                 | Samples on the uniform hypercube.
 
         """
-        u = tf.cast(u, dtype=tf.float32)
+
+        if u.dtype != tf.float32:
+            u = tf.cast(u, tf.float32)
 
         x = _forward_transform(u)
         x = self.bij(x)
