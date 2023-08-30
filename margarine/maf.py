@@ -10,7 +10,7 @@ import pickle
 import anesthetic
 
 
-class MAF():
+class MAF:
 
     r"""
 
@@ -87,7 +87,10 @@ class MAF():
         self.parameters = kwargs.pop('parameters', None)
 
         # Avoids unintended side effects outside the class
-        theta = theta.copy()
+        if not isinstance(theta, tf.Tensor):
+            theta = theta.copy()
+        else:
+            theta = tf.identity(theta)
 
         if isinstance(theta, 
                       (anesthetic.samples.NestedSamples, 
