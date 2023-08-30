@@ -141,7 +141,8 @@ class MAF:
 
         # Discard samples outside the prior range, provide a warning if any
         # are discarded
-        mask = (self.theta >= self.theta_min) & (self.theta <= self.theta_max)
+        mask = tf.math.reduce_all((self.theta >= self.theta_min) & 
+                                  (self.theta <= self.theta_max), axis=-1)
         if not tf.math.reduce_all(mask):
             warnings.warn('Some samples are outside the user specified prior range '
                           'and will be discarded! The specified range is likely smaller ' 
