@@ -109,7 +109,13 @@ class MAF:
             weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = tf.convert_to_tensor(theta, dtype=tf.float32)
-        self.sample_weights = tf.convert_to_tensor(weights.copy(), dtype=tf.float32)
+        if not isinstance(weights, tf.Tensor):
+            weights = tf.convert_to_tensor(weights.copy(), dtype=tf.float32)
+        else:
+            weights = tf.identity(weights)
+        if weights.dtype != tf.float32:
+            weights = tf.cast(weights, tf.float32)
+        self.sample_weights = weights
 
         mask = np.isfinite(theta).all(axis=-1)
         self.theta = tf.boolean_mask(self.theta, mask, axis=0)
