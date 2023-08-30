@@ -134,7 +134,7 @@ class KDE(object):
         weights_phi /= weights_phi.sum()
 
         self.kde = gaussian_kde(
-            phi.T, weights=self.sample_weights, bw_method=self.bw_method)
+            phi.T, weights=weights_phi, bw_method=self.bw_method)
 
         return self.kde
 
