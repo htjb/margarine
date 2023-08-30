@@ -10,7 +10,7 @@ import pickle
 import anesthetic
 
 
-class MAF():
+class MAF:
 
     r"""
 
@@ -86,6 +86,12 @@ class MAF():
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.parameters = kwargs.pop('parameters', None)
 
+        # Avoids unintended side effects outside the class
+        if not isinstance(theta, tf.Tensor):
+            theta = theta.copy()
+        else:
+            theta = tf.identity(theta)
+
         if isinstance(theta, 
                       (anesthetic.samples.NestedSamples, 
                        anesthetic.samples.MCMCSamples)):
@@ -103,7 +109,13 @@ class MAF():
             weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = tf.convert_to_tensor(theta, dtype=tf.float32)
-        self.sample_weights = tf.convert_to_tensor(weights, dtype=tf.float32)
+        if not isinstance(weights, tf.Tensor):
+            weights = tf.convert_to_tensor(weights.copy(), dtype=tf.float32)
+        else:
+            weights = tf.identity(weights)
+        if weights.dtype != tf.float32:
+            weights = tf.cast(weights, tf.float32)
+        self.sample_weights = weights
 
         mask = np.isfinite(theta).all(axis=-1)
         self.theta = tf.boolean_mask(self.theta, mask, axis=0)
@@ -121,6 +133,22 @@ class MAF():
         self.theta_min = kwargs.pop('theta_min', b)
         self.theta_max = kwargs.pop('theta_max', a)
 
+        # Convert to tensors if not already
+        if not isinstance(self.theta_min, tf.Tensor):
+            self.theta_min = tf.convert_to_tensor(self.theta_min.copy(), dtype=tf.float32)
+        if not isinstance(self.theta_max, tf.Tensor):
+            self.theta_max = tf.convert_to_tensor(self.theta_max.copy(), dtype=tf.float32)
+
+        # Discard samples outside the prior range, provide a warning if any
+        # are discarded
+        mask = (self.theta >= self.theta_min) & (self.theta <= self.theta_max)
+        if not tf.math.reduce_all(mask):
+            warnings.warn('Some samples are outside the user specified prior range '
+                          'and will be discarded! The specified range is likely smaller ' 
+                          'than the range covered by the samples.')
+            self.theta = tf.boolean_mask(self.theta, mask, axis=0)
+            self.sample_weights = tf.boolean_mask(self.sample_weights, mask, axis=0)
+
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
         if not isinstance(self.learning_rate,
@@ -134,7 +162,7 @@ class MAF():
             for i in range(len(self.hidden_layers)):
                 if type(self.hidden_layers[i]) is not int:
                     raise TypeError(
-                        "One or more valus in 'hidden_layers'" +
+                        "One or more values in 'hidden_layers'" +
                         "is not an integer.")
 
         self.optimizer = tf.keras.optimizers.legacy.Adam(
@@ -300,7 +328,9 @@ class MAF():
                 | Samples on the uniform hypercube.
 
         """
-        u = tf.cast(u, dtype=tf.float32)
+
+        if u.dtype != tf.float32:
+            u = tf.cast(u, tf.float32)
 
         x = _forward_transform(u)
         x = self.bij(x)
@@ -329,7 +359,7 @@ class MAF():
         u = tf.random.uniform((length, len(self.theta_min)))
         return self(u)
 
-    @tf.function(jit_compile=True)
+    @tf.function(jit_compile=True, reduce_retracing=True)
     def log_prob(self, params):
 
         """
@@ -348,6 +378,10 @@ class MAF():
                     probability.
 
         """
+
+        # Enforce float32 dtype
+        if params.dtype != tf.float32:
+            params = tf.cast(params, tf.float32)
 
         def calc_log_prob(mins, maxs, maf):
 

@@ -70,12 +70,16 @@ class clusterMAF():
 
     def __init__(self, theta, **kwargs):
 
+        # Unpack kwargs
         self.number_networks = kwargs.pop('number_networks', 6)
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
         self.parameters = kwargs.pop('parameters', None)
+
+        # Avoid unintended side effects by copying theta
+        theta = theta.copy()
 
         if isinstance(theta, 
                       (anesthetic.samples.NestedSamples, 
@@ -94,7 +98,7 @@ class clusterMAF():
             weights = kwargs.pop('weights', np.ones(len(theta)))
 
         self.theta = theta
-        self.sample_weights = weights
+        self.sample_weights = weights.copy()
 
         # needed for marginal stats
         self.n = np.sum(self.sample_weights)**2 / \
@@ -103,8 +107,14 @@ class clusterMAF():
         theta_min = np.min(self.theta, axis=0)
         a = ((self.n-2)*theta_max-theta_min)/(self.n-3)
         b = ((self.n-2)*theta_min-theta_max)/(self.n-3)
-        self.theta_min = b
-        self.theta_max = a
+        self.theta_min = kwargs.pop('theta_min', b)
+        self.theta_max = kwargs.pop('theta_max', a)
+
+        # Convert min and max to float 32 if needed
+        if not isinstance(self.theta_min, tf.Tensor):
+            self.theta_min = tf.convert_to_tensor(self.theta_min.copy(), dtype=tf.float32)
+        if not isinstance(self.theta_max, tf.Tensor):
+            self.theta_max = tf.convert_to_tensor(self.theta_max.copy(), dtype=tf.float32)
 
         if type(self.number_networks) is not int:
             raise TypeError("'number_networks' must be an integer.")
@@ -150,14 +160,14 @@ class clusterMAF():
             ks = np.arange(2, 21)
             losses = []
             for k in ks:
-                kmeans = KMeans(k, random_state=0)
+                kmeans = KMeans(k, random_state=0, n_init='auto')
                 labels = kmeans.fit(self.theta).predict(self.theta)
                 losses.append(-silhouette_score(self.theta, labels))
             losses = np.array(losses)
             minimum_index = np.argmin(losses)
             self.cluster_number = ks[minimum_index]
 
-            kmeans = KMeans(self.cluster_number, random_state=0)
+            kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
 
         if self.cluster_number == 20:
@@ -181,7 +191,7 @@ class clusterMAF():
                           "Reducing the number of clusters by 1.")
             minimum_index -= 1
             self.cluster_number = ks[minimum_index]
-            kmeans = KMeans(self.cluster_number, random_state=0)
+            kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
             self.cluster_count = np.bincount(self.cluster_labels)
             if self.cluster_number == 2:
@@ -272,9 +282,17 @@ class clusterMAF():
 
         # currently working with numpy not tensorflow
         # nan repalacement with 0 difficult in tensorflow
+
+        flow_weights = [np.sum(weights) for weights in
+                        self.split_sample_weights]
+        flow_weights = np.array(flow_weights)
+        flow_weights = flow_weights / np.sum(flow_weights)
+
         logprob = []
-        for flow in self.flow:
-            probs = flow.log_prob(params).numpy()
+        for flow, weight in zip(self.flow, flow_weights):
+            flow_prob = flow.log_prob(
+                tf.convert_to_tensor(params, dtype=tf.float32)).numpy()
+            probs = flow_prob + np.log(weight)
             logprob.append(probs)
         logprob = np.array(logprob)
         logprob = logsumexp(logprob, axis=0)
@@ -347,10 +365,10 @@ class clusterMAF():
 
         """
 
-        len_thetas = [len(self.split_theta[i])
-                      for i in range(len(self.split_theta))]
-        probabilities = [len_thetas[i]/np.sum(len_thetas)
-                         for i in range(len(self.split_theta))]
+        flow_weights = [np.sum(weights) for weights in
+                        self.split_sample_weights]
+        flow_weights = np.array(flow_weights)
+        probabilities = flow_weights / np.sum(flow_weights)
         options = np.arange(0, self.cluster_number)
         choice = np.random.choice(options,
                                   p=probabilities, size=len(u))
