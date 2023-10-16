@@ -169,6 +169,7 @@ class clusterMAF():
 
             kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+            self.custom_cluster = False
         else:
             self.custom_cluster = True
 
