@@ -351,7 +351,7 @@ class clusterMAF():
         return loglike
 
     @tf.function(jit_compile=True)
-    def __call__(self, u):
+    def __call__(self, u, seed=1420):
 
         r"""
 
@@ -362,8 +362,13 @@ class clusterMAF():
 
             u: **numpy array**
                 | Samples on the uniform hypercube.
+            
+            seed: **int / default=1420**
+                | Seed for the random number generator.
 
         """
+
+        np.random.seed(seed)
 
         flow_weights = [np.sum(weights) for weights in
                         self.split_sample_weights]
