@@ -169,6 +169,9 @@ class clusterMAF():
 
             kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
             self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+            self.custom_cluster = False
+        else:
+            self.custom_cluster = True
 
         if self.cluster_number == 20:
             warnings.warn("The number of clusters is 20. " +
@@ -184,24 +187,32 @@ class clusterMAF():
             self.cluster_labels = self.cluster_labels.astype(int)
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = np.bincount(self.cluster_labels)
-        # While loop to make sure clusters are not too small
-        while self.cluster_count.min() < 100:
-            warnings.warn("One or more clusters are too small " +
+
+        if self.custom_cluster:
+            if self.cluster_count.min() < 100:
+                warnings.warn("One or more clusters are too small " +
                           "(n_cluster < 100). " +
-                          "Reducing the number of clusters by 1.")
-            minimum_index -= 1
-            self.cluster_number = ks[minimum_index]
-            kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
-            self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
-            self.cluster_count = np.bincount(self.cluster_labels)
-            if self.cluster_number == 2:
-                # break if two clusters
-                warnings.warn("The number of clusters is 2. This is the " +
-                              "minimum number of clusters that can be used. " +
-                              "Some clusters may be too small and the " +
-                              "train/test split may fail." +
-                              "Try running without clusting. ")
-                break
+                          "Since cluster_number was supplied margarine" +
+                          "will continue but may crash.")
+        else:
+            # While loop to make sure clusters are not too small
+            while self.cluster_count.min() < 100:
+                warnings.warn("One or more clusters are too small " +
+                            "(n_cluster < 100). " +
+                            "Reducing the number of clusters by 1.")
+                minimum_index -= 1
+                self.cluster_number = ks[minimum_index]
+                kmeans = KMeans(self.cluster_number, random_state=0, n_init='auto')
+                self.cluster_labels = kmeans.fit(self.theta).predict(self.theta)
+                self.cluster_count = np.bincount(self.cluster_labels)
+                if self.cluster_number == 2:
+                    # break if two clusters
+                    warnings.warn("The number of clusters is 2. This is the " +
+                                "minimum number of clusters that can be used. " +
+                                "Some clusters may be too small and the " +
+                                "train/test split may fail." +
+                                "Try running without clusting. ")
+                    break
 
         split_theta = []
         split_sample_weights = []
