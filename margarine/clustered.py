@@ -362,7 +362,7 @@ class clusterMAF():
         return loglike
 
     @tf.function(jit_compile=True)
-    def __call__(self, u):
+    def __call__(self, u, seed=1420):
 
         r"""
 
@@ -373,6 +373,9 @@ class clusterMAF():
 
             u: **numpy array**
                 | Samples on the uniform hypercube.
+            
+            seed: **int / default=1420**
+                | Set the seed for the cluster choice.
 
         """
 
@@ -381,8 +384,11 @@ class clusterMAF():
         flow_weights = np.array(flow_weights)
         probabilities = flow_weights / np.sum(flow_weights)
         options = np.arange(0, self.cluster_number)
+
+        np.random.seed(seed)
         choice = np.random.choice(options,
                                   p=probabilities, size=len(u))
+        np.random.seed(None)
 
         totals = [len(choice[choice == options[i]])
                   for i in range(len(options))]
@@ -446,7 +452,7 @@ class clusterMAF():
                         self.cluster_labels], f)
 
     @classmethod
-    def load(cls, filename, seed=1420):
+    def load(cls, filename):
 
         r"""
 
@@ -464,12 +470,7 @@ class clusterMAF():
             filename: **string**
                 | Path to the saved MAF.
 
-            seed: **int / default=1420**
-                | Seed for the random number generator.
-
         """
-
-        np.random.seed(seed)
 
         with open(filename, 'rb') as f:
             data = pickle.load(f)
