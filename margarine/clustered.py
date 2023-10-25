@@ -361,7 +361,7 @@ class clusterMAF():
 
         return loglike
 
-    @tf.function(jit_compile=True)
+    #@tf.function(jit_compile=True)
     def __call__(self, u, seed=1420):
 
         r"""
@@ -385,7 +385,7 @@ class clusterMAF():
         probabilities = flow_weights / np.sum(flow_weights)
         options = np.arange(0, self.cluster_number)
 
-        np.random.seed(seed)
+        np.random.seed(int(round(u[0][0]*1000)))
         choice = np.random.choice(options,
                                   p=probabilities, size=len(u))
         np.random.seed(None)
