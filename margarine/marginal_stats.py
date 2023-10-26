@@ -242,6 +242,7 @@ class calculate(object):
 
             # weights = np.exp(fs + jac - gs)
             weights = np.exp(fs - gs)
+            eff = np.sum(weights)**2 / np.sum(weights**2) / sample_size
 
             integral = sample_size / trials * weights.mean()
             stderr = np.sqrt(
@@ -252,6 +253,7 @@ class calculate(object):
             "x": xs,
             "y": fs,
             "weights": weights,
+            "efficiency": eff,
             "trials": trials,
             "integral": integral,
             "stderr": stderr,

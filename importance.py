@@ -17,7 +17,8 @@ def likelihood(theta):
 
 
 import anesthetic as ns
-
+from pypolychord.output import PolyChordOutput
+pc_out=PolyChordOutput("chains", "gaussian")
 chains = ns.read_chains("chains/gaussian", columns=np.arange(nDims))
 Zs=chains.logZ(100)
 from margarine.maf import MAF
@@ -30,5 +31,9 @@ calc = calculate(flow)
 stats = calc.integrate(likelihood)
 
 print(f"IS integral: {stats['integral'] :.3f} +/- {stats['stderr'] :.3f}")
+print(f"IS efficiency: {stats['efficiency'] :.3f}")
+
 print(f"NS integral: {np.exp(Zs).mean():.3f} +/- {np.exp(Zs).std() :.3f}")
+print(f"NS efficiency: {pc_out.nequals/pc_out.nlike :.3f}")
+
 print("Done")
