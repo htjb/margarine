@@ -187,9 +187,7 @@ class calculate(object):
 
         return results
 
-    def integrate(
-        self, loglikelihood, batch_size=1000, sample_size=10000, normalized=True
-    ):
+    def integrate(self, loglikelihood, batch_size=1000, sample_size=10000):
         """
         Importance sampling integration of a likelihood function
         """
@@ -242,7 +240,8 @@ class calculate(object):
                 n_todo -= n_accept
                 pbar.update(n_accept)
 
-            weights = np.exp(fs + jac - gs)
+            # weights = np.exp(fs + jac - gs)
+            weights = np.exp(fs - gs)
 
             integral = sample_size / trials * weights.mean()
             stderr = np.sqrt(

@@ -19,6 +19,7 @@ def likelihood(theta):
 import anesthetic as ns
 
 chains = ns.read_chains("chains/gaussian", columns=np.arange(nDims))
+Zs=chains.logZ(100)
 from margarine.maf import MAF
 from margarine.marginal_stats import calculate
 
@@ -27,4 +28,7 @@ flow = MAF.load("maf.pkl")
 calc = calculate(flow)
 
 stats = calc.integrate(likelihood)
+
+print(f"IS integral: {stats['integral'] :.3f} +/- {stats['stderr'] :.3f}")
+print(f"NS integral: {np.exp(Zs).mean():.3f} +/- {np.exp(Zs).std() :.3f}")
 print("Done")
