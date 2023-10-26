@@ -30,7 +30,7 @@ calc = calculate(flow)
 
 stats = calc.integrate(likelihood)
 
-print(f"IS integral: {stats['integral'] :.3f} +/- {stats['stderr'] :.3f}")
+print(f"IS integral: {stats['integral'] :.3f} +/- {stats['stderr'] :.8f}")
 print(f"IS efficiency: {stats['efficiency'] :.3f}")
 
 print(f"NS integral: {np.exp(Zs).mean():.3f} +/- {np.exp(Zs).std() :.3f}")

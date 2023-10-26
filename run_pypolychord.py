@@ -58,31 +58,3 @@ settings.read_resume = False
 output = pypolychord.run_polychord(
     likelihood, nDims, nDerived, settings, prior, dumper
 )
-
-# | Create a paramnames file
-
-paramnames = [("p%i" % i, r"\theta_%i" % i) for i in range(nDims)]
-paramnames += [("r*", "r")]
-output.make_paramnames_files(paramnames)
-
-# | Make an anesthetic plot (could also use getdist)
-try:
-    from matplotlib import pyplot as plt
-    from anesthetic import read_chains
-
-    samples = read_chains(settings.base_dir + "/" + settings.file_root)
-    samples.plot_2d(["p0", "p1", "p2", "p3", "r"])
-    plt.savefig("posterior.pdf")
-
-except ImportError:
-    try:
-        import getdist.plots
-
-        posterior = output.posterior
-        g = getdist.plots.getSubplotPlotter()
-        g.triangle_plot(posterior, filled=True)
-        g.export("posterior.pdf")
-    except ImportError:
-        print("Install matplotlib and getdist for plotting examples")
-
-    print("Install anesthetic or getdist  for for plotting examples")
