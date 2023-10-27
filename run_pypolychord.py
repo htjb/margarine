@@ -1,7 +1,7 @@
 from numpy import pi, log
 import pypolychord
 from pypolychord.settings import PolyChordSettings
-from pypolychord.priors import UniformPrior
+from pypolychord.priors import UniformPrior,GaussianPrior
 
 try:
     from mpi4py import MPI
@@ -15,7 +15,7 @@ except ImportError:
 
 nDims = 4
 nDerived = 0
-sigma = 0.1
+sigma = 1.0
 
 
 def likelihood(theta):
@@ -34,7 +34,7 @@ def likelihood(theta):
 
 def prior(hypercube):
     """Uniform prior from [-1,1]^D."""
-    return UniformPrior(0, 1)(hypercube)
+    return GaussianPrior(1, 1)(hypercube)
 
 
 # | Optional dumper function giving run-time read access to
@@ -49,7 +49,8 @@ def dumper(live, dead, logweights, logZ, logZerr):
 
 settings = PolyChordSettings(nDims, nDerived)
 settings.file_root = "gaussian"
-settings.nlive = 200
+settings.nlive = 1000
+settings.nprior=5000
 settings.do_clustering = True
 settings.read_resume = False
 

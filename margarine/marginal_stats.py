@@ -223,7 +223,9 @@ class calculate(object):
                     ] = g[in_bounds]
                     jac[
                         sample_size - n_todo : sample_size - n_todo + n_accept
-                    ] = self.de.bij.inverse_log_det_jacobian(x[in_bounds])
+                    ] = self.prior_de.logpdf(x[in_bounds]) 
+                    #self.de.bij.inverse_log_det_jacobian(x[in_bounds])
+
                     trials += batch_size
                 else:
                     n_accept = n_todo
@@ -232,19 +234,21 @@ class calculate(object):
                     gs[sample_size - n_todo :] = g[in_bounds][:n_accept]
                     jac[
                         sample_size - n_todo :
-                    ] = self.de.bij.inverse_log_det_jacobian(
-                        x[in_bounds][:n_accept]
-                    )
+                    ] = self.prior_de.logpdf(x[in_bounds]) 
+                    # self.de.bij.inverse_log_det_jacobian(
+                    #     x[in_bounds][:n_accept]
+                    # )
                     last_index = in_bounds[-1]
                     trials += last_index + 1
                 n_todo -= n_accept
                 pbar.update(n_accept)
 
-            # weights = np.exp(fs + jac - gs)
-            weights = np.exp(fs - gs)
+            weights = np.exp(fs + jac - gs)
+            # weights = np.exp(fs - gs)
             eff = np.sum(weights)**2 / np.sum(weights**2) / sample_size
 
             integral = sample_size / trials * weights.mean()
+            log_integral = logsumexp(fs + jac - gs) - np.log(trials)
             stderr = np.sqrt(
                 (np.sum(weights**2) / trials - integral**2) / (trials - 1)
             )
@@ -256,6 +260,7 @@ class calculate(object):
             "efficiency": eff,
             "trials": trials,
             "integral": integral,
+            "log_integral": log_integral,
             "stderr": stderr,
         }
         return stats
