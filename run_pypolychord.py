@@ -1,7 +1,7 @@
 from numpy import pi, log
 import pypolychord
 from pypolychord.settings import PolyChordSettings
-from pypolychord.priors import UniformPrior,GaussianPrior
+from pypolychord.priors import UniformPrior, GaussianPrior
 
 try:
     from mpi4py import MPI
@@ -13,9 +13,9 @@ except ImportError:
 # | width sigma=0.1, centered on the 0 with one derived parameter.
 # | The derived parameter is the squared radius
 
-nDims = 4
+nDims = 5
 nDerived = 0
-sigma = 1.0
+sigma = 0.1
 
 
 def likelihood(theta):
@@ -49,10 +49,12 @@ def dumper(live, dead, logweights, logZ, logZerr):
 
 settings = PolyChordSettings(nDims, nDerived)
 settings.file_root = "gaussian"
-settings.nlive = 1000
-settings.nprior=5000
+settings.nlive = 200
+settings.num_repeats = 5 * nDims
+settings.nprior = 1000
 settings.do_clustering = True
 settings.read_resume = False
+# settings.boost_posterior = settings.num_repeats
 
 # | Run PolyChord
 

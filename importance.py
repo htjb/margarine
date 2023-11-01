@@ -1,8 +1,8 @@
 import numpy as np
 
-nDims = 4
+nDims = 5
 nDerived = 0
-sigma = 1.0
+sigma = 0.1
 
 
 def likelihood(theta):
@@ -20,26 +20,35 @@ import anesthetic as ns
 from pypolychord.output import PolyChordOutput
 
 from scipy.stats import multivariate_normal
-prior=multivariate_normal(np.ones(nDims), np.eye(nDims))
-pc_out=PolyChordOutput("chains", "gaussian")
+
+prior = multivariate_normal(np.ones(nDims), np.eye(nDims))
+pc_out = PolyChordOutput("chains", "gaussian")
 chains = ns.read_chains("chains/gaussian", columns=np.arange(nDims))
-Zs=chains.logZ(100)
+Zs = chains.logZ(100)
 from margarine.maf import MAF
 from margarine.marginal_stats import calculate
 
 flow = MAF.load("maf.pkl")
 
-calc = calculate(flow,prior_de=prior)
+calc = calculate(flow, prior_de=prior)
 
-stats = calc.integrate(likelihood,sample_size=100000)
+stats = calc.integrate(likelihood, prior.logpdf, sample_size=100000)
 
-print(f"IS integral: {stats['integral'] :.8f} +/- {stats['stderr'] :.8f}")
+# convert the logstderr to anesthetic style
+from scipy.special import logsumexp
+
+err = np.abs(
+    stats["log_integral"]
+    - logsumexp((stats["log_integral"], stats["log_stderr"]))
+)
+
+print(f"IS integral: {stats['log_integral'] :.3f} +/- {err :.3f}")
 print(f"IS efficiency: {stats['efficiency'] :.3f}")
-print(f"IS log int: {stats['log_integral'] :.3}")
 
 
-print(f"NS integral: {np.exp(Zs).mean():.8f} +/- {np.exp(Zs).std() :.8f}")
+
+print(f"NS integral: {Zs.mean():.3f} +/- {Zs.std() :.3f}")
 print(f"NS efficiency: {pc_out.nequals/pc_out.nlike :.3f}")
-print(f"NS log int: {Zs.mean() :.3}")
+
 
 print("Done")

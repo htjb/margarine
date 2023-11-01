@@ -187,23 +187,37 @@ class calculate(object):
 
         return results
 
-    def integrate(self, loglikelihood, batch_size=1000, sample_size=10000):
+    def integrate(
+        self, loglikelihood, prior, batch_size=1000, sample_size=10000
+    ):
         """
         Importance sampling integration of a likelihood function
-        """
-        xs = np.empty((sample_size, self.de.theta.numpy().shape[-1]))
-        ys = np.empty(sample_size)
 
-        n_todo = sample_size
-        trials = 0
-        xs = np.empty((sample_size, self.de.theta.numpy().shape[-1]))
-        # ps = np.empty((sample_size, target.ndim))
+        args:
+            loglikelihood: **function**
+                | A function that takes a numpy array of samples
+                    and returns the loglikelihood of each sample.
+            prior: **function**
+                | A function that takes a numpy array of samples
+                    and returns the logprior pdf of each sample.
+            batch_size: **int**
+                | The number of samples to draw at each iteration.
+            sample_size: **int**
+                | The number of samples to draw in total.
+
+        returns:
+        stats: **dict**
+            | Dictionary containing useful statistics
+
+        """
+        xs = np.empty((sample_size, self.de.theta.shape[-1]))
         fs = np.empty(sample_size)
         gs = np.empty(sample_size)
-        jac = np.empty(sample_size)
+        pis = np.empty(sample_size)
 
         n_todo = sample_size
         trials = 0
+
         with tqdm(total=sample_size) as pbar:
             while n_todo > 0:
                 x = self.de.sample(batch_size).numpy()
@@ -221,37 +235,34 @@ class calculate(object):
                     gs[
                         sample_size - n_todo : sample_size - n_todo + n_accept
                     ] = g[in_bounds]
-                    jac[
+                    pis[
                         sample_size - n_todo : sample_size - n_todo + n_accept
-                    ] = self.prior_de.logpdf(x[in_bounds]) 
-                    #self.de.bij.inverse_log_det_jacobian(x[in_bounds])
-
+                    ] = prior(x[in_bounds])
                     trials += batch_size
                 else:
                     n_accept = n_todo
                     xs[sample_size - n_todo :] = x[in_bounds][:n_accept]
                     fs[sample_size - n_todo :] = f[in_bounds][:n_accept]
                     gs[sample_size - n_todo :] = g[in_bounds][:n_accept]
-                    jac[
-                        sample_size - n_todo :
-                    ] = self.prior_de.logpdf(x[in_bounds]) 
-                    # self.de.bij.inverse_log_det_jacobian(
-                    #     x[in_bounds][:n_accept]
-                    # )
+                    pis[sample_size - n_todo :] = prior(x[in_bounds])[
+                        :n_accept
+                    ]
                     last_index = in_bounds[-1]
                     trials += last_index + 1
                 n_todo -= n_accept
                 pbar.update(n_accept)
 
-            weights = np.exp(fs + jac - gs)
-            # weights = np.exp(fs - gs)
-            eff = np.sum(weights)**2 / np.sum(weights**2) / sample_size
+            weights = np.exp(fs + pis - gs)
 
+            eff = np.sum(weights) ** 2 / np.sum(weights**2) / sample_size
             integral = sample_size / trials * weights.mean()
-            log_integral = logsumexp(fs + jac - gs) - np.log(trials)
+            log_integral = logsumexp(fs + pis - gs) - np.log(trials)
+            #TODO this is the standard error function, we should just work logstderr directly
             stderr = np.sqrt(
                 (np.sum(weights**2) / trials - integral**2) / (trials - 1)
             )
+            log_stderr=np.log(stderr)
+             
 
         stats = {
             "x": xs,
@@ -259,8 +270,7 @@ class calculate(object):
             "weights": weights,
             "efficiency": eff,
             "trials": trials,
-            "integral": integral,
             "log_integral": log_integral,
-            "stderr": stderr,
+            "log_stderr": log_stderr,
         }
         return stats
