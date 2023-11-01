@@ -8,17 +8,30 @@ from margarine.clustered import clusterMAF
 from numpy.testing import assert_equal, assert_allclose
 from scipy.stats import ks_2samp
 
+
 def likelihood(parameters):
-        y = np.array([0, 6])
-        loglikelihood = (-0.5*np.log(2*np.pi*(1**2))-0.5 \
-            *((y - parameters) / 1)**2).sum(axis=1)
-        return loglikelihood
+    y = np.array([0, 6])
+    loglikelihood = (
+        -0.5 * np.log(2 * np.pi * (1**2)) - 0.5 * ((y - parameters) / 1) ** 2
+    ).sum(axis=-1)
+    return loglikelihood
+
+
+def prior(parameters):
+    y = np.array([6, 0])
+    density = (
+        -0.5 * np.log(2 * np.pi * (1**2)) - 0.5 * ((y - parameters) / 1) ** 2
+    ).sum(axis=-1)
+    return density
+
 
 def D_KL(logL, weights):
     return -np.average(logL, weights=weights)
 
+
 def d_g(logL, weights):
-    return 2*np.cov(logL, aweights=weights)
+    return 2 * np.cov(logL, aweights=weights)
+
 
 ndims = 2
 nsamples = 2500
@@ -35,14 +48,14 @@ samples_kl = D_KL(logL, weights)
 samples_d = d_g(logL, weights)
 names = [i for i in range(theta.shape[-1])]
 
-def test_maf():
 
+def test_maf():
     def check_stats(i):
-        if i ==0:
+        if i == 0:
             value = samples_kl
         else:
             value = samples_d
-        assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
+        assert_allclose(stats["Value"][i], value, rtol=1, atol=1)
 
     bij = MAF(theta, weights=weights)
     bij.train(10000, early_stop=True)
@@ -53,18 +66,21 @@ def test_maf():
     equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = bij.sample(len(equal_weight_theta))
 
-    res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
-           for i in range(equal_weight_theta.shape[-1])]
+    res = [
+        ks_2samp(equal_weight_theta[:, i], x[:, i])
+        for i in range(equal_weight_theta.shape[-1])
+    ]
     p_values = [res[i].pvalue for i in range(len(res))]
     for i in range(len(p_values)):
-        assert(round(p_values[i], 2) >0.05)
+        assert round(p_values[i], 2) > 0.05
 
     estL = bij.log_like(equal_weight_theta.astype(np.float32), 0.0)
     check_like = 0
     for i in range(len(logL)):
         if np.isclose(np.exp(logL[i]), np.exp(estL[i]), rtol=1, atol=1):
             check_like += 1
-    assert((len(logL)-check_like)/len(logL) <= 0.1)
+    assert (len(logL) - check_like) / len(logL) <= 0.1
+
 
 def test_maf_kwargs():
 
@@ -124,7 +140,7 @@ def test_kde():
     equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = kde.sample(len(equal_weight_theta))
 
-    res = [ks_2samp(equal_weight_theta[:, i], x[:, i]) 
+    res = [ks_2samp(equal_weight_theta[:, i], x[:, i])
            for i in range(equal_weight_theta.shape[-1])]
     p_values = [res[i].pvalue for i in range(len(res))]
     for i in range(len(p_values)):
@@ -155,6 +171,32 @@ def test_anesthetic():
     assert_equal(kde.parameters, names)
     assert_equal(maf.parameters, names)
 
-    # not providing parametes here but deriving them from the 
+    # not providing parametes here but deriving them from the
     # anesthetic object columns
     assert(np.all(cmaf.parameters == np.array(names)))
+
+
+class TestImportance:
+    @pytest.fixture
+    def maf(self):
+        return MAF(mcmc_samples, parameters=names)
+
+    @pytest.fixture
+    def calc(self, maf):
+        return calculate(maf)
+
+    # @pytest.mark.parametrize(("prior", [prior, maf.log_prob]))
+    def test_integrate_prior(self, calc):
+        calc.integrate(likelihood, prior, sample_size=1000)
+    
+    def test_integrate_maf(self, calc, maf):
+        calc.integrate(likelihood, maf.log_prob, sample_size=1000)
+
+    def test_integrate_unphysical(self, calc):
+        with pytest.raises(ValueError):
+            calc.integrate(likelihood, prior, sample_size=1000, logzero=10)
+
+    @pytest.mark.parametrize("ss", [10, 100])
+    @pytest.mark.parametrize("bs", [10, 100])
+    def test_integrate_batching(self, calc, ss, bs):
+        calc.integrate(likelihood, prior, sample_size=ss, batch_size=bs)

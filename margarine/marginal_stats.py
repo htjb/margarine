@@ -188,7 +188,12 @@ class calculate(object):
         return results
 
     def integrate(
-        self, loglikelihood, prior, batch_size=1000, sample_size=10000
+        self,
+        loglikelihood,
+        prior,
+        batch_size=1000,
+        sample_size=10000,
+        logzero=-1e30,
     ):
         """
         Importance sampling integration of a likelihood function
@@ -204,6 +209,8 @@ class calculate(object):
                 | The number of samples to draw at each iteration.
             sample_size: **int**
                 | The number of samples to draw in total.
+            logzero: **float**
+                  The definition of zero for the loglikelihood function.
 
         returns:
         stats: **dict**
@@ -223,7 +230,7 @@ class calculate(object):
                 x = self.de.sample(batch_size).numpy()
                 f = np.array(list(map(loglikelihood, x)))
                 g = self.de.log_prob(x).numpy()
-                in_bounds = np.logical_and(f != 0, ~np.isnan(g))
+                in_bounds = np.logical_and(f >= logzero, g >= logzero)
                 n_accept = x[in_bounds].shape[0]
                 if n_accept <= n_todo:
                     xs[
@@ -251,18 +258,21 @@ class calculate(object):
                     trials += last_index + 1
                 n_todo -= n_accept
                 pbar.update(n_accept)
+                if trials > 10 * sample_size:
+                    raise ValueError(
+                        "Too many unsuccessful trials, this typically indicates mismatch between flow and likelihood"
+                    )
 
             weights = np.exp(fs + pis - gs)
 
             eff = np.sum(weights) ** 2 / np.sum(weights**2) / sample_size
             integral = sample_size / trials * weights.mean()
             log_integral = logsumexp(fs + pis - gs) - np.log(trials)
-            #TODO this is the standard error function, we should just work logstderr directly
+            # TODO this is the standard error function, we should just work logstderr directly
             stderr = np.sqrt(
                 (np.sum(weights**2) / trials - integral**2) / (trials - 1)
             )
-            log_stderr=np.log(stderr)
-             
+            log_stderr = np.log(stderr)
 
         stats = {
             "x": xs,
