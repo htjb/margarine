@@ -190,7 +190,7 @@ class calculate(object):
     def integrate(
         self,
         loglikelihood,
-        prior,
+        prior_pdf,
         batch_size=1000,
         sample_size=10000,
         logzero=-1e30,
@@ -202,9 +202,9 @@ class calculate(object):
             loglikelihood: **function**
                 | A function that takes a numpy array of samples
                     and returns the loglikelihood of each sample.
-            prior: **function**
+            prior_pdf: **function**
                 | A function that takes a numpy array of samples
-                    and returns the logprior pdf of each sample.
+                    and returns the prior logpdf of each sample.
             batch_size: **int**
                 | The number of samples to draw at each iteration.
             sample_size: **int**
@@ -244,14 +244,14 @@ class calculate(object):
                     ] = g[in_bounds]
                     pis[
                         sample_size - n_todo : sample_size - n_todo + n_accept
-                    ] = prior(x[in_bounds])
+                    ] = prior_pdf(x[in_bounds])
                     trials += batch_size
                 else:
                     n_accept = n_todo
                     xs[sample_size - n_todo :] = x[in_bounds][:n_accept]
                     fs[sample_size - n_todo :] = f[in_bounds][:n_accept]
                     gs[sample_size - n_todo :] = g[in_bounds][:n_accept]
-                    pis[sample_size - n_todo :] = prior(x[in_bounds])[
+                    pis[sample_size - n_todo :] = prior_pdf(x[in_bounds])[
                         :n_accept
                     ]
                     last_index = in_bounds[-1]
