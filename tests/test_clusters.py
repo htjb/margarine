@@ -41,15 +41,18 @@ def test_maf_clustering():
             assert_equal(bij.flow[f].mades[i].get_weights(),
                 loaded_bijector.flow[f].mades[i].get_weights())
 
-    def check_stats(i):
-        if i ==0:
+    def check_stats(label):
+        if label == "KL Divergence":
             value = samples_kl
+            assert_allclose(stats[label], value, rtol=1, atol=1)
         else:
             value = samples_d
-        assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
+            assert_allclose(stats[label], value, rtol=1, atol=1)
+
+    stats_label = ["KL Divergence", "BMD"]
 
     stats = calculate(bij).statistics()
-    [check_stats(i) for i in range(2)]
+    [check_stats(l) for l in stats_label]
 
     equal_weight_theta = samples.compress(100)[names].values
     x = bij.sample(len(equal_weight_theta))

@@ -50,18 +50,21 @@ names = [i for i in range(theta.shape[-1])]
 
 
 def test_maf():
-    def check_stats(i):
-        if i == 0:
+    def check_stats(label):
+        if label == "KL Divergence":
             value = samples_kl
+            assert_allclose(stats[label], value, rtol=1, atol=1)
         else:
             value = samples_d
-        assert_allclose(stats["Value"][i], value, rtol=1, atol=1)
+            assert_allclose(stats[label], value, rtol=1, atol=1)
 
     bij = MAF(theta, weights=weights)
     bij.train(10000, early_stop=True)
 
+    stats_label = ["KL Divergence", "BMD"]
+
     stats = calculate(bij).statistics()
-    [check_stats(i) for i in range(2)]
+    [check_stats(l) for l in stats_label]
 
     equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = bij.sample(len(equal_weight_theta))
@@ -124,18 +127,21 @@ def test_maf_save_load():
 
 def test_kde():
 
-    def check_stats(i):
-        if i ==0:
+    def check_stats(label):
+        if label == "KL Divergence":
             value = samples_kl
+            assert_allclose(stats[label], value, rtol=1, atol=1)
         else:
             value = samples_d
-        assert_allclose(stats['Value'][i], value, rtol=1, atol=1)
+            assert_allclose(stats[label], value, rtol=1, atol=1)
 
     kde = KDE(theta, weights=weights)
     kde.generate_kde()
 
+    stats_label = ["KL Divergence", "BMD"]
+
     stats = calculate(kde).statistics()
-    [check_stats(i) for i in range(2)]
+    [check_stats(l) for l in stats_label]
 
     equal_weight_theta = mcmc_samples.compress(50)[names].values
     x = kde.sample(len(equal_weight_theta))
