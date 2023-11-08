@@ -175,15 +175,14 @@ class calculate(object):
         kl_array = np.sort([midkl, dekl, thetakl])
         bd_array = np.sort([midbd, debd, thetabd])
 
-        results_dict = {
-            "Statistic": ["KL Divergence", "BMD"],
-            "Value": [kl_array[1], bd_array[1]],
-            "Lower Bound": [kl_array[0], bd_array[0]],
-            "Upper Bound": [kl_array[2], bd_array[2]],
+        results = {
+            "KL Divergence": kl_array[1],
+            "KL Lower Bound": kl_array[0],
+            "KL Upper Bound": kl_array[2],
+            "BMD": bd_array[1],
+            "BMD Lower Bound": bd_array[0],
+            "BMD Upper Bound": bd_array[2],
         }
-
-        results = pd.DataFrame(results_dict)
-        results.set_index("Statistic", inplace=True)
 
         return results
 
