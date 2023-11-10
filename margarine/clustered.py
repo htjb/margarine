@@ -361,8 +361,8 @@ class clusterMAF():
 
         return loglike
 
-    @tf.function(jit_compile=True)
-    def __call__(self, u):
+    #@tf.function(jit_compile=True)
+    def __call__(self, u, seed=1420):
 
         r"""
 
@@ -373,6 +373,9 @@ class clusterMAF():
 
             u: **numpy array**
                 | Samples on the uniform hypercube.
+            
+            seed: **int / default=1420**
+                | Set the seed for the cluster choice.
 
         """
 
@@ -381,8 +384,11 @@ class clusterMAF():
         flow_weights = np.array(flow_weights)
         probabilities = flow_weights / np.sum(flow_weights)
         options = np.arange(0, self.cluster_number)
+
+        np.random.seed(int(round(u[0][0]*1000)))
         choice = np.random.choice(options,
                                   p=probabilities, size=len(u))
+        np.random.seed(None)
 
         totals = [len(choice[choice == options[i]])
                   for i in range(len(options))]
