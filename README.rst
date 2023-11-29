@@ -76,26 +76,28 @@ If you use the code for academic purposes we request that you cite the following
 `paper <https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract>`__ and
 the `MaxEnt22 proceedings <https://ui.adsabs.harvard.edu/search/p_=0&q=author%3A%22Bevins%2C%20H.%20T.%20J.%22&sort=date%20desc%2C%20bibcode%20desc>`__
 If you use the clustering implementation please cite the following
-`prepring <https://arxiv.org/abs/2305.02930>`__.
+`preprint <https://arxiv.org/abs/2305.02930>`__.
 You can use the following bibtex
 
 .. code:: bibtex
 
-    @ARTICLE{2022arXiv220512841B,
-         author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
-          title = "{Removing the fat from your posterior samples with margarine}",
-        journal = {arXiv e-prints},
-       keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
-           year = 2022,
-          month = may,
-            eid = {arXiv:2205.12841},
-          pages = {arXiv:2205.12841},
-    archivePrefix = {arXiv},
-         eprint = {2205.12841},
-    primaryClass = {astro-ph.IM},
-         adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B},
+  @ARTICLE{2023MNRAS.526.4613B,
+        author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
+          title = "{Marginal post-processing of Bayesian inference products with normalizing flows and kernel density estimators}",
+        journal = {\mnras},
+      keywords = {methods: data analysis, methods: statistical, cosmic background radiation, dark ages, reionization, first stars, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Computer Science - Machine Learning},
+          year = 2023,
+          month = dec,
+        volume = {526},
+        number = {3},
+          pages = {4613-4626},
+            doi = {10.1093/mnras/stad2997},
+  archivePrefix = {arXiv},
+        eprint = {2205.12841},
+  primaryClass = {astro-ph.IM},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/2023MNRAS.526.4613B},
         adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-    }
+  }
 
 and
 
