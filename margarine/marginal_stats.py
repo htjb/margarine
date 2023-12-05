@@ -125,7 +125,7 @@ class calculate(object):
 
             theta_base_logprob = theta_base_logprob[args]
         elif self.prior_de is not None:
-            self.base = self.prior_de.copy()
+            self.base = self.prior_de
             de_prior_samples = self.base.sample(len(self.theta))
             theta_base_logprob = self.base.log_prob(de_prior_samples)
             base_logprob = self.base.log_prob(self.theta)
@@ -141,7 +141,7 @@ class calculate(object):
 
             base_args = np.argsort(theta_base_logprob)
             theta_base_logprob = theta_base_logprob[base_args]
-            prior_weights = np.cumsum(self.prior_de.sample_weights[base_args])
+            prior_weights = np.cumsum(self.prior_de.sample_weights.numpy()[base_args])
 
             prior_weights = (
                 np.cumsum(self.theta_weights).max()
