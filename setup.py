@@ -16,7 +16,12 @@ setup(
     author_email='htjb2@cam.ac.uk',
     url='https://github.com/htjb/margarine',
     packages=find_packages(),
-    install_requires=['numpy', 'tensorflow', 'tensorflow_probability', 'scipy', 'pandas'],
+    install_requires=['numpy',
+                      'tensorflow; sys_platform != "darwin"',
+                      'tensorflow-macos; sys_platform == "darwin"',
+                      'tensorflow_probability',
+                      'anesthetic', 'scipy', 'pandas',
+                      'scikit-learn', 'tqdm', 'torch'],
     license='MIT',
     extras_require={
           'docs': ['sphinx', 'sphinx_rtd_theme', 'numpydoc'],
