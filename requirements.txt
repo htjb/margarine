@@ -7,3 +7,4 @@ scipy
 pandas
 scikit-learn
 tqdm
+torch
