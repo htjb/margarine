@@ -21,12 +21,12 @@ setup(
                       'tensorflow-macos; sys_platform == "darwin"',
                       'tensorflow_probability',
                       'anesthetic', 'scipy', 'pandas',
-                      'scikit-learn', 'tqdm', 'torch'],
+                      'scikit-learn', 'tqdm'],
     license='MIT',
     extras_require={
           'docs': ['sphinx', 'sphinx_rtd_theme', 'numpydoc'],
           },
-    tests_require=['pytest'],
+    tests_require=['pytest', 'torch'],
     classifiers=[
                'Intended Audience :: Science/Research',
                'Natural Language :: English',
