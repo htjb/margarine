@@ -45,6 +45,7 @@ class KDE(object):
             | A list of the relevant parameters to train on. Only needed
                 if theta is an anestehetic samples object. If not provided,
                 all parameters will be used.
+
     **Attributes:**
 
     A list of some key attributes accessible to the user.
