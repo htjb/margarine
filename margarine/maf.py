@@ -48,6 +48,11 @@ class MAF:
                 50 nodes each and each network in the chain has the same hidden
                 layer structure.
 
+        activation_func: **string / default = 'tanh'**
+            | The choice of activation function. It must be an activation
+            function keyword recognisable by TensorFlow. The default is
+            'tanh', the hyperbolic tangent activation function.
+
         theta_max: **numpy array**
             | The true upper limits of the priors used to generate the samples
                 that we want the MAF to learn.

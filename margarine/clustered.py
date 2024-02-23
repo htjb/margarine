@@ -232,7 +232,8 @@ class clusterMAF():
                                  learning_rate=self.learning_rate,
                                  hidden_layers=self.hidden_layers,
                                  theta_min=self.theta_min,
-                                 theta_max=self.theta_max))
+                                 theta_max=self.theta_max,
+                                 activation_func=self.activation_func))
 
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
