@@ -85,6 +85,7 @@ class MAF:
         self.learning_rate = kwargs.pop('learning_rate', 1e-3)
         self.hidden_layers = kwargs.pop('hidden_layers', [50, 50])
         self.parameters = kwargs.pop('parameters', None)
+        self.activation_func = kwargs.pop('activation_func', 'tanh')
 
         # Avoids unintended side effects outside the class
         if not isinstance(theta, tf.Tensor):
@@ -176,7 +177,7 @@ class MAF:
         """Generating the masked autoregressive flow."""
 
         self.mades = [tfb.AutoregressiveNetwork(params=2,
-                      hidden_units=self.hidden_layers, activation='tanh',
+                      hidden_units=self.hidden_layers, activation=self.activation_func,
                       input_order='random')
                       for _ in range(self.number_networks)]
 
