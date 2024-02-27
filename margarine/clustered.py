@@ -49,6 +49,11 @@ class clusterMAF():
                 each neural network. The default is two hidden layers with
                 50 nodes each and each network in the chain has the same hidden
                 layer structure.
+        
+        activation_func: **string / default = 'tanh'**
+            | The choice of activation function. It must be an activation
+            function keyword recognisable by TensorFlow. The default is
+            'tanh', the hyperbolic tangent activation function.
 
         cluster_labels: **list / default = None**
             | If clustering has been performed externally to margarine you can
@@ -77,6 +82,7 @@ class clusterMAF():
         self.cluster_labels = kwargs.pop('cluster_labels', None)
         self.cluster_number = kwargs.pop('cluster_number', None)
         self.parameters = kwargs.pop('parameters', None)
+        self.activation_func = kwargs.pop('activation_func', 'tanh')
 
         # Avoid unintended side effects by copying theta
         theta = theta.copy()
@@ -232,7 +238,8 @@ class clusterMAF():
                                  learning_rate=self.learning_rate,
                                  hidden_layers=self.hidden_layers,
                                  theta_min=self.theta_min,
-                                 theta_max=self.theta_max))
+                                 theta_max=self.theta_max,
+                                 activation_func=self.activation_func))
 
     def train(self, epochs=100, early_stop=False, loss_type='sum'):
 
