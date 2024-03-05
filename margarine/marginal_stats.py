@@ -212,8 +212,8 @@ class calculate(object):
                   The definition of zero for the loglikelihood function.
 
         returns:
-        stats: **dict**
-            | Dictionary containing useful statistics
+            stats: **dict**
+                | Dictionary containing useful statistics
 
         """
         xs = np.empty((sample_size, self.de.theta.shape[-1]))
