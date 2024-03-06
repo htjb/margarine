@@ -52,8 +52,8 @@ class clusterMAF():
         
         activation_func: **string / default = 'tanh'**
             | The choice of activation function. It must be an activation
-            function keyword recognisable by TensorFlow. The default is
-            'tanh', the hyperbolic tangent activation function.
+                function keyword recognisable by TensorFlow. The default is
+                'tanh', the hyperbolic tangent activation function.
 
         cluster_labels: **list / default = None**
             | If clustering has been performed externally to margarine you can
