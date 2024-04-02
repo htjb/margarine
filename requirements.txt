@@ -1,6 +1,6 @@
 numpy
-tensorflow-macos; sys_platform == 'darwin'
-tensorflow; sys_platform != 'darwin'
+tensorflow-macos<2.14.0; sys_platform == 'darwin'
+tensorflow<2.14.0; sys_platform != 'darwin'
 tensorflow_probability
 anesthetic
 scipy
