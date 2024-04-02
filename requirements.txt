@@ -4,6 +4,5 @@ tensorflow<2.14.0; sys_platform != 'darwin'
 tensorflow_probability
 anesthetic
 scipy
-pandas
 scikit-learn
 tqdm
