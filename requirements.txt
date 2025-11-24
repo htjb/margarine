@@ -1,8 +1,0 @@
-numpy
-tensorflow
-tensorflow_probability
-tf-keras
-anesthetic
-scipy
-scikit-learn
-tqdm

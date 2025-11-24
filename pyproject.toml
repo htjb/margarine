@@ -1,0 +1,46 @@
+[project]
+name = "margarine"
+version = "1.2.8"
+description = "margarine: Posterior Sampling and Marginal Bayesian Statistics "
+readme = "README.rst"
+authors = [
+    {name = "Harry T. J. Bevins", email = "htjb2@cam.ac.uk"}]
+license = {text = "MIT"}
+url = "https://github.com/htjb/margarine"
+requires-python = ">=3.11"
+dependencies = [
+    "anesthetic>=2.10.4",
+    "numpy>=2.3.5",
+    "pandas>=2.3.3",
+    "pytest>=9.0.1",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.3",
+    "tensorflow>=2.20.0",
+    "tensorflow-probability>=0.25.0",
+    "tf-keras>=2.20.1",
+    "torch>=2.9.1",
+    "tqdm>=4.67.1",
+]
+classifiers=[
+    'Intended Audience :: Science/Research',
+    'Natural Language :: English',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python :: 3.11',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Scientific/Engineering :: Astronomy',
+    'Topic :: Scientific/Engineering :: Physics',
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select =["E", "F", "W",  # basics
+            "I",            # isort
+            "D",            # docstrings
+            "UP",           # pyupgrade (includes type modernization)
+            "ANN",          # type annotations
+            ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
