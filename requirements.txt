@@ -1,7 +1,7 @@
 numpy
-tensorflow-macos<2.14.0; sys_platform == 'darwin'
-tensorflow<2.14.0; sys_platform != 'darwin'
-tensorflow_probability<0.21.0
+tensorflow
+tensorflow_probability
+tf-keras
 anesthetic
 scipy
 scikit-learn

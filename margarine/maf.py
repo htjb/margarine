@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow import keras
 from tensorflow_probability import (bijectors as tfb, distributions as tfd)
 from margarine.processing import (_forward_transform, _inverse_transform,
                                   pure_tf_train_test_split)
@@ -160,9 +159,9 @@ class MAF:
             raise TypeError("'number_networks' must be an integer.")
         if not isinstance(self.learning_rate,
                           (int, float,
-                           keras.optimizers.schedules.LearningRateSchedule)):
+                           tf.keras.optimizers.schedules.LearningRateSchedule)):
             raise TypeError("'learning_rate', " +
-                            "must be an integer, float or keras scheduler.")
+                            "must be an integer, float or tf.keras scheduler.")
         if type(self.hidden_layers) is not list:
             raise TypeError("'hidden_layers' must be a list of integers.")
         else:
@@ -172,7 +171,7 @@ class MAF:
                         "One or more values in 'hidden_layers'" +
                         "is not an integer.")
 
-        self.optimizer = tf.keras.optimizers.legacy.Adam(
+        self.optimizer = tf.keras.optimizers.Adam(
                 learning_rate=self.learning_rate)
 
         self.gen_mades()
