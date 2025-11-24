@@ -1,31 +1,27 @@
-from tensorflow_probability import distributions as tfd
-import tensorflow as tf
+"""Processing functions for margarine package."""
+
 import random
+
+import tensorflow as tf
+from tensorflow_probability import distributions as tfd
 
 
 @tf.function(jit_compile=True)
-def _forward_transform(x, min=0, max=1):
-    r"""
+def _forward_transform(
+    x: tf.Tensor,
+    min: float | int | tf.Tensor = 0,
+    max: float | int | tf.tensor = 1,
+) -> tf.Tensor:
+    r"""Forward tranforms input samples.
 
-    Tranforms input samples. Normalise between 0 and 1 and then tranform
+    Normalise between 0 and 1 and then tranform
     onto samples of standard normal distribution (i.e. base of
     tfd.TransformedDistribution).
 
-    **parameters:**
-
-        x: **array**
-            | Samples to be normalised.
-
-        min: **array or list**
-            | Passed from the bijectors code. (mathematical
-                description of their
-                values...)
-
-        max: **array or list**
-            | Passed from the bijectors code.
-                (mathematical description of their
-                values...)
-
+    Args:
+        x: (tf.Tensor) Samples to be normalised.
+        min: (float | int | tf.Tensor) Passed from the bijectors code.
+        max: (float | int | tf.Tensor) Passed from the bijectors code.
     """
     x = tfd.Uniform(min, max).cdf(x)
     x = tfd.Normal(0, 1).quantile(x)
@@ -33,60 +29,45 @@ def _forward_transform(x, min=0, max=1):
 
 
 @tf.function(jit_compile=True)
-def _inverse_transform(x, min, max):
-    r"""
+def _inverse_transform(
+    x: tf.Tensor, min: float | int | tf.Tensor, max: float | int | tf.Tensor
+) -> tf.Tensor:
+    r"""Inverse tranforms output samples.
 
-    Tranforms output samples. Inverts the processes in
-    ``forward_transofrm``.
+    Inverts the processes in ``forward_transofrm``.
 
-    **parameters:**
-
-        x: **array**
-            | Samples to be normalised.
-
-        min: **array or list**
-            | Passed from the bijectors code.
-                (mathematical description of their
-                values...)
-
-        max: **array or list**
-            | Passed from the bijectors code.
-                (mathematical description of their
-                values...)
-
+    Args:
+        x: (tf.Tensor) Samples to be inverse normalised.
+        min: (float | int | tf.Tensor) Passed from the bijectors code.
+        max: (float | int | tf.Tensor) Passed from the bijectors code.
     """
     x = tfd.Normal(0, 1).cdf(x)
     x = tfd.Uniform(min, max).quantile(x)
     return x
 
 
-def pure_tf_train_test_split(a, b, test_size=0.2):
+def pure_tf_train_test_split(
+    a: tf.Tensor, b: tf.Tensor, test_size: float = 0.2
+) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    """Splitting data into training and testing sets.
 
-    """
-    Splitting data into training and testing sets. Function is equivalent
+    Function is equivalent
     to sklearn.model_selection.train_test_split but a and b
     are tensorflow tensors.
 
-    **parameters:**
-
-        a: **array**
-            | Samples to be split.
-
-        b: **array**
-            | Weights to be split.
-
-        test_size: **float**
-            | Fraction of data to be used for testing.
+    Args:
+        a: (tf.Tensor) First set of data to be split.
+        b: (tf.Tensor) Second set of data to be split.
+        test_size: (float) Proportion of data to be used for testing.
     """
+    idx = random.sample(range(len(a)), int(len(a) * test_size))
 
-    idx = random.sample(range(len(a)), int(len(a)*test_size))
-
-    a_train = tf.gather(a,
-                        tf.convert_to_tensor(
-                            list(set(range(len(a))) - set(idx))))
-    b_train = tf.gather(b,
-                        tf.convert_to_tensor(
-                            list(set(range(len(b))) - set(idx))))
+    a_train = tf.gather(
+        a, tf.convert_to_tensor(list(set(range(len(a))) - set(idx)))
+    )
+    b_train = tf.gather(
+        b, tf.convert_to_tensor(list(set(range(len(b))) - set(idx)))
+    )
     a_test = tf.gather(a, tf.convert_to_tensor(idx))
     b_test = tf.gather(b, tf.convert_to_tensor(idx))
 
