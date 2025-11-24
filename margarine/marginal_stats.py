@@ -30,9 +30,6 @@ class calculate:
             de (MAF | KDE | clusterMAF): A trained and
                 loaded instance of MAF,
                 clusterMAF, or KDE.
-            samples (np.ndarray): Samples generated
-                from the density estimator's
-                learned probability distribution.
             **kwargs: Additional keyword arguments.
 
         Keyword Args:
@@ -59,7 +56,7 @@ class calculate:
             >>> samples = maf(u, prior_limits)
             >>>
             >>> # Initialize the class
-            >>> stats = ClassName(maf, samples)
+            >>> stats = calculate(maf, samples)
         """
         self.de = de
 
