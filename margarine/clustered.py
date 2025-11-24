@@ -1,6 +1,5 @@
 from scipy.special import logsumexp
 from sklearn.cluster import KMeans
-from tensorflow import keras
 from margarine.maf import MAF
 import anesthetic
 import numpy as np
@@ -126,9 +125,9 @@ class clusterMAF():
             raise TypeError("'number_networks' must be an integer.")
         if not isinstance(self.learning_rate,
                           (int, float,
-                           keras.optimizers.schedules.LearningRateSchedule)):
+                           tf.keras.optimizers.schedules.LearningRateSchedule)):
             raise TypeError("'learning_rate', " +
-                            "must be an integer, float or keras scheduler.")
+                            "must be an integer, float or tf.keras scheduler.")
         if type(self.hidden_layers) is not list:
             raise TypeError("'hidden_layers' must be a list of integers.")
         else:
