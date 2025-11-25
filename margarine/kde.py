@@ -283,7 +283,7 @@ class KDE:
                 )
             )
         else:
-            self.prior = margarine.kde.KDE(prior, prior_weights)
+            self.prior = margarine.kde.KDE(prior, weights=prior_weights)
             self.prior.generate_kde()
             prior_logprob_func = self.prior.log_prob
             prior_logprob = prior_logprob_func(params)
