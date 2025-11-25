@@ -291,7 +291,8 @@ class clusterMAF:
         Keyword Args:
             epochs (int, optional): The number of iterations to
                 train the neural networks for. Defaults to 100.
-            patience (int, optional): The number of epochs with no improvement
+            patience (int | None, optional): The number of epochs
+                with no improvement
                 on the test loss before early stopping is triggered.
                 Defaults to 2% of epochs.
             early_stop (bool, optional): Whether to implement
