@@ -44,7 +44,7 @@ names = [i for i in range(theta.shape[-1])]
 def test_maf_clustering() -> None:
     """Test clustered MAF marginal statistics calculation."""
     bij = clusterMAF(theta, weights=weights)
-    bij.train(10000, early_stop=True, patience=20)
+    bij.train(10000, early_stop=True, patience=400)
     file = "saved_maf_cluster.pkl"
     bij.save(file)
 
