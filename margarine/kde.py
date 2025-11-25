@@ -6,6 +6,7 @@ import warnings
 import anesthetic
 import numpy as np
 import tensorflow as tf
+from anesthetic.samples import Samples
 from scipy.optimize import root_scalar
 from scipy.stats import gaussian_kde, norm
 from tensorflow_probability import bijectors as tfb
@@ -19,9 +20,7 @@ class KDE:
 
     def __init__(
         self,
-        theta: np.array
-        | anesthetic.samples.NestedSample
-        | anesthetic.samples.MCMCSamples,
+        theta: np.ndarray | Samples,
         **kwargs: dict,
     ) -> None:
         r"""Kernel Density Estimation (KDE) class for weighted samples.
@@ -32,7 +31,7 @@ class KDE:
         KDE distribution, and provides methods to save and load KDE models.
 
         Args:
-            theta (np.ndarray | NestedSamples | MCMCSamples):
+            theta (np.ndarray | Samples):
                 The samples from the probability
                 distribution to learn.
             **kwargs: Additional keyword arguments.
@@ -125,15 +124,15 @@ class KDE:
 
         return self.kde
 
-    def __call__(self, u: np.array) -> np.array:
+    def __call__(self, u: np.ndarray) -> np.ndarray:
         r"""Transform samples from the unit hypercube to samples on the KDE.
 
         Args:
-            u (np.array): Samples from the unit hypercube
+            u (np.ndarray): Samples from the unit hypercube
                 to be transformed.
 
         Returns:
-            np.array: The transformed samples.
+            np.ndarray: The transformed samples.
         """
         # generate useful parameters for __call__ function to transform
         # hypercube into samples on the KDE.
@@ -192,7 +191,7 @@ class KDE:
             tf.convert_to_tensor(self.theta_max, dtype=tf.float32),
         )
 
-    def log_prob(self, params: np.array) -> np.array:
+    def log_prob(self, params: np.ndarray) -> np.ndarray:
         """Caluclate the log-probability for a given set of parameters.
 
         While the density estimator has its own built in log probability
@@ -201,11 +200,11 @@ class KDE:
         correction is implemented here.
 
         Args:
-            params (np.array): The set of samples for which to calculate
+            params (np.ndarray): The set of samples for which to calculate
                 the log probability.
 
         Returns:
-            np.array: The log-probability for the given samples.
+            np.ndarray: The log-probability for the given samples.
         """
         mins = self.theta_min.astype(np.float32)
         maxs = self.theta_max.astype(np.float32)
@@ -224,7 +223,7 @@ class KDE:
             ]
         )
 
-        def norm_jac(y: np.array) -> np.array:
+        def norm_jac(y: np.ndarray) -> np.ndarray:
             """Calculate the normalising jacobian for the transformation."""
             return transform_chain.inverse_log_det_jacobian(
                 y, event_ndims=0
@@ -247,7 +246,7 @@ class KDE:
         params: np.ndarray,
         logevidence: float,
         prior: np.ndarray | None = None,
-        prior_weights: np.array | None = None,
+        prior_weights: np.ndarray | None = None,
     ) -> np.ndarray:
         r"""Return the log-likelihood for a given set of parameters.
 
@@ -267,7 +266,7 @@ class KDE:
                 combine likelihoods from different experiments/data sets.
                 In this case samples and prior samples should be
                 reweighted prior to any training.
-            prior_weights (np.array | None): The weights associated
+            prior_weights (np.ndarray | None): The weights associated
                 with the prior samples.
 
         Returns:

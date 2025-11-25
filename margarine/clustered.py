@@ -7,6 +7,7 @@ import anesthetic
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from anesthetic.samples import Samples
 from scipy.special import logsumexp
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -21,10 +22,7 @@ class clusterMAF:
 
     def __init__(
         self,
-        theta: tf.Tensor
-        | np.ndarray
-        | anesthetic.samples.NestedSamples
-        | anesthetic.samples.MCMCSamples,
+        theta: tf.Tensor | np.ndarray | Samples,
         **kwargs: dict,
     ) -> None:
         r"""Piecewise normalizing flow built from masked autoregressive flows.
@@ -38,7 +36,7 @@ class clusterMAF:
         same way.
 
         Args:
-            theta (tf.Tensor | np.ndarray | NestedSamples | MCMCSamples):
+            theta (tf.Tensor | np.ndarray | Samples):
                 The samples from the probability distribution to learn.
             **kwargs: Additional keyword arguments.
 
@@ -318,7 +316,7 @@ class clusterMAF:
         correction and the sum are implemented here.
 
         Args:
-            params (tf.Tensor | np.array): The set of samples for which to
+            params (tf.Tensor | np.ndarray): The set of samples for which to
                 calculate the log probability.
 
         Returns:

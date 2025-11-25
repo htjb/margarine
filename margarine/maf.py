@@ -7,6 +7,7 @@ import anesthetic
 import numpy as np
 import tensorflow as tf
 import tqdm
+from anesthetic.samples import Samples
 from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
@@ -26,16 +27,13 @@ class MAF:
 
     def __init__(
         self,
-        theta: tf.Tensor
-        | np.array
-        | anesthetic.samples.NestedSamples
-        | anesthetic.samples.MCMCSamples,
+        theta: tf.Tensor | np.ndarray | Samples,
         **kwargs: dict,
     ) -> None:
         """Initialize the MAF class.
 
         Args:
-            theta (tf.Tensor | np.array | NestedSamples |MCMCSamples): The
+            theta (tf.Tensor | np.ndarray | Samples): The
                 samples from the
                 probability distribution that the MAF should learn.
                 Can be a numpy array or an
@@ -390,11 +388,11 @@ class MAF:
         return loss
 
     @tf.function(jit_compile=True)
-    def __call__(self, u: tf.Tensor | np.array) -> tf.Tensor:
+    def __call__(self, u: tf.Tensor | np.ndarray) -> tf.Tensor:
         r"""Transform samples from the unit hypercube to samples on the MAF.
 
         Args:
-            u (tf.Tensor | np.array): Samples from the unit hypercube
+            u (tf.Tensor | np.ndarray): Samples from the unit hypercube
                 to be transformed.
 
         Returns:
@@ -427,7 +425,7 @@ class MAF:
         return self(u)
 
     @tf.function(jit_compile=True, reduce_retracing=True)
-    def log_prob(self, params: tf.Tensor | np.array) -> tf.Tensor:
+    def log_prob(self, params: tf.Tensor | np.ndarray) -> tf.Tensor:
         """Caluclate the log-probability for a given set of parameters.
 
         While the density estimator has its own built in log probability
@@ -436,7 +434,7 @@ class MAF:
         correction is implemented here.
 
         Args:
-            params (tf.Tensor | np.array): The set of samples for which to
+            params (tf.Tensor | np.ndarray): The set of samples for which to
                 calculate the log probability.
 
         Returns:
