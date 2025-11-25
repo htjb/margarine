@@ -1,12 +1,15 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "margarine"
-version = "1.2.8"
+version = "1.4.0"
 description = "margarine: Posterior Sampling and Marginal Bayesian Statistics "
 readme = "README.rst"
 authors = [
     {name = "Harry T. J. Bevins", email = "htjb2@cam.ac.uk"}]
 license = {text = "MIT"}
-url = "https://github.com/htjb/margarine"
 requires-python = ">=3.11"
 dependencies = [
     "anesthetic>=2.10.4",
@@ -24,12 +27,15 @@ dependencies = [
 classifiers=[
     'Intended Audience :: Science/Research',
     'Natural Language :: English',
-    'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3.11',
     'Topic :: Scientific/Engineering',
     'Topic :: Scientific/Engineering :: Astronomy',
     'Topic :: Scientific/Engineering :: Physics',
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["margarine*"]
 
 [tool.ruff]
 line-length = 79
