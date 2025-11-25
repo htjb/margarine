@@ -1,9 +1,8 @@
 numpy
-tensorflow-macos; sys_platform == 'darwin'
-tensorflow; sys_platform != 'darwin'
+tensorflow
 tensorflow_probability
+tf-keras
 anesthetic
 scipy
-pandas
 scikit-learn
 tqdm
