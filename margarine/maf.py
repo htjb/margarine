@@ -248,10 +248,13 @@ class MAF:
             raise TypeError("'epochs' is not an integer.")
         if type(early_stop) is not bool:
             raise TypeError("'early_stop' must be a boolean.")
+        if patience is not None and type(patience) is not int:
+            raise TypeError("'patience' must be an integer or None.")
 
         self.epochs = epochs
         self.early_stop = early_stop
         self.loss_type = loss_type
+
         if patience is None:
             self.patience = round((self.epochs / 100) * 2)
         else:
