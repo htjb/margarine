@@ -145,7 +145,3 @@ def test_anesthetic() -> None:
     # not providing parametes here but deriving them from the
     # anesthetic object columns
     assert np.all(cmaf.parameters == np.array(names))
-
-
-test_maf()
-test_kde()
