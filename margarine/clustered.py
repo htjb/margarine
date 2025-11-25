@@ -145,7 +145,7 @@ class clusterMAF:
             for i in range(len(self.hidden_layers)):
                 if type(self.hidden_layers[i]) is not int:
                     raise TypeError(
-                        "One or more valus in 'hidden_layers'"
+                        "One or more values in 'hidden_layers'"
                         + "is not an integer."
                     )
 
