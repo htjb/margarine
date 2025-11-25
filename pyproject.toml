@@ -12,17 +12,17 @@ authors = [
 license = {text = "MIT"}
 requires-python = ">=3.9"
 dependencies = [
-    "anesthetic>=2.10.4",
-    "numpy>=2.3.5",
-    "pandas>=2.3.3",
-    "pytest>=9.0.1",
-    "scikit-learn>=1.7.2",
-    "scipy>=1.16.3",
-    "tensorflow>=2.20.0",
-    "tensorflow-probability>=0.25.0",
-    "tf-keras>=2.20.1",
-    "torch>=2.9.1",
-    "tqdm>=4.67.1",
+    "anesthetic",
+    "numpy",
+    "pandas",
+    "pytest",
+    "scikit-learn",
+    "scipy",
+    "tensorflow",
+    "tensorflow-probability",
+    "tf-keras",
+    "torch",
+    "tqdm",
 ]
 classifiers=[
     'Intended Audience :: Science/Research',
