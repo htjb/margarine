@@ -212,6 +212,7 @@ class MAF:
     def train(
         self,
         epochs: int = 100,
+        patience: int | None = None,
         early_stop: bool = False,
         loss_type: str = "sum",
     ) -> None:
@@ -228,6 +229,10 @@ class MAF:
         Keyword Args:
             epochs (int, optional): The number of iterations to
                 train the neural networks for. Defaults to 100.
+            patience (int | None, optional): The number of epochs with
+                no improvement on the test loss before early
+                stopping is triggered.
+                Defaults to 2% of total requested epochs.
             early_stop (bool, optional): Whether to implement
                 early stopping or train for the set number of epochs.
                 If True, training stops when test loss
@@ -243,13 +248,21 @@ class MAF:
             raise TypeError("'epochs' is not an integer.")
         if type(early_stop) is not bool:
             raise TypeError("'early_stop' must be a boolean.")
+        if patience is not None and type(patience) is not int:
+            raise TypeError("'patience' must be an integer or None.")
 
         self.epochs = epochs
         self.early_stop = early_stop
         self.loss_type = loss_type
 
+        if patience is None:
+            self.patience = round((self.epochs / 100) * 2)
+        else:
+            self.patience = patience
+
         self.maf = self._training(
             self.theta,
+            self.patience,
             self.sample_weights,
             self.maf,
             self.theta_min,
@@ -259,6 +272,7 @@ class MAF:
     def _training(
         self,
         theta: tf.Tensor,
+        patience: int,
         sample_weights: tf.Tensor,
         maf: tfd.TransformedDistribution,
         theta_min: float | tf.Tensor,
@@ -273,6 +287,8 @@ class MAF:
 
         Args:
             theta (tf.Tensor): The samples to train on.
+            patience (int): The number of epochs with no improvement
+                on the test loss before early stopping is triggered.
             sample_weights (tf.Tensor): The weights associated with the
                 samples.
             maf (tfd.TransformedDistribution): The MAF to be trained.
@@ -317,7 +333,7 @@ class MAF:
                         minimum_model = maf.copy()
                         c = 0
                 if minimum_model:
-                    if c == round((self.epochs / 100) * 2):
+                    if c == patience:
                         print(
                             "Early stopped. Epochs used = "
                             + str(i)

@@ -51,7 +51,7 @@ def test_maf() -> None:
             assert_allclose(stats[label], value, rtol=1, atol=1)
 
     bij = MAF(theta, weights=weights)
-    bij.train(10000, early_stop=True)
+    bij.train(10000, early_stop=True, patience=400)
 
     stats_label = ["KL Divergence", "BMD"]
 
@@ -87,6 +87,9 @@ def test_maf_kwargs() -> None:
     with pytest.raises(TypeError):
         MAF(theta, weights=weights)
         bij.train(epochs=100, cluster_labels=5)
+    with pytest.raises(TypeError):
+        MAF(theta, weights=weights)
+        bij.train(epochs=100, patience="foo")
 
 
 def test_maf_save_load() -> None:
