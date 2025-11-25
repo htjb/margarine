@@ -258,7 +258,7 @@ class KDE:
             params (np.ndarray): The set of samples for which to
                 calculate the log probability.
             logevidence (float): Should be the log-evidence from
-                the full nested samplingrun with nuisance parameters.
+                the full nested sampling run with nuisance parameters.
 
             prior (np.ndarray | None): An array of prior samples
                 corresponding to the prior. Default assumption is that
@@ -295,7 +295,7 @@ class KDE:
         return loglike
 
     def save(self, filename: str) -> None:
-        r"""Save an instance of the KDE class and assosiated generated KDE.
+        r"""Save an instance of the KDE class and associated generated KDE.
 
         Args:
             filename (str): Path to save the KDE to.
