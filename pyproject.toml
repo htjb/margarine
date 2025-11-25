@@ -15,7 +15,6 @@ dependencies = [
     "anesthetic",
     "numpy",
     "pandas",
-    "pytest",
     "scikit-learn",
     "scipy",
     "tensorflow",
@@ -34,6 +33,13 @@ classifiers=[
     'Topic :: Scientific/Engineering',
     'Topic :: Scientific/Engineering :: Astronomy',
     'Topic :: Scientific/Engineering :: Physics',
+]
+
+[projects.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "pre-commit",
 ]
 
 [tool.setuptools.packages.find]
