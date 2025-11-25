@@ -10,7 +10,7 @@ from tensorflow_probability import distributions as tfd
 def _forward_transform(
     x: tf.Tensor,
     min: float | int | tf.Tensor = 0,
-    max: float | int | tf.tensor = 1,
+    max: float | int | tf.Tensor = 1,
 ) -> tf.Tensor:
     r"""Forward tranforms input samples.
 
