@@ -87,6 +87,9 @@ def test_maf_kwargs() -> None:
     with pytest.raises(TypeError):
         MAF(theta, weights=weights)
         bij.train(epochs=100, cluster_labels=5)
+    with pytest.raises(TypeError):
+        MAF(theta, weights=weights)
+        bij.train(epochs=100, patience="foo")
 
 
 def test_maf_save_load() -> None:
