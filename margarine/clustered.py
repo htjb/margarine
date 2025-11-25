@@ -274,6 +274,7 @@ class clusterMAF:
     def train(
         self,
         epochs: int = 100,
+        patience: int | None = None,
         early_stop: bool = False,
         loss_type: str = "sum",
     ) -> None:
@@ -290,6 +291,9 @@ class clusterMAF:
         Keyword Args:
             epochs (int, optional): The number of iterations to
                 train the neural networks for. Defaults to 100.
+            patience (int, optional): The number of epochs with no improvement
+                on the test loss before early stopping is triggered.
+                Defaults to 2% of epochs.
             early_stop (bool, optional): Whether to implement
                 early stopping or train for the set number of epochs.
                 If True, training stops when test loss
@@ -303,7 +307,10 @@ class clusterMAF:
         """
         for i in range(len(self.flow)):
             self.flow[i].train(
-                epochs=epochs, early_stop=early_stop, loss_type=loss_type
+                epochs=epochs,
+                patience=patience,
+                early_stop=early_stop,
+                loss_type=loss_type,
             )
 
     def log_prob(self, params: np.ndarray) -> np.ndarray:
