@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "margarine"
+version = "1.4.0"
+description = "margarine: Posterior Sampling and Marginal Bayesian Statistics "
+readme = "README.rst"
+authors = [
+    {name = "Harry T. J. Bevins", email = "htjb2@cam.ac.uk"}]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "anesthetic",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "tensorflow",
+    "tensorflow-probability",
+    "tf-keras",
+    "torch",
+    "tqdm",
+]
+classifiers=[
+    'Intended Audience :: Science/Research',
+    'Natural Language :: English',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Scientific/Engineering :: Astronomy',
+    'Topic :: Scientific/Engineering :: Physics',
+]
+
+[projects.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "pre-commit",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["margarine*"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select =["E", "F", "W",  # basics
+            "I",            # isort
+            "D",            # docstrings
+            "UP",           # pyupgrade (includes type modernization)
+            "ANN",          # type annotations
+            ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

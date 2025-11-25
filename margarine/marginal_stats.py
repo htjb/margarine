@@ -1,60 +1,63 @@
+"""Module for calculating marginal statistics from density estimators."""
+
+from collections.abc import Callable
+
 import numpy as np
-from tensorflow_probability import distributions as tfd
-import pandas as pd
-from margarine.maf import MAF
-from tqdm import tqdm
 from scipy.special import logsumexp
+from tensorflow_probability import distributions as tfd
+from tqdm import tqdm
+
+from margarine.clustered import clusterMAF
+from margarine.kde import KDE
+from margarine.maf import MAF
 
 
-class calculate(object):
-    r"""
+class calculate:
+    """Class to calculate marginal statistics from density estimators."""
 
-    This class, once initalised with a trained MAF or KDE and samples,
-    can be used to calculate marginal KL divergences and
-    bayesian dimensionalities.
+    def __init__(
+        self,
+        de: MAF | KDE | clusterMAF,
+        **kwargs: dict,
+    ) -> None:
+        r"""Calculate marginal KL divergences and Bayesian dimensionalities.
 
-    **Paramesters:**
+        This class uses a trained MAF or KDE along with
+        generated samples to compute
+        information-theoretic measures of the posterior distribution.
 
-        de: **instance of MAF class or KDE class**
-            | This should be a loaded and trained instance of a MAF, clusterMAF
-                or KDE.Bijectors can be loaded like so
+        Args:
+            de (MAF | KDE | clusterMAF): A trained and
+                loaded instance of MAF,
+                clusterMAF, or KDE.
+            **kwargs: Additional keyword arguments.
 
-                .. code:: python
+        Keyword Args:
+            prior_de (MAF | clusterMAF | KDE, optional): A trained and loaded
+                instance of MAF, clusterMAF, or KDE representing the prior
+                distribution. If not provided, a uniform prior will be used.
 
-                    from margarine.maf import MAF
-                    from margarine.kde import KDE
-                    from margarine.clustered import clusterMAF
-
-                    file = '/trained_maf.pkl'
-                    maf = MAF.load(file)
-
-                    file = '/trained_kde.pkl'
-                    kde = KDE.load(file)
-
-                    file = '/trained_clustered_maf.pkl'
-                    clustered_maf = clusterMAF.load(file)
-
-        samples: **numpy array**
-            | This should be the output of the bijector when called to generate
-                a set of samples from the replicated probability
-                distribution. e.g. after loading a trained MAF we would pass
-
-                .. code:: python
-
-                    u = np.random.uniform(0, 1, size=(10000, 5))
-                    prior_limits = np.array([[0]*5, [1]*5])
-                    samples = maf(u, prior_limits)
-
-    **Kwargs:**
-
-        prior_de: **instance of MAF class, clusterMAF class or KDE class**
-            | This should be a loaded and trained instance of a MAF, clusterMAF
-                or KDE for the prior.
-                If not provided, a uniform prior will be used.
-
-    """
-
-    def __init__(self, de, **kwargs):
+        Example:
+            >>> from margarine.maf import MAF
+            >>> from margarine.kde import KDE
+            >>> from margarine.clustered import clusterMAF
+            >>> import numpy as np
+            >>>
+            >>> # Load a trained model
+            >>> maf = MAF.load('/trained_maf.pkl')
+            >>> # or
+            >>> kde = KDE.load('/trained_kde.pkl')
+            >>> # or
+            >>> clustered_maf = clusterMAF.load('/trained_clustered_maf.pkl')
+            >>>
+            >>> # Generate samples
+            >>> u = np.random.uniform(0, 1, size=(10000, 5))
+            >>> prior_limits = np.array([[0]*5, [1]*5])
+            >>> samples = maf(u, prior_limits)
+            >>>
+            >>> # Initialize the class
+            >>> stats = calculate(maf, samples)
+        """
         self.de = de
 
         self.theta = self.de.theta
@@ -71,13 +74,17 @@ class calculate(object):
 
         self.prior_de = kwargs.pop("prior_de", None)
 
-    def statistics(self):
-        """
-        Calculate marginal bayesian KL divergence and dimensionality with
+    def statistics(self) -> dict:
+        """Calculate marginal statistics.
+
+        Calculate the marginal bayesian KL divergence and dimensionality with
         approximate errors.
+
+        Returns:
+            results (dict): Dictionary containing the calculated statistics.
         """
 
-        def mask_arr(arr):
+        def mask_arr(arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             return arr[np.isfinite(arr)], np.isfinite(arr)
 
         logprob = self.de.log_prob(self.samples)
@@ -141,16 +148,16 @@ class calculate(object):
 
             base_args = np.argsort(theta_base_logprob)
             theta_base_logprob = theta_base_logprob[base_args]
-            prior_weights = np.cumsum(self.prior_de.sample_weights.numpy()[base_args])
+            prior_weights = np.cumsum(
+                self.prior_de.sample_weights.numpy()[base_args]
+            )
 
             prior_weights = (
                 np.cumsum(self.theta_weights).max()
                 - np.cumsum(self.theta_weights).min()
             ) * (prior_weights - prior_weights.min()) / (
                 prior_weights.max() - prior_weights.min()
-            ) + np.cumsum(
-                self.theta_weights
-            ).min()
+            ) + np.cumsum(self.theta_weights).min()
 
             theta_base_logprob = np.interp(
                 np.cumsum(self.theta_weights),
@@ -188,33 +195,28 @@ class calculate(object):
 
     def integrate(
         self,
-        loglikelihood,
-        prior_pdf,
-        batch_size=1000,
-        sample_size=10000,
-        logzero=-1e30,
-    ):
-        """
-        Importance sampling integration of a likelihood function
+        loglikelihood: Callable,
+        prior_pdf: Callable,
+        batch_size: int = 1000,
+        sample_size: int = 10000,
+        logzero: float = -1e30,
+    ) -> dict:
+        """Importance sampling integration of a likelihood function.
 
-        args:
-            loglikelihood: **function**
-                | A function that takes a numpy array of samples
+        Args:
+            loglikelihood (Callable): A function that takes a
+                    numpy array of samples
                     and returns the loglikelihood of each sample.
-            prior_pdf: **function**
-                | A function that takes a numpy array of samples
-                    and returns the prior logpdf of each sample.
-            batch_size: **int**
-                | The number of samples to draw at each iteration.
-            sample_size: **int**
-                | The number of samples to draw in total.
-            logzero: **float**
-                  The definition of zero for the loglikelihood function.
+            prior_pdf (Callable): A function that takes a numpy
+                    array of samples and returns the prior
+                    logpdf of each sample.
+            batch_size (int): The number of samples to draw at each iteration.
+            sample_size (int): The number of samples to draw in total.
+            logzero (float): The definition of zero for the
+                loglikelihood function.
 
-        returns:
-            stats: **dict**
-                | Dictionary containing useful statistics
-
+        Returns:
+            stats (dict): Dictionary containing useful statistics
         """
         xs = np.empty((sample_size, self.de.theta.shape[-1]))
         fs = np.empty(sample_size)
@@ -259,7 +261,9 @@ class calculate(object):
                 pbar.update(n_accept)
                 if trials > 10 * sample_size:
                     raise ValueError(
-                        "Too many unsuccessful trials, this typically indicates mismatch between flow and likelihood"
+                        "Too many unsuccessful trials, this"
+                        + "typically indicates mismatch between"
+                        + "flow and likelihood"
                     )
 
             weights = np.exp(fs + pis - gs)
@@ -267,7 +271,7 @@ class calculate(object):
             eff = np.sum(weights) ** 2 / np.sum(weights**2) / sample_size
             integral = sample_size / trials * weights.mean()
             log_integral = logsumexp(fs + pis - gs) - np.log(trials)
-            # TODO this is the standard error function, we should just work logstderr directly
+
             stderr = np.sqrt(
                 (np.sum(weights**2) / trials - integral**2) / (trials - 1)
             )

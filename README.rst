@@ -7,7 +7,7 @@ Introduction
 
 :margarine: Marginal Bayesian Statistics
 :Authors: Harry T.J. Bevins
-:Version: 1.3.0
+:Version: 1.4.0
 :Homepage:  https://github.com/htjb/margarine
 :Documentation: https://margarine.readthedocs.io/
 
@@ -29,7 +29,7 @@ commands in the terminal
 
   git clone https://github.com/htjb/margarine.git # or the equivalent using ssh keys
   cd margarine
-  python setup.py install --user
+  pip install .
 
 or via a pip install with
 
@@ -38,6 +38,8 @@ or via a pip install with
   pip install margarine
 
 Note that the pip install is not always the most up to date version of the code.
+
+`margarine` versions >=1.3.0 will work with modern versions of tensorflow.
 
 Details/Examples
 ----------------
@@ -140,27 +142,20 @@ and
         adsnote = {Provided by the SAO/NASA Astrophysics Data System}
   }
 
-
-Requirements
-------------
-
-The code requires the following packages to run:
-
-- `numpy <https://pypi.org/project/numpy/>`__
-- `tensorflow <https://pypi.org/project/tensorflow/>`__
-- `scipy <https://pypi.org/project/scipy/>`__
-
-To compile the documentation locally you will need:
-
-- `sphinx <https://pypi.org/project/Sphinx/>`__
-- `numpydoc <https://pypi.org/project/numpydoc/>`__
-
-To run the test suit you will need:
-
-- `pytest <https://docs.pytest.org/en/stable/>`__
-
 Contributing
 ------------
 
 Contributions and suggestions for areas of development are welcome and can
 be made by opening a issue to report a bug or propose a new feature for discussion.
+
+Please see the contribution guidelines in `CONTRIBUTING.md` for more details.
+
+
+Roadmap to 2.0.0
+-----------------
+
+`margarine` is under active development with a roadmap to version 2.0.0 which will include:
+
+- JAX support for KDE and MAF implementations to allow for GPU acceleration.
+- A base class density estimator to make adding new density estimators easier.
+- A Neural Spline Flow density estimator implementation.
