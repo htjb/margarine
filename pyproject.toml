@@ -10,7 +10,7 @@ readme = "README.rst"
 authors = [
     {name = "Harry T. J. Bevins", email = "htjb2@cam.ac.uk"}]
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "anesthetic",
     "numpy",
