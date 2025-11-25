@@ -51,7 +51,7 @@ def test_maf() -> None:
             assert_allclose(stats[label], value, rtol=1, atol=1)
 
     bij = MAF(theta, weights=weights)
-    bij.train(10000, early_stop=True)
+    bij.train(10000, early_stop=True, patience=20)
 
     stats_label = ["KL Divergence", "BMD"]
 
