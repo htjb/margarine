@@ -18,22 +18,13 @@ import jax.numpy as jnp
 class BaseDensityEstimator:
     """Base class for density estimators in the margarine package."""
 
-    def __init__(
-        self,
-        theta: jnp.ndarray,
-        weights: jnp.ndarray | None = None,
-        theta_ranges: jnp.ndarray | None = None,
-    ) -> None:
+    def __init__(self, theta: jnp.ndarray) -> None:
         """Initialize the base density estimator.
 
         Args:
             theta: Parameters of the density estimator.
-            weights: Optional weights for the parameters.
-            theta_ranges: Optional ranges for the parameters.
         """
         self.theta = theta
-        self.weights = weights
-        self.theta_ranges = theta_ranges
 
     def train(self) -> None:
         """Train the density estimator on the provided data."""
@@ -80,7 +71,7 @@ class BaseDensityEstimator:
         self,
         x: jnp.ndarray,
         logevidence: float,
-        prior_density: jnp.ndarray | "BaseDensityEstimator" = None,
+        prior_density: jnp.ndarray | "BaseDensityEstimator",
     ) -> jnp.ndarray:
         """Compute the log-likelihood of given samples.
 
