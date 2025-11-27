@@ -74,6 +74,24 @@ class KDE(BaseDensityEstimator):
         x = inverse_transform(x, self.theta_ranges[1], self.theta_ranges[0])
         return x
 
+    def __call__(self, u: jnp.ndarray) -> jnp.ndarray:
+        r"""Transform samples from the unit hypercube to samples on the KDE.
+
+        Uses the Rosenblatt transformation
+        (conditional inverse transform sampling)
+        to map uniform samples to a Gaussian mixture KDE distribution.
+
+        Args:
+            u (jnp.ndarray): Samples from the unit hypercube [0,1]^d
+                Shape: (n_samples, n_dims)
+
+        Returns:
+            jnp.ndarray: The transformed samples following the
+                KDE distribution.
+                Shape: (n_samples, n_dims)
+        """
+        return NotImplementedError("KDE __call__ method is not implemented.")
+
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log-probability of given samples.
 
