@@ -1,5 +1,7 @@
 """KDE implementation using JAX."""
 
+import pickle
+
 import jax.numpy as jnp
 import jax.scipy.stats as stats
 from tensorflow_probability.substrates import jax as tfp
@@ -106,3 +108,50 @@ class KDE(BaseDensityEstimator):
 
         log_probs = jnp.log(self.kde.pdf(transformed_x.T)) + correction
         return log_probs
+
+    def log_like(
+        self,
+        x: jnp.ndarray,
+        logevidence: float,
+        prior_density: jnp.ndarray | BaseDensityEstimator,
+    ) -> jnp.ndarray:
+        """Compute the marginal log-likelihood of given samples.
+
+        Args:
+            x: Samples for which to compute the log-likelihood.
+            logevidence: Log-evidence term.
+            prior_density: Prior density or density estimator.
+
+        Returns:
+            jnp.ndarray: Log-likelihoods of the samples.
+        """
+        if prior_density is isinstance(prior_density, BaseDensityEstimator):
+            prior_density = prior_density.log_prob(x)
+
+        return self.log_prob(x) + logevidence - prior_density
+
+    def save(self, filepath: str) -> None:
+        """Save the KDE to a file.
+
+        Args:
+            filepath: Path to the file where the KDE will be saved.
+        """
+        with open(filepath, "wb") as f:
+            pickle.dump(self.kde, f)
+
+    @classmethod
+    def load(cls, filepath: str) -> "KDE":
+        """Load a KDE from a file.
+
+        Args:
+            filepath: Path to the file from which to load the KDE.
+
+        Returns:
+            KDE: Loaded KDE instance.
+        """
+        with open(filepath, "rb") as f:
+            kde = pickle.load(f)
+
+        instance = cls(jnp.array([]))  # Dummy initialization
+        instance.kde = kde
+        return instance
