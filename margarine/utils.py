@@ -73,3 +73,44 @@ def inverse_transform(
     x = tfd.Normal(0, 1).cdf(x)
     x = tfd.Uniform(min_val, max_val).quantile(x)
     return x
+
+
+def train_test_split(
+    a: jnp.ndarray,
+    b: jnp.ndarray,
+    test_size: float = 0.2,
+    key: jax.random.KeyArray = None,
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Splitting data into training and testing sets.
+
+    Function is equivalent
+    to sklearn.model_selection.train_test_split but a and b
+    are jax arrays.
+
+    Args:
+        a (jnp.ndarray): First set of data to be split.
+        b (jnp.ndarray): Second set of data to be split.
+        test_size (float): Proportion of data to be used for testing.
+        key (jax.random.KeyArray): JAX random key for shuffling.
+
+    Returns:
+        a_train (jnp.ndarray): Training set from a.
+        a_test (jnp.ndarray): Testing set from a.
+        b_train (jnp.ndarray): Training set from b.
+        b_test (jnp.ndarray): Testing set from b.
+    """
+    if key is None:
+        key = jax.random.PRNGKey(0)
+    n_samples = a.shape[0]
+    n_test = int(n_samples * test_size)
+
+    permuted_indices = jax.random.permutation(key, n_samples)
+    test_indices = permuted_indices[:n_test]
+    train_indices = permuted_indices[n_test:]
+
+    a_train = a[train_indices]
+    a_test = a[test_indices]
+    b_train = b[train_indices]
+    b_test = b[test_indices]
+
+    return a_train, a_test, b_train, b_test
