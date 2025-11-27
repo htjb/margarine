@@ -2,7 +2,9 @@
 
 import jax
 import jax.numpy as jnp
-from jax.scipy import stats
+from tensorflow_probability.substrates import jax as tfp
+
+tfd = tfp.distributions
 
 
 @jax.jit
@@ -47,8 +49,8 @@ def forward_transform(
     Returns:
         jnp.ndarray: Transformed samples.
     """
-    x = stats.uniform.cdf(x, loc=min_val, scale=max_val - min_val)
-    x = stats.norm.ppf(x)
+    x = tfd.Uniform(min_val, max_val).cdf(x)
+    x = tfd.Normal(0, 1).quantile(x)
     return x
 
 
@@ -68,6 +70,6 @@ def inverse_transform(
     Returns:
         jnp.ndarray: Inverse transformed samples.
     """
-    x = stats.norm.cdf(x)
-    x = stats.uniform.ppf(x, loc=min_val, scale=max_val - min_val)
+    x = tfd.Normal(0, 1).cdf(x)
+    x = tfd.Uniform(min_val, max_val).quantile(x)
     return x
