@@ -30,14 +30,12 @@ class BaseDensityEstimator:
         """Train the density estimator on the provided data."""
         raise NotImplementedError("Train method must be implemented.")
 
-    def sample(
-        self, num_samples: int, key: jax.random.KeyArray
-    ) -> jnp.ndarray:
+    def sample(self, key: jnp.ndarray, num_samples: int) -> jnp.ndarray:
         """Generate samples from the density estimator.
 
         Args:
-            num_samples: Number of samples to generate.
             key: JAX random key for sampling.
+            num_samples: Number of samples to generate.
 
         Returns:
             jnp.ndarray: Generated samples as a JAX array.
@@ -71,7 +69,7 @@ class BaseDensityEstimator:
         self,
         x: jnp.ndarray,
         logevidence: float,
-        prior_density: jnp.ndarray | "BaseDensityEstimator",
+        prior_density: jnp.ndarray,
     ) -> jnp.ndarray:
         """Compute the log-likelihood of given samples.
 
