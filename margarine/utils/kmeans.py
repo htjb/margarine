@@ -64,3 +64,45 @@ def kmeans(X: jnp.ndarray, k: int, num_iters: int = 100) -> jnp.ndarray:
         centroids, labels = clustering_step(centroids, X)
 
     return labels
+
+
+def silhouette_score(X: jnp.ndarray, labels: jnp.ndarray) -> jnp.ndarray:
+    """Calculates the silhouette score for the clustering.
+
+    Args:
+        X: Input data of shape (n_samples, n_features).
+        labels: Cluster labels for each data point.
+
+    Returns:
+        float: Silhouette score.
+    """
+
+    def average_distance(x: jnp.ndarray, X: jnp.ndarray) -> jnp.ndarray:
+        """Calculate the average distance from point x to all points in X."""
+        return jnp.mean((X - x) ** 2)
+
+    vmapped_avg_distance = jax.vmap(average_distance, in_axes=(0, None))
+
+    silhouette_scores = []
+    for label in jnp.unique(labels):
+        cluster_points = X[labels == label]
+        cluster_distance = vmapped_avg_distance(cluster_points, cluster_points)
+        seperation_distance = jnp.min(
+            jnp.array(
+                [
+                    vmapped_avg_distance(
+                        cluster_points, X[labels == other_label]
+                    )
+                    for other_label in jnp.unique(labels)
+                    if other_label != label
+                ]
+            )
+        )
+        # score per point in cluster
+        score = (seperation_distance - cluster_distance) / jnp.maximum(
+            seperation_distance, cluster_distance
+        )
+        # score per cluster
+        silhouette_scores.append(jnp.mean(score))
+
+    return jnp.mean(jnp.array(silhouette_scores))
