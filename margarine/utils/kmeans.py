@@ -4,7 +4,9 @@ import jax
 import jax.numpy as jnp
 
 
-def kmeans(X: jnp.ndarray, k: int, num_iters: int = 100) -> jnp.ndarray:
+def kmeans(
+    X: jnp.ndarray, k: int | jnp.ndarray, num_iters: int = 100
+) -> jnp.ndarray:
     """Performs K-Means clustering on the given data.
 
     Args:

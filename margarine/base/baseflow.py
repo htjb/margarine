@@ -18,13 +18,17 @@ import jax.numpy as jnp
 class BaseDensityEstimator:
     """Base class for density estimators in the margarine package."""
 
-    def __init__(self, theta: jnp.ndarray) -> None:
+    def __init__(
+        self, theta: jnp.ndarray, weights: jnp.ndarray | None
+    ) -> None:
         """Initialize the base density estimator.
 
         Args:
             theta: Parameters of the density estimator.
+            weights: Weights associated with the parameters.
         """
         self.theta = theta
+        self.weights = weights
 
     def train(self) -> None:
         """Train the density estimator on the provided data."""

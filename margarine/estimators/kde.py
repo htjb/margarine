@@ -7,7 +7,7 @@ import jax.scipy.stats as stats
 from tensorflow_probability.substrates import jax as tfp
 
 from margarine.base.baseflow import BaseDensityEstimator
-from margarine.utils import (
+from margarine.utils.utils import (
     approximate_bounds,
     forward_transform,
     inverse_transform,
@@ -35,8 +35,7 @@ class KDE(BaseDensityEstimator):
             theta_ranges: Optional ranges for the parameters.
             bandwidth: Bandwidth for the KDE.
         """
-        super().__init__(theta)
-        self.weights = weights
+        super().__init__(theta, weights)
         self.theta_ranges = theta_ranges
         self.bandwidth = bandwidth
 
@@ -44,17 +43,14 @@ class KDE(BaseDensityEstimator):
             self.weights = jnp.ones(len(self.theta))
 
         if theta_ranges is None:
-            self.theta_ranges = jnp.concatenate(
-                approximate_bounds(self.theta, self.weights)
-            )
+            self.theta_ranges = approximate_bounds(self.theta, self.weights)
 
     def train(self) -> stats.gaussian_kde:
         """Generates a weighted KDE."""
         phi = forward_transform(
-            self.theta, self.theta_ranges[1], self.theta_ranges[0]
+            self.theta, self.theta_ranges[0], self.theta_ranges[1]
         )
         weights = self.weights / jnp.sum(self.weights)
-        print(weights)
         self.kde = stats.gaussian_kde(
             phi.T, weights=weights, bw_method=self.bandwidth
         )
@@ -71,7 +67,7 @@ class KDE(BaseDensityEstimator):
             jnp.ndarray: Samples drawn from the KDE.
         """
         x = self.kde.resample(key, (num_samples,)).T
-        x = inverse_transform(x, self.theta_ranges[1], self.theta_ranges[0])
+        x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
         return x
 
     def __call__(self, u: jnp.ndarray) -> jnp.ndarray:
@@ -107,14 +103,14 @@ class KDE(BaseDensityEstimator):
             jnp.ndarray: Log-probabilities of the samples.
         """
         transformed_x = forward_transform(
-            x, self.theta_ranges[1], self.theta_ranges[0]
+            x, self.theta_ranges[0], self.theta_ranges[1]
         )
 
         transform_chain = tfb.Chain(
             [
                 tfb.Invert(tfb.NormalCDF()),
-                tfb.Scale(1 / (self.theta_ranges[1] - self.theta_ranges[0])),
-                tfb.Shift(-self.theta_ranges[0]),
+                tfb.Scale(1 / (self.theta_ranges[0] - self.theta_ranges[1])),
+                tfb.Shift(-self.theta_ranges[1]),
             ]
         )
 
