@@ -29,7 +29,7 @@ def approximate_bounds(
     a = ((n - 2) * sample_max - sample_min) / (n - 3)
     b = ((n - 2) * sample_min - sample_max) / (n - 2)
 
-    return a, b
+    return b, a
 
 
 @jax.jit
@@ -78,8 +78,8 @@ def inverse_transform(
 def train_test_split(
     a: jnp.ndarray,
     b: jnp.ndarray,
+    key: jnp.ndarray,
     test_size: float = 0.2,
-    key: jax.random.KeyArray = None,
 ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Splitting data into training and testing sets.
 
