@@ -119,7 +119,7 @@ class KDE(BaseDensityEstimator):
             """Calculate the normalising jacobian for the transformation."""
             return transform_chain.inverse_log_det_jacobian(y, event_ndims=0)
 
-        correction = norm_jac(x).sum(axis=1)
+        correction = norm_jac(transformed_x).sum(axis=1)
 
         log_probs = jnp.log(self.kde.pdf(transformed_x.T)) + correction
         return log_probs
