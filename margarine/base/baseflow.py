@@ -11,29 +11,21 @@ including:
 - load
 """
 
+from abc import ABC, abstractmethod
+
 import jax
 import jax.numpy as jnp
 
 
-class BaseDensityEstimator:
+class BaseDensityEstimator(ABC):
     """Base class for density estimators in the margarine package."""
 
-    def __init__(
-        self, theta: jnp.ndarray, weights: jnp.ndarray | None
-    ) -> None:
-        """Initialize the base density estimator.
-
-        Args:
-            theta: Parameters of the density estimator.
-            weights: Weights associated with the parameters.
-        """
-        self.theta = theta
-        self.weights = weights
-
+    @abstractmethod
     def train(self) -> None:
         """Train the density estimator on the provided data."""
         raise NotImplementedError("Train method must be implemented.")
 
+    @abstractmethod
     def sample(self, key: jnp.ndarray, num_samples: int) -> jnp.ndarray:
         """Generate samples from the density estimator.
 
@@ -58,6 +50,7 @@ class BaseDensityEstimator:
         """
         raise NotImplementedError("Call method must be implemented.")
 
+    @abstractmethod
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log-probability of given samples.
 
@@ -69,6 +62,7 @@ class BaseDensityEstimator:
         """
         raise NotImplementedError("log_prob method must be implemented.")
 
+    @abstractmethod
     def log_like(
         self,
         x: jnp.ndarray,
