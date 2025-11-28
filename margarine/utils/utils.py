@@ -27,7 +27,7 @@ def approximate_bounds(
     sample_min = jnp.min(theta, axis=0)
 
     a = ((n - 2) * sample_max - sample_min) / (n - 3)
-    b = ((n - 2) * sample_min - sample_max) / (n - 2)
+    b = ((n - 2) * sample_min - sample_max) / (n - 3)
 
     return b, a
 
