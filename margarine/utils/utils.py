@@ -13,6 +13,13 @@ def approximate_bounds(
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Function to estimate prior bounds from samples.
 
+    Sample maximum and minimum are biased estimators of the true
+    bounds of the distribution. This function provides an improved
+    estimate using the weights of the samples. Comes from the expectation
+    value of the maximum and minimum samples
+    of a uniform distribution with an effective number of samples
+    given by Kish's formula.
+
     Args:
         theta (jnp.ndarray): samples from the target distribution.
         weights (jnp.ndarray): weights for the samples from the
