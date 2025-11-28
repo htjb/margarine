@@ -1,5 +1,5 @@
 ================================================================
-margarine: Posterior Sampling and Marginal Bayesian Statistics
+margarine: you won't believe it's not your posterior samples!
 ================================================================
 
 Introduction
