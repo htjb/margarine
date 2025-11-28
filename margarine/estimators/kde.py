@@ -35,7 +35,8 @@ class KDE(BaseDensityEstimator):
             theta_ranges: Optional ranges for the parameters.
             bandwidth: Bandwidth for the KDE.
         """
-        super().__init__(theta, weights)
+        self.theta = theta
+        self.weights = weights
         self.theta_ranges = theta_ranges
         self.bandwidth = bandwidth
 
