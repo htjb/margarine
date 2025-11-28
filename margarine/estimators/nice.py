@@ -156,7 +156,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             weights: jnp.ndarray,
         ) -> jnp.ndarray:
             """Loss function for training NICE model."""
-            return -jnp.mean(weights * model.log_prob_under_nice(targets))
+            return -jnp.mean(weights * model.log_prob_under_NICE(targets))
 
         phi = forward_transform(
             self.theta, self.theta_ranges[0], self.theta_ranges[1]
@@ -263,7 +263,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
         return x
 
-    def log_prob_under_nice(self, x: jnp.ndarray) -> jnp.ndarray:
+    def log_prob_under_NICE(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log probability under the NICE model.
 
         Args:
@@ -306,7 +306,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         correction = norm_jac(transformed_x).sum(axis=1)
 
-        return self.log_prob_under_nice(transformed_x) + correction
+        return self.log_prob_under_NICE(transformed_x) + correction
 
     def log_like(
         self,
