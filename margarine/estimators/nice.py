@@ -151,7 +151,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         @jax.jit
         def loss_function(
-            model: BaseDensityEstimator,
+            model: "NICE",
             targets: jnp.ndarray,
             weights: jnp.ndarray,
         ) -> jnp.ndarray:
@@ -222,9 +222,9 @@ class NICE(BaseDensityEstimator, nnx.Module):
                     break
 
             pbar.set_postfix(
-                loss=f"{loss:.3f}",
-                val_loss=f"{val_loss:.3f}",
-                best_loss=f"{best_loss:.3f}",
+                loss=f"{loss:.3e}",
+                val_loss=f"{val_loss:.3e}",
+                best_loss=f"{best_loss:.3e}",
             )
 
         if best_model is not None:
