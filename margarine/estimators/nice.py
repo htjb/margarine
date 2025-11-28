@@ -31,7 +31,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         weights: jnp.ndarray | None = None,
         theta_ranges: jnp.ndarray | None = None,
         in_size: int = 2,
-        hidden_sizes: int = 128,
+        hidden_size: int = 128,
         num_layers: int = 2,
         num_coupling_layers: int = 4,
         nnx_rngs: dict | None = None,
@@ -43,7 +43,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             weights: Optional weights for the parameters.
             theta_ranges: Optional ranges for the parameters.
             in_size: Input size.
-            hidden_sizes: Sizes of hidden layers.
+            hidden_size: Sizes of hidden layers.
             num_layers: Number of layers in each coupling network.
             num_coupling_layers: Number of coupling layers.
             nnx_rngs: Optional RNGs for Flax.
@@ -62,7 +62,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             nnx_rngs = nnx.Rngs(0)
 
         self.in_size = in_size
-        self.hidden_sizes = hidden_sizes
+        self.hidden_size = hidden_size
         self.nlayers = num_layers
         self.num_coupling_layers = num_coupling_layers
 
@@ -71,16 +71,16 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         layers = nnx.List()
         layers.append(
-            nnx.Linear(self.net_in_size, self.hidden_sizes, rngs=nnx_rngs)
+            nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
         )
         for _ in range(self.nlayers):
             layers.append(
-                nnx.Linear(self.hidden_sizes, self.hidden_sizes, rngs=nnx_rngs)
+                nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
             )
             layers.append(lambda x: jax.nn.relu(x))
 
         layers.append(
-            nnx.Linear(self.hidden_sizes, self.net_in_size, rngs=nnx_rngs)
+            nnx.Linear(self.hidden_size, self.net_in_size, rngs=nnx_rngs)
         )
         self.mlp = nnx.List(
             [nnx.Sequential(*layers) for _ in range(self.num_coupling_layers)]
