@@ -44,7 +44,8 @@ class cluster:
             weights (jnp.ndarray | None, optional): Weights for the samples.
                 Defaults to None.
             theta_ranges (jnp.ndarray | None, optional): Ranges for the
-                parameters. Defaults to None.
+                parameters in each cluster. Should have shape
+                (nclusters, nparams, 2). Defaults to None.
             clusters (jnp.ndarray | None, optional): Predefined cluster
                 labels for each sample. If None, k-means clustering is used.
                 Defaults to None.
@@ -62,9 +63,6 @@ class cluster:
 
         if self.weights is None:
             self.weights = jnp.ones(len(self.theta))
-
-        if self.theta_ranges is None:
-            self.theta_ranges = approximate_bounds(self.theta, self.weights)
 
         if self.clusters is None:
             ks = jnp.arange(2, max_cluster_number + 1)
@@ -113,16 +111,25 @@ class cluster:
             split_theta.append(self.theta[self.clusters == i])
             split_weights.append(self.weights[self.clusters == i])
 
-        self.split_theta = jnp.array(split_theta)
-        self.split_weights = jnp.array(split_weights)
+        self.split_theta = split_theta
+        self.split_weights = split_weights
+
+        if self.theta_ranges is None:
+            self.theta_ranges = []
+            for i in range(self.cluster_number):
+                self.theta_ranges.append(
+                    approximate_bounds(
+                        self.split_theta[i], self.split_weights[i]
+                    )
+                )
 
         self.estimators = []
         for i in range(len(split_theta)):
             self.estimators.append(
                 base_estimator(
                     split_theta[i],
-                    weights=self.split_weights[i],
-                    theta_ranges=self.theta_ranges,
+                    weights=split_weights[i],
+                    theta_ranges=self.theta_ranges[i],
                     **self.kwargs,
                 )
             )
