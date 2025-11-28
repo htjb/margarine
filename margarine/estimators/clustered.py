@@ -16,7 +16,7 @@ from margarine.utils.utils import (
 tfd = tfp.distributions
 
 
-class cluster(BaseDensityEstimator):
+class cluster:
     """Create clustered mixture of MAFs to model multi-modal distributions."""
 
     def __init__(
