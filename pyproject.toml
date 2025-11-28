@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "margarine"
-version = "1.4.1"
+version = "2.0.0"
 description = "margarine: Posterior Sampling and Marginal Bayesian Statistics "
 readme = "README.rst"
 authors = [
