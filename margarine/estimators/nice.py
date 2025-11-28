@@ -77,7 +77,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             layers.append(
                 nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
             )
-            layers.append(lambda x: jax.nn.relu(x))
+            layers.append(lambda x: jax.nn.gelu(x))
 
         layers.append(
             nnx.Linear(self.hidden_size, self.net_in_size, rngs=nnx_rngs)
@@ -91,10 +91,11 @@ class NICE(BaseDensityEstimator, nnx.Module):
     def forward(self, x: jnp.ndarray) -> jnp.ndarray:
         """NICE forward pass.
 
-        This is the forward pass of the NICE coupling layer.
+        This is the forward pass of the NICE coupling layer from
+        samples in the target space to the base distribution space.
 
         Args:
-            x: Input samples.
+            x (jnp.ndarray): Input samples.
         """
         for i in range(self.num_coupling_layers):
             if i % 2 == 0:
@@ -155,7 +156,17 @@ class NICE(BaseDensityEstimator, nnx.Module):
             targets: jnp.ndarray,
             weights: jnp.ndarray,
         ) -> jnp.ndarray:
-            """Loss function for training NICE model."""
+            """Loss function for training NICE model.
+
+            Args:
+                model (NICE): NICE model.
+                targets (jnp.ndarray): Samples from the target distribution
+                    that have been passed through the forward_transform.
+                weights (jnp.ndarray): Weights for the samples.
+
+            Returns:
+                jnp.ndarray: Computed loss.
+            """
             return -jnp.mean(weights * model.log_prob_under_NICE(targets))
 
         phi = forward_transform(
