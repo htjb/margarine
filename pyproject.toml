@@ -14,7 +14,7 @@ requires-python = ">=3.10"
 dependencies = [
     "flax",
     "jax",
-    "optax"
+    "optax",
     "tensorflow-probability",
     "tqdm",
 ]
