@@ -274,6 +274,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
         return x
 
+    @jax.jit
     def log_prob_under_NICE(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log probability under the NICE model.
 
@@ -291,6 +292,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         log_prob_under_nice = log_pz + log_det_J
         return log_prob_under_nice
 
+    @jax.jit
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log probability of the input data.
 
