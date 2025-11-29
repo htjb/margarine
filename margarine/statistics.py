@@ -12,6 +12,7 @@ from margarine.density.base import BaseDensityEstimator
 def kldivergence(
     density_estimator_p: BaseDensityEstimator,
     density_estimator_q: BaseDensityEstimator,
+    samples_p: jnp.ndarray | None = None,
 ) -> float:
     """Kullback-Leibler divergence between two density estimators.
 
@@ -20,16 +21,25 @@ def kldivergence(
         density estimator.
         density_estimator_q (BaseDensityEstimator): The second
         density estimator.
+        samples_p (jnp.ndarray | None): Optional samples from the
+        first density estimator. If None, samples will be drawn
+        from density_estimator_p.
 
     Returns:
         kld (float): The Kullback-Leibler divergence D_KL(P || Q).
     """
-    pass
+    if samples_p is None:
+        samples_p = density_estimator_p.sample(10000)
+    log_p = density_estimator_p.log_prob(samples_p)
+    log_q = density_estimator_q.log_prob(samples_p)
+    kld = jnp.mean(log_p - log_q)
+    return kld
 
 
 def model_dimensionality(
     density_estimator_p: BaseDensityEstimator,
     density_estimator_q: BaseDensityEstimator,
+    samples_p: jnp.ndarray | None = None,
 ) -> float:
     """Model dimensionality between two density estimators.
 
@@ -38,11 +48,20 @@ def model_dimensionality(
         density estimator.
         density_estimator_q (BaseDensityEstimator): The second
         density estimator.
+        samples_p (jnp.ndarray | None): Optional samples from the
+        first density estimator. If None, samples will be drawn
+        from density_estimator_p.
 
     Returns:
         dim (float): The model dimensionality.
     """
-    pass
+    if samples_p is None:
+        samples_p = density_estimator_p.sample(10000)
+    log_p = density_estimator_p.log_prob(samples_p)
+    log_q = density_estimator_q.log_prob(samples_p)
+    delta_log = log_p - log_q
+    dim = jnp.var(delta_log)
+    return dim
 
 
 def integrate(
