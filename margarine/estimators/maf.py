@@ -284,7 +284,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
             )
         )
 
-        tx = optax.adam(learning_rate)
+        tx = optax.adamw(learning_rate, weight_decay=1e-6)
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
 
         pbar = tqdm.tqdm(range(epochs), desc="Training")
@@ -360,29 +360,55 @@ class MAF(BaseDensityEstimator, nnx.Module):
         x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
         return x
 
+    @jax.jit
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
-        """Compute the log-probability of given samples.
+        """Compute the log probability of the input data.
 
         Args:
-            x: Samples for which to compute the log-probability.
+            x (jnp.ndarray): Input data.
 
         Returns:
-            jnp.ndarray: Log-probabilities of the samples.
+            Log probabilities of the input data.
         """
-        # Implementation of log-probability computation goes here
-        pass
+        transformed_x = forward_transform(
+            x, self.theta_ranges[0], self.theta_ranges[1]
+        )
+        transform_chain = tfb.Chain(
+            [
+                tfb.Invert(tfb.NormalCDF()),
+                tfb.Scale(1 / (self.theta_ranges[0] - self.theta_ranges[1])),
+                tfb.Shift(-self.theta_ranges[1]),
+            ]
+        )
 
-    def log_like(self, x: jnp.ndarray) -> jnp.ndarray:
-        """Compute the log-likelihood of given samples.
+        def norm_jac(y: jnp.ndarray) -> jnp.ndarray:
+            """Calculate the normalising jacobian for the transformation."""
+            return transform_chain.inverse_log_det_jacobian(y, event_ndims=0)
+
+        correction = norm_jac(transformed_x).sum(axis=1)
+
+        return self.log_prob_under_MAF(transformed_x) + correction
+
+    def log_like(
+        self,
+        x: jnp.ndarray,
+        logevidence: float,
+        prior_density: jnp.ndarray | BaseDensityEstimator,
+    ) -> jnp.ndarray:
+        """Compute the marginal log-likelihood of given samples.
 
         Args:
             x: Samples for which to compute the log-likelihood.
+            logevidence: Log-evidence term.
+            prior_density: Prior density or density estimator.
 
         Returns:
-            jnp.ndarray: Log-likelihoods of the samples.
+            Log likelihoods of the input data.
         """
-        # Implementation of log-likelihood computation goes here
-        pass
+        if prior_density is isinstance(prior_density, BaseDensityEstimator):
+            prior_density = prior_density.log_prob(x)
+
+        return self.log_prob(x) + logevidence - prior_density
 
     def save(self, filepath: str) -> None:
         """Save the MAF model to a file.
