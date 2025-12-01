@@ -75,6 +75,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         additive_layers.append(
             nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
         )
+        additive_layers.append(lambda x: jax.nn.relu(x))
         for _ in range(self.nlayers):
             additive_layers.append(
                 nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
@@ -94,6 +95,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         scaling_layers.append(
             nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
         )
+        scaling_layers.append(lambda x: jax.nn.relu(x))
         for _ in range(self.nlayers):
             scaling_layers.append(
                 nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
