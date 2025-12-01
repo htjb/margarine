@@ -12,6 +12,7 @@ from margarine.utils.custom_layers import MaskedLinear
 from margarine.utils.utils import (
     approximate_bounds,
     forward_transform,
+    inverse_transform,
     train_test_split,
 )
 
@@ -33,6 +34,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
         num_made_networks: int = 5,
         nnx_rngs: dict | None = None,
         key: jnp.ndarray = jax.random.PRNGKey(0),
+        permutations: str = "random",
     ) -> None:
         """Initialize MAF model."""
         super().__init__()
@@ -57,10 +59,18 @@ class MAF(BaseDensityEstimator, nnx.Module):
         self.permutations = nnx.data([])
         for i in range(num_made_networks):
             key, subkey = jax.random.split(key)
-            input_order = jax.random.permutation(key, jnp.arange(self.in_size))
+            if permutations == "random":
+                input_order = jax.random.permutation(
+                    subkey, jnp.arange(self.in_size)
+                )
+            elif permutations == "reverse":
+                if i % 2 == 0:
+                    input_order = jnp.arange(self.in_size)[::-1]
+                else:
+                    input_order = jnp.arange(self.in_size)
             self.permutations.append(input_order)
             masks = nnx.data(self.create_masks(input_order))
-            made = nnx.List()
+            made = []
             made.append(
                 MaskedLinear(
                     self.in_size,
@@ -69,6 +79,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     rngs=nnx_rngs,
                 )
             )
+            made.append(lambda x: jax.nn.gelu(x))
             for j in range(1, self.num_layers):
                 made.append(
                     MaskedLinear(
@@ -78,6 +89,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                         rngs=nnx_rngs,
                     )
                 )
+                made.append(lambda x: jax.nn.gelu(x))
             made.append(
                 MaskedLinear(
                     self.hidden_size,
@@ -86,7 +98,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     rngs=nnx_rngs,
                 )
             )
-            self.mades.append(made)
+            self.mades.append(nnx.Sequential(*made))
 
     def create_masks(self, input_order: jnp.ndarray) -> list:
         """Create masks for MADE networks in MAF.
@@ -140,42 +152,74 @@ class MAF(BaseDensityEstimator, nnx.Module):
             shifts, and log scales.
         """
         shifts, log_scales = [], []
+
         for i in range(self.num_made_networks):
-            x = x[:, self.permutations[i]]
+            # MADE processes in natural order
             out = self.mades[i](x)
-            shift, log_scale = out[:, 0, :], out[:, 1, :]
+            shift, log_scale = out[:, : self.in_size], out[:, self.in_size :]
+            log_scale = jnp.clip(log_scale, -5, 3)
+
             shifts.append(shift)
             log_scales.append(log_scale)
-            x = jnp.exp(-log_scale) * (x - shift)
+
+            # Transform
+            x = (x - shift) * jnp.exp(-log_scale)
+
+            # Permute for next layer
+            x = x[:, self.permutations[i]]
+
         return x, jnp.stack(shifts), jnp.stack(log_scales)
 
-    def inverse(self, x: jnp.ndarray) -> jnp.ndarray:
+    def inverse(self, z: jnp.ndarray) -> jnp.ndarray:
         """Inverse pass through the MAF model.
+
+        Args:
+            z: Input data.
+
+        Returns:
+            jnp.ndarray: Inversely transformed data.
+        """
+        for i in reversed(range(self.num_made_networks)):
+            # Inverse permutation from previous layer
+            inverse_order = jnp.argsort(self.permutations[i])
+            z = z[:, inverse_order]
+
+            # Generate sequentially
+            x = jnp.zeros_like(z)
+            for d in range(self.in_size):
+                out = self.mades[i](x)
+                shift, log_scale = (
+                    out[:, : self.in_size],
+                    out[:, self.in_size :],
+                )
+                log_scale = jnp.clip(log_scale, -5, 3)
+
+                x = x.at[:, d].set(
+                    z[:, d] * jnp.exp(log_scale[:, d]) + shift[:, d]
+                )
+
+        return x
+
+    def log_prob_under_MAF(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Compute log-probability under the MAF model.
 
         Args:
             x: Input data.
 
         Returns:
-            jnp.ndarray: Inversely transformed data.
+            jnp.ndarray: Log-probabilities of the samples.
         """
-        # Go backwards through the flow
-        for i in reversed(range(self.num_made_networks)):
-            # Pass through MADE (x is already in correct order from
-            # previous inverse perm)
-            out = self.mades[i](x)
-            shift, log_scale = (
-                out[:, 0, :],
-                out[:, 1, :],
-            )  # Check your output shape!
+        z, shifts, log_scales = self.forward(x)
 
-            # Inverse affine transformation
-            x = x * jnp.exp(log_scale) + shift
+        # Log det jacobian from all layers
+        log_det_jacobian = -jnp.sum(log_scales, axis=(0, 2))
 
-            # Inverse permutation
-            inverse_order = jnp.argsort(self.permutations[i])
-            x = x[:, inverse_order]
+        # Base distribution log prob (standard normal)
+        base_log_prob = -0.5 * jnp.sum(
+            jnp.square(z), axis=-1
+        ) - 0.5 * self.in_size * jnp.log(2 * jnp.pi)
 
-        return x
+        return base_log_prob + log_det_jacobian
 
     def train(
         self,
@@ -306,8 +350,15 @@ class MAF(BaseDensityEstimator, nnx.Module):
         Returns:
             jnp.ndarray: samples from the MAF model.
         """
-        # Implementation of the MAF transformation goes here
-        pass
+        # from unit hypercube to standard normal space
+        x = forward_transform(u, 0, 1)
+
+        # from standard normal to target space
+        x = self.inverse(x)
+
+        # from gaussianized target space to original target space
+        x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
+        return x
 
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log-probability of given samples.
