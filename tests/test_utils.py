@@ -1,17 +1,17 @@
 """Test the utility functions."""
 
 import jax
-from numpy.testing import assert_allclose
 import jax.numpy as jnp
+from numpy.testing import assert_allclose
 
 from margarine.utils.utils import (
+    approximate_bounds,
     forward_transform,
     inverse_transform,
-    approximate_bounds,
 )
 
 
-def test_transformations() -> None:
+def test_transformations_and_bounds() -> None:
     """Test the forward and inverse transformations."""
     key = jax.random.PRNGKey(0)
     num_samples = 1000

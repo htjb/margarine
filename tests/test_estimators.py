@@ -2,12 +2,9 @@
 
 import jax
 import jax.numpy as jnp
-import pytest
 from clustered_distributions import TwoMoons
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 
-from margarine.estimators.clustered import cluster
-from margarine.estimators.maf import MAF
 from margarine.estimators.kde import KDE
 from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
