@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import tqdm
 from jax.scipy.special import logsumexp
 
-from margarine.density.base import BaseDensityEstimator
+from margarine.base.baseflow import BaseDensityEstimator
 
 
 def kldivergence(
