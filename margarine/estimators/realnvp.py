@@ -71,18 +71,38 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         self.pass_size = in_size // 2
         self.net_in_size = in_size - self.pass_size
 
+        # like glorot normal but with 0.1 stddev
+        kernel_init = nnx.initializers.variance_scaling(
+            0.1, "fan_avg", "truncated_normal"
+        )
+
         additive_layers = nnx.List()
         additive_layers.append(
-            nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
+            nnx.Linear(
+                self.net_in_size,
+                self.hidden_size,
+                kernel_init=kernel_init,
+                rngs=nnx_rngs,
+            )
         )
         additive_layers.append(lambda x: jax.nn.relu(x))
         for _ in range(self.nlayers):
             additive_layers.append(
-                nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
+                nnx.Linear(
+                    self.hidden_size,
+                    self.hidden_size,
+                    kernel_init=kernel_init,
+                    rngs=nnx_rngs,
+                )
             )
             additive_layers.append(lambda x: jax.nn.relu(x))
         additive_layers.append(
-            nnx.Linear(self.hidden_size, self.net_in_size, rngs=nnx_rngs)
+            nnx.Linear(
+                self.hidden_size,
+                self.net_in_size,
+                kernel_init=kernel_init,
+                rngs=nnx_rngs,
+            )
         )
         self.additive_mlp = nnx.List(
             [
@@ -93,16 +113,31 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
 
         scaling_layers = nnx.List()
         scaling_layers.append(
-            nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
+            nnx.Linear(
+                self.net_in_size,
+                self.hidden_size,
+                kernel_init=kernel_init,
+                rngs=nnx_rngs,
+            )
         )
         scaling_layers.append(lambda x: jax.nn.relu(x))
         for _ in range(self.nlayers):
             scaling_layers.append(
-                nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
+                nnx.Linear(
+                    self.hidden_size,
+                    self.hidden_size,
+                    kernel_init=kernel_init,
+                    rngs=nnx_rngs,
+                )
             )
             scaling_layers.append(lambda x: jax.nn.relu(x))
         scaling_layers.append(
-            nnx.Linear(self.hidden_size, self.net_in_size, rngs=nnx_rngs)
+            nnx.Linear(
+                self.hidden_size,
+                self.net_in_size,
+                kernel_init=kernel_init,
+                rngs=nnx_rngs,
+            )
         )
 
         self.scaling_mlp = nnx.List(
