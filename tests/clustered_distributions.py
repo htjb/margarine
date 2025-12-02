@@ -25,7 +25,6 @@ class Target:
         super().__init__()
         self.prop_scale = jnp.array(prop_scale)
         self.prop_shift = jnp.array(prop_shift)
-        self.n_dims = len(self.prop_scale)
 
     def log_prob(self, z: jnp.ndarray) -> jnp.ndarray:
         """Base log probability function.
