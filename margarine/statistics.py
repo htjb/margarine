@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+import jax
 import jax.numpy as jnp
 import tqdm
 from jax.scipy.special import logsumexp
@@ -13,6 +14,8 @@ def kldivergence(
     density_estimator_p: BaseDensityEstimator,
     density_estimator_q: BaseDensityEstimator,
     samples_p: jnp.ndarray | None = None,
+    weights: jnp.ndarray | None = None,
+    key: jnp.ndarray = jax.random.PRNGKey(0),
 ) -> float:
     """Kullback-Leibler divergence between two density estimators.
 
@@ -24,15 +27,18 @@ def kldivergence(
         samples_p (jnp.ndarray | None): Optional samples from the
         first density estimator. If None, samples will be drawn
         from density_estimator_p.
+        weights (jnp.ndarray | None): Optional weights for the
+        samples. If None, uniform weights will be used.
+        key (jnp.ndarray): JAX random key for sampling.
 
     Returns:
         kld (float): The Kullback-Leibler divergence D_KL(P || Q).
     """
     if samples_p is None:
-        samples_p = density_estimator_p.sample(10000)
+        samples_p = density_estimator_p.sample(key, num_samples=10000)
     log_p = density_estimator_p.log_prob(samples_p)
     log_q = density_estimator_q.log_prob(samples_p)
-    kld = jnp.mean(log_p - log_q)
+    kld = jnp.average(log_p - log_q, weights=weights)
     return kld
 
 
@@ -40,6 +46,8 @@ def model_dimensionality(
     density_estimator_p: BaseDensityEstimator,
     density_estimator_q: BaseDensityEstimator,
     samples_p: jnp.ndarray | None = None,
+    weights: jnp.ndarray | None = None,
+    key: jnp.ndarray = jax.random.PRNGKey(0),
 ) -> float:
     """Model dimensionality between two density estimators.
 
@@ -51,16 +59,19 @@ def model_dimensionality(
         samples_p (jnp.ndarray | None): Optional samples from the
         first density estimator. If None, samples will be drawn
         from density_estimator_p.
+        weights (jnp.ndarray | None): Optional weights for the
+        samples. If None, uniform weights will be used.
+        key (jnp.ndarray): JAX random key for sampling.
 
     Returns:
         dim (float): The model dimensionality.
     """
     if samples_p is None:
-        samples_p = density_estimator_p.sample(10000)
+        samples_p = density_estimator_p.sample(key, num_samples=10000)
     log_p = density_estimator_p.log_prob(samples_p)
     log_q = density_estimator_q.log_prob(samples_p)
     delta_log = log_p - log_q
-    dim = jnp.var(delta_log)
+    dim = 2 * jnp.cov(delta_log, aweights=weights)
     return dim
 
 

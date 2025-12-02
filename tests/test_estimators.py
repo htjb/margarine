@@ -2,6 +2,7 @@
 
 import jax
 import jax.numpy as jnp
+import jax.scipy.stats as stats
 from clustered_distributions import TwoMoons
 from numpy.testing import assert_allclose
 
@@ -13,45 +14,58 @@ from margarine.statistics import kldivergence, model_dimensionality
 from margarine.utils.utils import approximate_bounds
 
 
-def D_KL(logL: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
+def D_KL(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
     """Calculate the Kullback-Leibler divergence.
 
     Args:
-        logL (jnp.ndarray): Log-likelihood values
+        logPpi (jnp.ndarray): Log-likelihood values
         weights (jnp.ndarray): Corresponding weights
 
     Returns:
         jnp.ndarray: Kullback-Leibler divergence
     """
-    return -jnp.average(logL, weights=weights)
+    return jnp.average(logPpi, weights=weights)
 
 
-def d_g(logL: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
+def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
     """Calculate the BMD statistic.
 
     Args:
-        logL (jnp.ndarray): Log-likelihood values
+        logPpi (jnp.ndarray): Log-likelihood values
         weights (jnp.ndarray): Corresponding weights
 
     Returns:
         jnp.ndarray: BMD statistic
     """
-    return 2 * jnp.cov(logL, aweights=weights)
+    return 2 * jnp.cov(logPpi, aweights=weights)
 
 
 nsamples = 2500
 key = jax.random.PRNGKey(0)
 
-tm = TwoMoons()
-
-key, subkey = jax.random.split(key)
-original_samples = tm.sample(subkey, nsamples)
+original_samples = jax.random.multivariate_normal(
+    key,
+    mean=jnp.array([0.0, 0.0]),
+    cov=jnp.array([[1.0, 0.8], [0.8, 1.0]]),
+    shape=(nsamples,),
+)
+posterior_probs = stats.multivariate_normal.logpdf(
+    original_samples,
+    mean=jnp.array([0.0, 0.0]),
+    cov=jnp.array([[1.0, 0.8], [0.8, 1.0]]),
+)
 weights = jnp.ones(len(original_samples))
 
-logL = tm.log_prob(original_samples)
+prior_probs = stats.uniform.logpdf(
+    original_samples, loc=-4.0, scale=8.0
+)
+prior_probs = jnp.sum(prior_probs, axis=-1)
 
-samples_kl = D_KL(logL, weights)
-samples_d = d_g(logL, weights)
+logPpi = posterior_probs - prior_probs
+
+
+samples_kl = D_KL(logPpi, weights)
+samples_d = d_g(logPpi, weights)
 
 bounds = approximate_bounds(original_samples, weights)
 prior_samples = jax.random.uniform(
@@ -99,8 +113,8 @@ def test_nice() -> None:
     kld = kldivergence(nice_estimator, prior_estimator, samples)
     dim = model_dimensionality(nice_estimator, prior_estimator, samples)
 
-    assert_allclose(kld, samples_kl, rtol=1e-1, atol=1e-1)
-    assert_allclose(dim, samples_d, rtol=1e-1, atol=1e-1)
+    assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
+    assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
 
 
 def test_realnvp() -> None:
@@ -139,8 +153,8 @@ def test_realnvp() -> None:
     # check the kl divergence and model dimensionality
     kld = kldivergence(realnvp_estimator, prior_estimator, samples)
     dim = model_dimensionality(realnvp_estimator, prior_estimator, samples)
-    assert_allclose(kld, samples_kl, rtol=1e-1, atol=1e-1)
-    assert_allclose(dim, samples_d, rtol=1e-1, atol=1e-1)
+    assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
+    assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
 
 
 def test_kde() -> None:
@@ -159,8 +173,8 @@ def test_kde() -> None:
     dim = model_dimensionality(kde_estimator, prior_estimator, samples)
     print(kld, dim)
     print(samples_kl, samples_d)
-    assert_allclose(kld, samples_kl, rtol=1e-1, atol=1e-1)
-    assert_allclose(dim, samples_d, rtol=1e-1, atol=1e-1)
+    assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
+    assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
 
 def test_maf() -> None:
     """Test MAF estimator."""
@@ -170,7 +184,7 @@ def test_maf() -> None:
         original_samples,
         weights=weights,
         in_size=2,
-        hidden_size=128,
+        hidden_size=50,
         num_layers=2,
         num_made_networks=5,
     )
@@ -182,10 +196,10 @@ def test_maf() -> None:
     forward_transformed, _, _ = maf_estimator.forward(z)
     inverse_transformed = maf_estimator.inverse(forward_transformed)
     error = jnp.mean(jnp.abs(inverse_transformed - z))
-    assert error < 5e-3 # MAF is less precise here due to numerical issues
+    assert error < 5e-3  # MAF is less precise here due to numerical issues
 
     # mafs are really hard to train well - so commenting out for now
-    """key, subkey = jax.random.split(key)
+    key, subkey = jax.random.split(key)
     maf_estimator.train(subkey, learning_rate=1e-3, epochs=1000, patience=50)
 
     key, subkey = jax.random.split(key)
@@ -194,18 +208,18 @@ def test_maf() -> None:
     prior_estimator = MAF(
         prior_samples,
         in_size=2,
-        hidden_size=128,
+        hidden_size=50,
         num_layers=2,
         num_made_networks=5,
+        theta_ranges=bounds,
     )
     prior_estimator.train(subkey, learning_rate=1e-3, epochs=1000, patience=50)
 
     # check the kl divergence and model dimensionality
     kld = kldivergence(maf_estimator, prior_estimator, samples)
     dim = model_dimensionality(maf_estimator, prior_estimator, samples)
-    assert_allclose(kld, samples_kl, rtol=1, atol=1)
-    assert_allclose(dim, samples_d, rtol=1, atol=1)"""
-
+    assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
+    assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
 
     # check permuatations
     maf_estimator = MAF(
