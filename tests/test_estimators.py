@@ -3,13 +3,12 @@
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats as stats
-from clustered_distributions import TwoMoons
 from numpy.testing import assert_allclose
 
 from margarine.estimators.kde import KDE
+from margarine.estimators.maf import MAF
 from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
-from margarine.estimators.maf import MAF
 from margarine.statistics import kldivergence, model_dimensionality
 from margarine.utils.utils import approximate_bounds
 
@@ -56,9 +55,7 @@ posterior_probs = stats.multivariate_normal.logpdf(
 )
 weights = jnp.ones(len(original_samples))
 
-prior_probs = stats.uniform.logpdf(
-    original_samples, loc=-4.0, scale=8.0
-)
+prior_probs = stats.uniform.logpdf(original_samples, loc=-4.0, scale=8.0)
 prior_probs = jnp.sum(prior_probs, axis=-1)
 
 logPpi = posterior_probs - prior_probs
@@ -69,7 +66,7 @@ samples_d = d_g(logPpi, weights)
 
 bounds = approximate_bounds(original_samples, weights)
 prior_samples = jax.random.uniform(
-    key, (10000, 2), minval=bounds[0], maxval=bounds[1]
+    key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
 )
 
 
@@ -143,18 +140,49 @@ def test_realnvp() -> None:
         subkey, learning_rate=1e-3, epochs=1000, patience=50
     )
 
-    key, subkey = jax.random.split(key)
-    samples = realnvp_estimator.sample(subkey, 10000)
+    kl_estimates, bmd_estimates = [], []
+    for _ in range(5):
+        realnvp_estimator = RealNVP(
+            original_samples,
+            weights=weights,
+            in_size=2,
+            hidden_size=50,
+            num_coupling_layers=3,
+        )
+        key, subkey = jax.random.split(key)
+        realnvp_estimator.train(
+            subkey, learning_rate=1e-4, epochs=1000, patience=50
+        )
 
-    prior_estimator = RealNVP(
-        prior_samples, in_size=2, hidden_size=128, num_coupling_layers=6
-    )
-    prior_estimator.train(subkey, learning_rate=1e-3, epochs=1000, patience=50)
-    # check the kl divergence and model dimensionality
-    kld = kldivergence(realnvp_estimator, prior_estimator, samples)
-    dim = model_dimensionality(realnvp_estimator, prior_estimator, samples)
-    assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
+        key, subkey = jax.random.split(key)
+        samples = realnvp_estimator.sample(subkey, 10000)
+
+        prior_estimator = RealNVP(
+            prior_samples, in_size=2, hidden_size=50, num_coupling_layers=3
+        )
+        prior_estimator.train(
+            subkey, learning_rate=1e-4, epochs=1000, patience=50
+        )
+        # check the kl divergence and model dimensionality
+        kld = kldivergence(realnvp_estimator, prior_estimator, samples)
+        dim = model_dimensionality(realnvp_estimator, prior_estimator, samples)
+        kl_estimates.append(kld)
+        bmd_estimates.append(dim)
+
+    kl_estimates = jnp.array(kl_estimates)
+    dim = jnp.mean(jnp.array(bmd_estimates))
+    kl_rtol = jnp.std(kl_estimates) / (jnp.mean(kl_estimates) + 1e-10)
+    kl_atol = jnp.std(kl_estimates)
+    kld = jnp.mean(kl_estimates)
+    print(kld, dim)
+    print(samples_kl, samples_d)
+    print("KL rtol:", kl_rtol, "KL atol:", kl_atol)
+    assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
+
     assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
+
+
+test_realnvp()
 
 
 def test_kde() -> None:
@@ -175,6 +203,7 @@ def test_kde() -> None:
     print(samples_kl, samples_d)
     assert_allclose(kld, samples_kl, rtol=0.5, atol=0.5)
     assert_allclose(dim, samples_d, rtol=0.5, atol=0.5)
+
 
 def test_maf() -> None:
     """Test MAF estimator."""
