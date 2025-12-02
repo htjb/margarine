@@ -105,11 +105,6 @@ class TwoMoons(Target):
           log probability of the distribution for z
         """
         a = jnp.abs(z[:, 0])
-        """log_prob = (
-            -0.5 * ((torch.norm(z, dim=1) - 2) / 0.2) ** 2
-            - 0.5 * ((a - 2) / 0.3) ** 2
-            + torch.log(1 + torch.exp(-4 * a / 0.09))
-        )"""
         log_prob = (
             -0.5 * ((jnp.linalg.norm(z, axis=1) - 2) / 0.2) ** 2
             - 0.5 * ((a - 2) / 0.3) ** 2
