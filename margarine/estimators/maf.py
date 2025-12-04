@@ -69,7 +69,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                 else:
                     input_order = jnp.arange(self.in_size)
             self.permutations.append(input_order)
-            masks = nnx.data(self.create_masks(input_order))
+            masks = nnx.data(self.create_masks(jnp.arange(self.in_size)))
             made = []
             made.append(
                 MaskedLinear(
@@ -79,7 +79,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     rngs=nnx_rngs,
                 )
             )
-            made.append(lambda x: jax.nn.gelu(x))
+            made.append(nnx.gelu)
             for j in range(1, self.num_layers):
                 made.append(
                     MaskedLinear(
@@ -89,7 +89,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                         rngs=nnx_rngs,
                     )
                 )
-                made.append(lambda x: jax.nn.gelu(x))
+                made.append(nnx.gelu)
             made.append(
                 MaskedLinear(
                     self.hidden_size,
@@ -152,21 +152,22 @@ class MAF(BaseDensityEstimator, nnx.Module):
             shifts, and log scales.
         """
         shifts, log_scales = [], []
-
         for i in range(self.num_made_networks):
-            # MADE processes in natural order
-            out = self.mades[i](x)
+            # Permute input to this MADE's preferred ordering
+            x_permuted = x[:, self.permutations[i]]
+
+            # Process in permuted space
+            out = self.mades[i](x_permuted)
             shift, log_scale = out[:, : self.in_size], out[:, self.in_size :]
             log_scale = jnp.clip(log_scale, -5, 3)
-
             shifts.append(shift)
             log_scales.append(log_scale)
+            # Transform in permuted space
+            x_permuted = (x_permuted - shift) * jnp.exp(-log_scale)
 
-            # Transform
-            x = (x - shift) * jnp.exp(-log_scale)
-
-            # Permute for next layer
-            x = x[:, self.permutations[i]]
+            # Inverse permute back to natural ordering
+            inverse_order = jnp.argsort(self.permutations[i])
+            x = x_permuted[:, inverse_order]
 
         return x, jnp.stack(shifts), jnp.stack(log_scales)
 
@@ -180,25 +181,27 @@ class MAF(BaseDensityEstimator, nnx.Module):
             jnp.ndarray: Inversely transformed data.
         """
         for i in reversed(range(self.num_made_networks)):
-            # Inverse permutation from previous layer
-            inverse_order = jnp.argsort(self.permutations[i])
-            z = z[:, inverse_order]
+            # Undo the inverse permutation that was applied in forward
+            z_permuted = z[:, self.permutations[i]]
 
-            # Generate sequentially
-            x = jnp.zeros_like(z)
+            # Generate sequentially in permuted space
+            x_permuted = jnp.zeros_like(z_permuted)
             for d in range(self.in_size):
-                out = self.mades[i](x)
+                out = self.mades[i](x_permuted)
                 shift, log_scale = (
                     out[:, : self.in_size],
                     out[:, self.in_size :],
                 )
                 log_scale = jnp.clip(log_scale, -5, 3)
-
-                x = x.at[:, d].set(
-                    z[:, d] * jnp.exp(log_scale[:, d]) + shift[:, d]
+                x_permuted = x_permuted.at[:, d].set(
+                    z_permuted[:, d] * jnp.exp(log_scale[:, d]) + shift[:, d]
                 )
 
-        return x
+            # Inverse permute back
+            inverse_order = jnp.argsort(self.permutations[i])
+            z = x_permuted[:, inverse_order]
+
+        return z
 
     def log_prob_under_MAF(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute log-probability under the MAF model.
@@ -213,7 +216,6 @@ class MAF(BaseDensityEstimator, nnx.Module):
 
         # Log det jacobian from all layers
         log_det_jacobian = -jnp.sum(log_scales, axis=(0, 2))
-
         # Base distribution log prob (standard normal)
         base_log_prob = -0.5 * jnp.sum(
             jnp.square(z), axis=-1
@@ -284,7 +286,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
             )
         )
 
-        tx = optax.adamw(learning_rate, weight_decay=1e-6)
+        tx = optax.adamw(learning_rate, weight_decay=1e-4)
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
 
         pbar = tqdm.tqdm(range(epochs), desc="Training")
@@ -405,7 +407,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
         Returns:
             Log likelihoods of the input data.
         """
-        if prior_density is isinstance(prior_density, BaseDensityEstimator):
+        if isinstance(prior_density, BaseDensityEstimator):
             prior_density = prior_density.log_prob(x)
 
         return self.log_prob(x) + logevidence - prior_density
