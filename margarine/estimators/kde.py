@@ -140,7 +140,7 @@ class KDE(BaseDensityEstimator):
         Returns:
             jnp.ndarray: Log-likelihoods of the samples.
         """
-        if prior_density is isinstance(prior_density, BaseDensityEstimator):
+        if isinstance(prior_density, BaseDensityEstimator):
             prior_density = prior_density.log_prob(x)
 
         return self.log_prob(x) + logevidence - prior_density

@@ -402,7 +402,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         Returns:
             Log likelihoods of the input data.
         """
-        if prior_density is isinstance(prior_density, BaseDensityEstimator):
+        if isinstance(prior_density, BaseDensityEstimator):
             prior_density = prior_density.log_prob(x)
 
         return self.log_prob(x) + logevidence - prior_density
