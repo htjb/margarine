@@ -274,6 +274,24 @@ def test_maf() -> None:
     print(error)
     assert error < 5e-3  # MAF is less precise here due to numerical issues
     """
+
+    # define a learning rate schedule
+    import optax
+
+    # --- Define Schedule Parameters ---
+    initial_lr = 1e-6  # Very small starting rate (for initial stability)
+    peak_lr = 1e-4  # The rate you need to learn the covariance
+    total_steps = 10000  # Total training steps (epochs * steps_per_epoch)
+    warmup_steps = 500  # Steps to ramp up to peak_lr
+
+    # --- Create the Schedule ---
+    schedule = optax.warmup_cosine_decay_schedule(
+        init_value=initial_lr,
+        peak_value=peak_lr,
+        warmup_steps=warmup_steps,
+        decay_steps=total_steps,
+        end_value=initial_lr / 100,  # Or set to 0.0
+    )
     # mafs are really hard to train well
     kl_estimates, bmd_estimates = [], []
     for _ in range(5):
@@ -281,15 +299,20 @@ def test_maf() -> None:
             original_samples,
             weights=weights,
             in_size=2,
-            hidden_size=128,
+            hidden_size=50,
             num_layers=4,
-            num_made_networks=10,
+            num_made_networks=6,
             theta_ranges=bounds,
+            permutations="random",
         )
         key, subkey = jax.random.split(key)
 
         maf_estimator.train(
-            subkey, learning_rate=1e-4, epochs=5000, patience=50
+            subkey,
+            learning_rate=schedule,
+            epochs=2000,
+            patience=50,
+            batch_size=512,
         )
 
         key, subkey = jax.random.split(key)
@@ -297,7 +320,7 @@ def test_maf() -> None:
 
         import matplotlib.pyplot as plt
 
-        fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+        fig, axes = plt.subplots(1, 3, figsize=(10, 3))
         axes[0].plot(
             original_samples[:, 0],
             original_samples[:, 1],
@@ -316,6 +339,10 @@ def test_maf() -> None:
         )
         axes[1].set_xlabel("true log prob")
         axes[1].set_ylabel("maf log prob")
+        axes[2].plot(maf_estimator.train_loss, label="train loss")
+        axes[2].plot(maf_estimator.val_loss, label="val loss")
+        axes[2].set_xlabel("epoch")
+        axes[2].set_ylabel("negative log likelihood")
         plt.legend()
         plt.show()
         exit()

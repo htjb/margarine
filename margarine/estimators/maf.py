@@ -79,7 +79,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     rngs=nnx_rngs,
                 )
             )
-            made.append(nnx.gelu)
+            made.append(nnx.softplus)
             for j in range(1, self.num_layers):
                 made.append(
                     MaskedLinear(
@@ -89,14 +89,14 @@ class MAF(BaseDensityEstimator, nnx.Module):
                         rngs=nnx_rngs,
                     )
                 )
-                made.append(nnx.gelu)
+                made.append(nnx.softplus)
             made.append(
                 MaskedLinear(
                     self.hidden_size,
                     self.in_size * 2,
                     mask=masks.metadata["nnx_value"][-1],
                     rngs=nnx_rngs,
-                    kernel_init=nnx.initializers.zeros,
+                    # kernel_init=nnx.initializers.zeros,
                 )
             )
             self.mades.append(nnx.Sequential(*made))
@@ -230,6 +230,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
         learning_rate: float = 1e-4,
         epochs: int = 1000,
         patience: int = 50,
+        batch_size: int = 256,
     ) -> None:
         """Train the MAF model.
 
@@ -238,6 +239,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
             learning_rate: Learning rate for the optimizer.
             epochs: Number of training epochs.
             patience: Patience for early stopping.
+            batch_size: Size of training batches.
         """
 
         @jax.jit
@@ -258,6 +260,20 @@ class MAF(BaseDensityEstimator, nnx.Module):
                 jnp.ndarray: Computed loss.
             """
             return -jnp.mean(weights * model.log_prob_under_MAF(targets))
+
+        @nnx.jit
+        def train_step(model: "MAF", optimizer: nnx.Optimizer) -> None:
+            """Single training step for MAF model.
+
+            Args:
+                model (MAF): MAF model.
+                optimizer (nnx.Optimizer): Optimizer
+                    for updating model parameters.
+            """
+            grad = nnx.grad(loss_function)(
+                model, self.train_phi, self.train_weights
+            )
+            optimizer.update(model, grad)
 
         phi = forward_transform(
             self.theta, self.theta_ranges[0], self.theta_ranges[1]
@@ -287,7 +303,9 @@ class MAF(BaseDensityEstimator, nnx.Module):
             )
         )
 
-        tx = optax.adam(learning_rate)
+        tx = optax.chain(
+            optax.clip_by_global_norm(3), optax.adam(learning_rate)
+        )
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
 
         pbar = tqdm.tqdm(range(epochs), desc="Training")
@@ -296,14 +314,24 @@ class MAF(BaseDensityEstimator, nnx.Module):
         best_model = nnx.state(self, nnx.Param)
         c = 0
 
+        data_size = len(self.train_phi)
+
         tl, vl = [], []
         for _ in pbar:
-            loss = loss_function(self, self.train_phi, self.train_weights)
-            tl.append(loss)
-            grad = nnx.grad(loss_function)(
-                self, self.train_phi, self.train_weights
+            key, subkey = jax.random.split(key)
+            data_permutations = jax.random.permutation(
+                subkey, jnp.arange(data_size)
             )
-            optimizer.update(self, grad)
+            accumulated_train_loss = 0.0
+            for i in range(0, len(self.train_phi), batch_size):
+                batch_indices = data_permutations[i : i + batch_size]
+                batch_phi = self.train_phi[batch_indices]
+                batch_weights = self.train_weights[batch_indices]
+                loss = loss_function(self, batch_phi, batch_weights)
+                train_step(self, optimizer)
+                accumulated_train_loss += loss * len(batch_phi)
+            loss = accumulated_train_loss / len(self.train_phi)
+            tl.append(loss)
 
             val_loss = loss_function(self, self.val_phi, self.val_weights)
             vl.append(val_loss)
@@ -327,6 +355,9 @@ class MAF(BaseDensityEstimator, nnx.Module):
                 val_loss=f"{val_loss:.3e}",
                 best_loss=f"{best_loss:.3e}",
             )
+
+        self.train_loss = jnp.array(tl)
+        self.val_loss = jnp.array(vl)
 
         if best_model is not None:
             nnx.update(self, best_model)

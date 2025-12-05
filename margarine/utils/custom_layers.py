@@ -35,7 +35,7 @@ class MaskedLinear(nnx.Module):
             out_features,
             rngs=rngs,
             kernel_init=kernel_init,
-            bias_init=nnx.initializers.zeros,
+            bias_init=nnx.initializers.constant(0.0),
         )
         self.mask = mask
 
