@@ -141,6 +141,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         learning_rate: float = 1e-4,
         epochs: int = 1000,
         patience: int = 50,
+        batch_size: int = 256,
     ) -> None:
         """Train the NICE model.
 
@@ -149,9 +150,10 @@ class NICE(BaseDensityEstimator, nnx.Module):
             learning_rate: Learning rate for the optimizer.
             epochs: Number of training epochs.
             patience: Patience for early stopping.
+            batch_size: Batch size for training.
         """
 
-        @jax.jit
+        @nnx.jit
         def loss_function(
             model: "NICE",
             targets: jnp.ndarray,
@@ -169,6 +171,25 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 jnp.ndarray: Computed loss.
             """
             return -jnp.mean(weights * model.log_prob_under_NICE(targets))
+
+        # @nnx.jit
+        def train_step(
+            model: NICE,
+            optimizer: nnx.Optimizer,
+            train_phi: jnp.ndarray,
+            train_weights: jnp.ndarray,
+        ) -> None:
+            """Single training step for NICE model.
+
+            Args:
+                model (NICE): NICE model.
+                optimizer (nnx.Optimizer): Optimizer for
+                    updating model parameters.
+                train_phi (jnp.ndarray): Training samples.
+                train_weights (jnp.ndarray): Weights for the training samples.
+            """
+            grad = nnx.grad(loss_function)(model, train_phi, train_weights)
+            optimizer.update(model, grad)
 
         phi = forward_transform(
             self.theta, self.theta_ranges[0], self.theta_ranges[1]
@@ -207,14 +228,23 @@ class NICE(BaseDensityEstimator, nnx.Module):
         best_model = nnx.state(self, nnx.Param)
         c = 0
 
+        data_size = len(self.train_phi)
+
         tl, vl = [], []
         for _ in pbar:
-            loss = loss_function(self, self.train_phi, self.train_weights)
-            tl.append(loss)
-            grad = nnx.grad(loss_function)(
-                self, self.train_phi, self.train_weights
+            data_permutations = jax.random.permutation(
+                subkey, jnp.arange(data_size)
             )
-            optimizer.update(self, grad)
+            accumulated_train_loss = 0.0
+            for i in range(0, len(self.train_phi), batch_size):
+                batch_indices = data_permutations[i : i + batch_size]
+                batch_phi = self.train_phi[batch_indices]
+                batch_weights = self.train_weights[batch_indices]
+                loss = loss_function(self, batch_phi, batch_weights)
+                train_step(self, optimizer, batch_phi, batch_weights)
+                accumulated_train_loss += loss * len(batch_phi)
+            loss = accumulated_train_loss / len(self.train_phi)
+            tl.append(loss)
 
             val_loss = loss_function(self, self.val_phi, self.val_weights)
             vl.append(val_loss)
@@ -238,6 +268,9 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 val_loss=f"{val_loss:.3e}",
                 best_loss=f"{best_loss:.3e}",
             )
+
+        self.train_loss = jnp.array(tl)
+        self.val_loss = jnp.array(vl)
 
         if best_model is not None:
             nnx.update(self, best_model)
