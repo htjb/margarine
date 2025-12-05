@@ -82,6 +82,7 @@ def integrate(
     batch_size: int = 1000,
     sample_size: int = 10000,
     logzero: float = -1e30,
+    key: jnp.ndarray = jax.random.PRNGKey(0),
 ) -> dict:
     """Importance sampling integration of a likelihood function.
 
@@ -95,6 +96,7 @@ def integrate(
         sample_size (int): The number of samples to draw in total.
         logzero (float): The definition of zero for the
             loglikelihood function.
+        key (jnp.ndarray): JAX random key for sampling.
 
     Returns:
         stats (dict): Dictionary containing useful statistics
@@ -108,38 +110,45 @@ def integrate(
     trials = 0
 
     with tqdm.tqdm(total=sample_size) as pbar:
-        while n_todo > 0:
-            x = density_estimator.sample(batch_size)
+        while n_todo > 0:  # draw samples until we have enough accepted
+            key, subkey = jax.random.split(key)
+            x = density_estimator.sample(subkey, batch_size)
             f = jnp.array(list(map(likelihood, x)))
-            g = density_estimator.log_prob(x).numpy()
+            g = density_estimator.log_prob(x)
+            # determine which samples are accepted based on logzero
             in_bounds = jnp.logical_and(f >= logzero, g >= logzero)
             n_accept = x[in_bounds].shape[0]
             if n_accept <= n_todo:
-                xs[sample_size - n_todo : sample_size - n_todo + n_accept] = x[
-                    in_bounds
-                ]
-                fs[sample_size - n_todo : sample_size - n_todo + n_accept] = f[
-                    in_bounds
-                ]
-                gs[sample_size - n_todo : sample_size - n_todo + n_accept] = g[
-                    in_bounds
-                ]
-                pis[sample_size - n_todo : sample_size - n_todo + n_accept] = (
-                    prior.log_prob(x[in_bounds])
-                )
+                # accepted samples
+                xs = xs.at[
+                    sample_size - n_todo : sample_size - n_todo + n_accept
+                ].set(x[in_bounds])
+                # corresponding likelihoods
+                fs = fs.at[
+                    sample_size - n_todo : sample_size - n_todo + n_accept
+                ].set(f[in_bounds])
+                # corresponding flow log-probs
+                gs = gs.at[
+                    sample_size - n_todo : sample_size - n_todo + n_accept
+                ].set(g[in_bounds])
+                # corresponding prior log-probs
+                pis = pis.at[
+                    sample_size - n_todo : sample_size - n_todo + n_accept
+                ].set(prior.log_prob(x[in_bounds]))
                 trials += batch_size
             else:
                 n_accept = n_todo
-                xs[sample_size - n_todo :] = x[in_bounds][:n_accept]
-                fs[sample_size - n_todo :] = f[in_bounds][:n_accept]
-                gs[sample_size - n_todo :] = g[in_bounds][:n_accept]
-                pis[sample_size - n_todo :] = prior.log_prob(x[in_bounds])[
-                    :n_accept
-                ]
+                xs = xs.at[sample_size - n_todo :].set(x[in_bounds][:n_accept])
+                fs = fs.at[sample_size - n_todo :].set(f[in_bounds][:n_accept])
+                gs = gs.at[sample_size - n_todo :].set(g[in_bounds][:n_accept])
+                pis = pis.at[sample_size - n_todo :].set(
+                    prior.log_prob(x[in_bounds])[:n_accept]
+                )
                 last_index = in_bounds[-1]
                 trials += last_index + 1
             n_todo -= n_accept
             pbar.update(n_accept)
+            # prevent excessive calls
             if trials > 10 * sample_size:
                 raise ValueError(
                     "Too many unsuccessful trials, this"
@@ -147,9 +156,11 @@ def integrate(
                     + "flow and likelihood"
                 )
 
+        # calcualte the importance weights = prior * likelihood / flow
         weights = jnp.exp(fs + pis - gs)
-
+        # effective sample size
         eff = jnp.sum(weights) ** 2 / jnp.sum(weights**2) / sample_size
+        # estimate of the integral and its standard error
         integral = sample_size / trials * weights.mean()
         log_integral = logsumexp(fs + pis - gs) - jnp.log(trials)
 
