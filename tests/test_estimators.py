@@ -281,15 +281,15 @@ def test_maf() -> None:
             original_samples,
             weights=weights,
             in_size=2,
-            hidden_size=50,
-            num_layers=2,
-            num_made_networks=5,
+            hidden_size=128,
+            num_layers=4,
+            num_made_networks=10,
             theta_ranges=bounds,
         )
         key, subkey = jax.random.split(key)
 
         maf_estimator.train(
-            subkey, learning_rate=1e-3, epochs=5000, patience=50
+            subkey, learning_rate=1e-4, epochs=5000, patience=50
         )
 
         key, subkey = jax.random.split(key)

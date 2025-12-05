@@ -12,6 +12,7 @@ class MaskedLinear(nnx.Module):
         in_features: int,
         out_features: int,
         mask: jnp.ndarray,
+        kernel_init: nnx.initializers.Initializer | None = None,
         rngs: dict | None = None,
     ) -> None:
         """Initialize MaskedLinear layer.
@@ -20,15 +21,21 @@ class MaskedLinear(nnx.Module):
             in_features: Number of input features.
             out_features: Number of output features.
             mask: Mask to apply to the weights.
+            kernel_init: Initializer for the weights.
             rngs: Random number generators for initialization.
         """
-        # like glorot normal but with 0.1 stddev
-        kernel_init = nnx.initializers.variance_scaling(
-            0.1, "fan_avg", "truncated_normal"
-        )
+        if kernel_init is None:
+            # like glorot normal but with 0.1 stddev
+            kernel_init = nnx.initializers.variance_scaling(
+                0.1, "fan_avg", "truncated_normal"
+            )
 
         self.linear = nnx.Linear(
-            in_features, out_features, rngs=rngs, kernel_init=kernel_init
+            in_features,
+            out_features,
+            rngs=rngs,
+            kernel_init=kernel_init,
+            bias_init=nnx.initializers.zeros,
         )
         self.mask = mask
 

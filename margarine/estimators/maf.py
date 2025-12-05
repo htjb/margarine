@@ -96,6 +96,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     self.in_size * 2,
                     mask=masks.metadata["nnx_value"][-1],
                     rngs=nnx_rngs,
+                    kernel_init=nnx.initializers.zeros,
                 )
             )
             self.mades.append(nnx.Sequential(*made))
@@ -159,7 +160,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
             # Process in permuted space
             out = self.mades[i](x_permuted)
             shift, log_scale = out[:, : self.in_size], out[:, self.in_size :]
-            log_scale = jnp.clip(log_scale, -5, 3)
+            log_scale = jnp.clip(log_scale, -10, 5)
             shifts.append(shift)
             log_scales.append(log_scale)
             # Transform in permuted space
@@ -192,7 +193,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
                     out[:, : self.in_size],
                     out[:, self.in_size :],
                 )
-                log_scale = jnp.clip(log_scale, -5, 3)
+                log_scale = jnp.clip(log_scale, -10, 5)
                 x_permuted = x_permuted.at[:, d].set(
                     z_permuted[:, d] * jnp.exp(log_scale[:, d]) + shift[:, d]
                 )
@@ -286,7 +287,7 @@ class MAF(BaseDensityEstimator, nnx.Module):
             )
         )
 
-        tx = optax.adamw(learning_rate, weight_decay=1e-4)
+        tx = optax.adam(learning_rate)
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
 
         pbar = tqdm.tqdm(range(epochs), desc="Training")
