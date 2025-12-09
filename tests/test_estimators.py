@@ -104,7 +104,11 @@ def test_nice() -> None:
 
         key, subkey = jax.random.split(key)
         nice_estimator.train(
-            subkey, learning_rate=1e-3, epochs=2000, patience=50
+            subkey,
+            learning_rate=1e-3,
+            epochs=2000,
+            patience=50,
+            batch_size=1024,
         )
 
         key, subkey = jax.random.split(key)
@@ -120,7 +124,11 @@ def test_nice() -> None:
         )
         key, subkey = jax.random.split(key)
         prior_estimator.train(
-            subkey, learning_rate=1e-3, epochs=2000, patience=50
+            subkey,
+            learning_rate=1e-3,
+            epochs=2000,
+            patience=50,
+            batch_size=1024,
         )
 
         # check the kl divergence and model dimensionality
@@ -176,7 +184,11 @@ def test_realnvp() -> None:
         )
         key, subkey = jax.random.split(key)
         realnvp_estimator.train(
-            subkey, learning_rate=1e-4, epochs=2000, patience=50
+            subkey,
+            learning_rate=1e-4,
+            epochs=2000,
+            patience=50,
+            batch_size=len(original_samples),
         )
 
         key, subkey = jax.random.split(key)
@@ -187,7 +199,11 @@ def test_realnvp() -> None:
         )
         key, subkey = jax.random.split(key)
         prior_estimator.train(
-            subkey, learning_rate=1e-4, epochs=2000, patience=50
+            subkey,
+            learning_rate=1e-4,
+            epochs=2000,
+            patience=50,
+            batch_size=len(prior_samples),
         )
 
         # check the kl divergence and model dimensionality
