@@ -47,7 +47,7 @@ target_cov_two = jnp.array([[1.0, -0.6], [-0.6, 1.0]])
 
 
 original_samples = jnp.concatenate(
-    jax.random.multivariate_normal(
+    [jax.random.multivariate_normal(
         key,
         mean=target_mean_one,
         cov=target_cov_one,
@@ -58,7 +58,7 @@ original_samples = jnp.concatenate(
         mean=target_mean_two,
         cov=target_cov_two,
         shape=(nsamples // 2,),
-    ),
+    )],
     axis=0,
 )
 
@@ -104,6 +104,7 @@ def test_clustering() -> None:
             hidden_size=50,
             num_layers=2,
             num_coupling_layers=4,
+            max_cluster_number=3,
         )
 
         key, subkey = jax.random.split(key)
