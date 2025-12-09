@@ -64,6 +64,9 @@ class cluster:
         if self.weights is None:
             self.weights = jnp.ones(len(self.theta))
 
+        if self.theta_ranges is None:
+            self.theta_ranges = approximate_bounds(self.theta, self.weights)
+
         if self.clusters is None:
             ks = jnp.arange(2, max_cluster_number + 1)
             losses = []
@@ -114,22 +117,13 @@ class cluster:
         self.split_theta = split_theta
         self.split_weights = split_weights
 
-        if self.theta_ranges is None:
-            self.theta_ranges = []
-            for i in range(self.cluster_number):
-                self.theta_ranges.append(
-                    approximate_bounds(
-                        self.split_theta[i], self.split_weights[i]
-                    )
-                )
-
         self.estimators = []
         for i in range(len(split_theta)):
             self.estimators.append(
                 base_estimator(
                     split_theta[i],
                     weights=split_weights[i],
-                    theta_ranges=self.theta_ranges[i],
+                    theta_ranges=self.theta_ranges,
                     **self.kwargs,
                 )
             )
