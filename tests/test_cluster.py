@@ -110,14 +110,18 @@ def test_clustering() -> None:
             in_size=2,
             hidden_size=50,
             num_layers=2,
-            num_coupling_layers=4,
+            num_coupling_layers=6,
             max_cluster_number=3,
             theta_ranges=bounds,
         )
 
         key, subkey = jax.random.split(key)
         cluster_estimator.train(
-            key=subkey, learning_rate=1e-3, epochs=2000, patience=50
+            key=subkey,
+            learning_rate=1e-3,
+            epochs=2000,
+            patience=50,
+            batch_size=1024,
         )
 
         key, subkey = jax.random.split(key)
