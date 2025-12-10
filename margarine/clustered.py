@@ -394,7 +394,7 @@ class clusterMAF:
 
         posterior_logprob = self.log_prob(params)
 
-        loglike = posterior_logprob + prior_logprob - logevidence
+        loglike = posterior_logprob + logevidence - prior_logprob
 
         return loglike
 
