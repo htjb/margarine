@@ -8,7 +8,6 @@ from numpy.testing import assert_allclose
 from margarine.estimators.clustered import cluster
 from margarine.estimators.nice import NICE
 from margarine.statistics import kldivergence, model_dimensionality
-from margarine.utils.utils import approximate_bounds
 
 
 def D_KL(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
@@ -66,32 +65,33 @@ original_samples = jnp.concatenate(
 
 
 posterior_probs = jnp.concatenate(
-    [stats.multivariate_normal.logpdf(
-        original_samples[: nsamples // 2],
-        mean=target_mean_one,
-        cov=target_cov_one,
-    ),
-    stats.multivariate_normal.logpdf(
-        original_samples[: nsamples // 2],
-        mean=target_mean_two,
-        cov=target_cov_two,
-    )],
+    [
+        stats.multivariate_normal.logpdf(
+            original_samples[: nsamples // 2],
+            mean=target_mean_one,
+            cov=target_cov_one,
+        ),
+        stats.multivariate_normal.logpdf(
+            original_samples[nsamples // 2 :],
+            mean=target_mean_two,
+            cov=target_cov_two,
+        ),
+    ],
     axis=0,
 )
 
 weights = jnp.ones(len(original_samples))
 
-prior_probs = stats.uniform.logpdf(original_samples, loc=-4.0, scale=10.0)
+prior_probs = stats.uniform.logpdf(original_samples, loc=-5.0, scale=15.0)
 
 prior_probs = jnp.sum(prior_probs, axis=-1)
 
 logPpi = posterior_probs - prior_probs
 
-
 samples_kl = D_KL(logPpi, weights)
 samples_d = d_g(logPpi, weights)
 
-bounds = approximate_bounds(original_samples, weights)
+bounds = jnp.array([[-5.0, -5.0], [10.0, 10.0]])
 prior_samples = jax.random.uniform(
     key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
 )
@@ -144,8 +144,6 @@ def test_clustering() -> None:
 
     kld_estimates = jnp.array(kld_estimates)
     bmd_estimates = jnp.array(bmd_estimates)
-    print("KLD estimates:", kld_estimates)
-    print("BMD estimates:", bmd_estimates)
 
     kl_rtol = 3 * jnp.std(kld_estimates) / (jnp.mean(kld_estimates) + 1e-10)
     kl_atol = 3 * jnp.std(kld_estimates)
@@ -155,11 +153,5 @@ def test_clustering() -> None:
     dim_atol = 3 * jnp.std(bmd_estimates)
     dim = jnp.mean(bmd_estimates)
 
-    print(kld, samples_kl, kl_rtol, kl_atol)
-    print(dim, samples_d, dim_rtol, dim_atol)
-
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
-
-
-test_clustering()
