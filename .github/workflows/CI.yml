@@ -27,7 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest-cov pytest
-        python -m pip install .
+        python -m pip install . --no-cache-dir
     - name: Test with pytest
       run: |
         python -m pytest --cov=margarine
