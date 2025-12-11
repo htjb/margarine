@@ -89,6 +89,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         self.S = nnx.Param(jnp.zeros(in_size))
 
+    @jax.jit
     def forward(self, x: jnp.ndarray) -> jnp.ndarray:
         """NICE forward pass.
 
@@ -98,13 +99,30 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Args:
             x (jnp.ndarray): Input samples.
         """
-        for i in range(self.num_coupling_layers):
-            if i % 2 == 0:
-                x = jnp.flip(x, axis=-1)
+        mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
+
+        def body(i: int, x: jnp.ndarray) -> jnp.ndarray:
+            """Body function for the coupling layers.
+
+            Args:
+                i: Forward counter.
+                x: Input samples.
+
+            Returns:
+                Transformed samples.
+            """
+            x = jax.lax.cond(
+                i % 2 == 0,
+                lambda x: jnp.flip(x, axis=-1),
+                lambda x: x,
+                x,
+            )
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
-            m = self.mlp[i](xb)
-            xa = xa + m
-            x = jnp.concat([xa, xb], axis=1)  # Concatenate correctly
+            m = jax.lax.switch(i, mlp_fns, xb)
+            x = jnp.concatenate([xa + m, xb], axis=1)
+            return x
+
+        x = jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
 
         x = jnp.exp(self.S) * x
 
@@ -113,6 +131,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         return x
 
+    @jax.jit
     def inverse(self, x: jnp.ndarray) -> jnp.ndarray:
         """NICE inverse pass.
 
@@ -124,16 +143,33 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         x = x / jnp.exp(self.S)  # Undo scaling first
 
-        for i in reversed(
-            range(self.num_coupling_layers)
-        ):  # Reverse the coupling order
+        mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
+
+        def body(k: int, x: jnp.ndarray) -> jnp.ndarray:
+            """Body function for the inverse coupling layers.
+
+            Args:
+                k: Forward counter.
+                x: Input samples.
+
+            Returns:
+                Inverted samples.
+            """
+            # convert upward counter to downward counter
+            i = self.num_coupling_layers - 1 - k
+
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
-            m = self.mlp[i](xb)
-            xa = xa - m  # Subtract instead of add
-            x = jnp.concat([xa, xb], axis=1)  # Concatenate correctly
-            if i % 2 == 0:
-                x = jnp.flip(x, axis=-1)
-        return x
+            m = jax.lax.switch(i, mlp_fns, xb)
+            x = jnp.concatenate([xa - m, xb], axis=1)
+            x = jax.lax.cond(
+                i % 2 == 0,
+                lambda x: jnp.flip(x, axis=-1),
+                lambda x: x,
+                x,
+            )
+            return x
+
+        return jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
 
     def train(
         self,
@@ -172,7 +208,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             """
             return -jnp.mean(weights * model.log_prob_under_NICE(targets))
 
-        # @nnx.jit
+        @nnx.jit
         def train_step(
             model: NICE,
             optimizer: nnx.Optimizer,
