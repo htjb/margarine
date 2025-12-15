@@ -6,7 +6,7 @@ import jax.scipy.stats as stats
 from numpy.testing import assert_allclose
 
 from margarine.estimators.clustered import cluster
-from margarine.estimators.nice import NICE
+from margarine.estimators.realnvp import RealNVP
 from margarine.statistics import kldivergence, model_dimensionality
 
 
@@ -39,10 +39,10 @@ def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
 nsamples = 5000
 key = jax.random.PRNGKey(0)
 
-target_mean_one = jnp.array([0.0, 0.0])
-target_cov_one = jnp.array([[1.0, 0.8], [0.8, 1.0]])
-target_mean_two = jnp.array([5.0, 5.0])
-target_cov_two = jnp.array([[1.0, -0.6], [-0.6, 1.0]])
+target_mean_one = jnp.array([-2.0, -2.0])
+target_cov_one = jnp.array([[1.0, -0.7], [-0.7, 1.0]])
+target_mean_two = jnp.array([6.0, 6.0])
+target_cov_two = jnp.array([[1.0, -0.4], [-0.4, 1.0]])
 
 
 original_samples = jnp.concatenate(
@@ -82,7 +82,7 @@ posterior_probs = jnp.concatenate(
 
 weights = jnp.ones(len(original_samples))
 
-prior_probs = stats.uniform.logpdf(original_samples, loc=-5.0, scale=15.0)
+prior_probs = stats.uniform.logpdf(original_samples, loc=-6.5, scale=16.5)
 
 prior_probs = jnp.sum(prior_probs, axis=-1)
 
@@ -91,7 +91,7 @@ logPpi = posterior_probs - prior_probs
 samples_kl = D_KL(logPpi, weights)
 samples_d = d_g(logPpi, weights)
 
-bounds = jnp.array([[-5.0, -5.0], [10.0, 10.0]])
+bounds = jnp.array([[-6.5, -6.5], [10.0, 10.0]])
 prior_samples = jax.random.uniform(
     key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
 )
@@ -105,12 +105,12 @@ def test_clustering() -> None:
     for _ in range(5):
         cluster_estimator = cluster(
             original_samples,
-            base_estimator=NICE,
+            base_estimator=RealNVP,
             weights=weights,
             in_size=2,
             hidden_size=50,
             num_layers=2,
-            num_coupling_layers=6,
+            num_coupling_layers=2,
             max_cluster_number=3,
             theta_ranges=bounds,
         )
@@ -118,26 +118,26 @@ def test_clustering() -> None:
         key, subkey = jax.random.split(key)
         cluster_estimator.train(
             key=subkey,
-            learning_rate=1e-3,
+            learning_rate=1e-4,
             epochs=2000,
             patience=50,
-            batch_size=1024,
+            batch_size=len(original_samples),
         )
 
         key, subkey = jax.random.split(key)
         samples = cluster_estimator.sample(subkey, 5000)
 
-        prior_estimator = NICE(
+        prior_estimator = RealNVP(
             prior_samples,
             in_size=2,
             hidden_size=50,
             num_layers=2,
-            num_coupling_layers=6,
+            num_coupling_layers=2,
             theta_ranges=bounds,
         )
         key, subkey = jax.random.split(key)
         prior_estimator.train(
-            subkey, learning_rate=1e-3, epochs=2000, patience=50
+            subkey, learning_rate=1e-4, epochs=2000, patience=50, batch_size=1024
         )
 
         # check the kl divergence and model dimensionality
