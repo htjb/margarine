@@ -7,7 +7,9 @@ import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
 from jax.scipy.special import logsumexp
 
-from margarine.base.baseflow import BaseDensityEstimator
+from margarine.estimators.kde import KDE
+from margarine.estimators.nice import NICE
+from margarine.estimators.realnvp import RealNVP
 from margarine.utils.kmeans import kmeans, silhouette_score
 from margarine.utils.utils import (
     approximate_bounds,
@@ -22,7 +24,7 @@ class cluster:
     def __init__(
         self,
         theta: jnp.ndarray,
-        base_estimator: BaseDensityEstimator,
+        base_estimator: NICE | KDE | RealNVP,
         weights: jnp.ndarray | None = None,
         theta_ranges: jnp.ndarray | None = None,
         clusters: jnp.ndarray | None = None,
@@ -39,7 +41,7 @@ class cluster:
 
         Args:
             theta (jnp.ndarray): Samples to train the clustered MAF on.
-            base_estimator (BaseDensityEstimator): The base density estimator
+            base_estimator (NICE | KDE | RealNVP): The base density estimator
                 to use for each cluster.
             weights (jnp.ndarray | None, optional): Weights for the samples.
                 Defaults to None.
@@ -176,7 +178,7 @@ class cluster:
         self,
         x: jnp.ndarray,
         logevidence: float,
-        prior_density: jnp.ndarray | BaseDensityEstimator,
+        prior_density: jnp.ndarray | NICE | KDE | RealNVP,
     ) -> jnp.ndarray:
         """Compute the marginal log-likelihood of given samples.
 
@@ -188,7 +190,7 @@ class cluster:
         Returns:
             jnp.ndarray: Log-likelihoods of the samples.
         """
-        if isinstance(prior_density, BaseDensityEstimator):
+        if isinstance(prior_density, NICE | KDE | RealNVP):
             prior_density = prior_density.log_prob(x)
 
         return self.log_prob(x) + logevidence - prior_density
