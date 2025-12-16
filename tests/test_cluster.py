@@ -39,10 +39,10 @@ def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
 nsamples = 5000
 key = jax.random.PRNGKey(0)
 
-target_mean_one = jnp.array([-2.0, -2.0])
-target_cov_one = jnp.array([[1.0, -0.7], [-0.7, 1.0]])
-target_mean_two = jnp.array([6.0, 6.0])
-target_cov_two = jnp.array([[1.0, -0.4], [-0.4, 1.0]])
+target_mean_one = jnp.array([-2.0, 0.0])
+target_cov_one = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+target_mean_two = jnp.array([6.0, 0.0])
+target_cov_two = jnp.array([[0.5, 0.0], [0.0, 1.0]])
 
 
 original_samples = jnp.concatenate(
@@ -109,9 +109,9 @@ def test_clustering() -> None:
             weights=weights,
             in_size=2,
             hidden_size=50,
-            num_layers=2,
-            num_coupling_layers=2,
-            max_cluster_number=3,
+            num_layers=10,
+            num_coupling_layers=4,
+            clusters=2,
             theta_ranges=bounds,
         )
 
@@ -137,7 +137,11 @@ def test_clustering() -> None:
         )
         key, subkey = jax.random.split(key)
         prior_estimator.train(
-            subkey, learning_rate=1e-4, epochs=2000, patience=50, batch_size=1024
+            subkey,
+            learning_rate=1e-4,
+            epochs=2000,
+            patience=50,
+            batch_size=1024,
         )
 
         # check the kl divergence and model dimensionality
