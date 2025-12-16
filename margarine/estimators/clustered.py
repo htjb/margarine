@@ -27,7 +27,7 @@ class cluster:
         base_estimator: NICE | KDE | RealNVP,
         weights: jnp.ndarray | None = None,
         theta_ranges: jnp.ndarray | None = None,
-        clusters: jnp.ndarray | None = None,
+        clusters: jnp.ndarray | None | int = None,
         max_cluster_number: int = 10,
         **kwargs: dict,
     ) -> None:
@@ -46,10 +46,12 @@ class cluster:
             weights (jnp.ndarray | None, optional): Weights for the samples.
                 Defaults to None.
             theta_ranges (jnp.ndarray | None, optional): Ranges for the
-                parameters in each cluster. Should have shape
-                (nclusters, nparams, 2). Defaults to None.
-            clusters (jnp.ndarray | None, optional): Predefined cluster
-                labels for each sample. If None, k-means clustering is used.
+                parameters. Should have shape
+                (nparams, 2). Defaults to None.
+            clusters (jnp.ndarray | None | int, optional): Predefined cluster
+                labels for each sample or an integer
+                corresponding to the number of expected clusters.
+                If None, k-means clustering is used.
                 Defaults to None.
             max_cluster_number (int, optional): Maximum number of clusters
                 to consider when using k-means clustering. Defaults to 10.
@@ -73,15 +75,27 @@ class cluster:
             ks = jnp.arange(2, max_cluster_number + 1)
             losses = []
             for k in ks:
-                labels = kmeans(self.theta, k=k, num_iters=25)
+                labels = kmeans(
+                    self.theta,
+                    k=k,
+                )
                 losses.append(-silhouette_score(self.theta, labels))
             losses = jnp.array(losses)
             minimum_index = jnp.argmin(losses)
             self.cluster_number = ks[minimum_index]
 
             self.clusters = kmeans(
-                self.theta, k=self.cluster_number, num_iters=25
+                self.theta,
+                k=self.cluster_number,
             )
+        elif isinstance(self.clusters, int):
+            self.cluster_number = self.clusters
+            self.clusters = kmeans(
+                self.theta,
+                k=self.cluster_number,
+            )
+        else:
+            self.cluster_number = len(jnp.unique(self.clusters))
 
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = jnp.bincount(self.clusters)
