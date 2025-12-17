@@ -235,6 +235,14 @@ def test_realnvp() -> None:
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
 
+    realnvp_estimator.save("realnvp_test.margarine")
+    loaded_estimator = RealNVP.load("realnvp_test.margarine")
+    key, subkey = jax.random.split(key)
+    samples = realnvp_estimator.sample(subkey, 1000)
+    loaded_samples = loaded_estimator.sample(subkey, 1000)
+    assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
+    os.remove("realnvp_test.margarine.zip")
+
 
 def test_kde() -> None:
     """Test KDE estimator."""
