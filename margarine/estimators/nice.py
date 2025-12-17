@@ -1,8 +1,12 @@
 """Implementation of the NICE estimator."""
 
+import shutil
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 import optax
+import orbax.checkpoint as ocp
 import tqdm
 from flax import nnx
 from tensorflow_probability.substrates import jax as tfp
@@ -124,7 +128,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         x = jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
 
-        x = jnp.exp(self.S) * x
+        x = jnp.exp(self.S.value) * x
 
         if self.num_coupling_layers % 2 == 1:
             x = jnp.flip(x, axis=-1)
@@ -141,7 +145,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         if self.num_coupling_layers % 2 == 1:
             x = jnp.flip(x, axis=-1)
 
-        x = x / jnp.exp(self.S)  # Undo scaling first
+        x = x / jnp.exp(self.S.value)  # Undo scaling first
 
         mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
 
@@ -322,6 +326,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             Samples drawn from the NICE model.
         """
         u = jax.random.uniform(key, shape=(num_samples, self.theta.shape[1]))
+
         samples = self(u)
         return samples
 
@@ -418,18 +423,69 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Args:
             filename: Path to the file where the model will be saved.
         """
-        # Placeholder for save logic
-        pass
+        path = Path(filename).resolve()
+        if path.exists():
+            shutil.rmtree(path)
+
+        params = nnx.state(self, nnx.Param)
+
+        payload = {
+            "params": params,
+            "config": {
+                "in_size": self.in_size,
+                "hidden_size": self.hidden_size,
+                "num_layers": self.nlayers,
+                "num_coupling_layers": self.num_coupling_layers,
+            },
+            "theta": self.theta,
+            "weights": self.weights,
+            "theta_ranges": self.theta_ranges,
+            "train_loss": getattr(self, "train_loss", None),
+            "val_loss": getattr(self, "val_loss", None),
+        }
+
+        ckpt = ocp.Checkpointer(ocp.StandardCheckpointHandler())
+        ckpt.save(path, args=ocp.args.StandardSave(payload))
+
+        # Archive the directory
+        shutil.make_archive(str(path), "zip", root_dir=path)
+        shutil.rmtree(path)
 
     @classmethod
     def load(cls, filename: str) -> "NICE":
         """Load a trained NICE model from a file.
 
         Args:
-            filename: Path to the file from which the model will be loaded.
+            filename (str): Path to the file from which the
+                model will be loaded.
 
         Returns:
             Loaded NICE model.
         """
-        # Placeholder for load logic
-        pass
+        zip_path = Path(f"{filename}.zip")
+        extract_path = Path(filename).resolve()
+        shutil.unpack_archive(zip_path, extract_path)
+
+        ckpt = ocp.Checkpointer(ocp.StandardCheckpointHandler())
+
+        raw_payload = ckpt.restore(extract_path)
+        config = raw_payload["config"]
+
+        instance = cls(
+            theta=raw_payload["theta"],
+            weights=raw_payload["weights"],
+            theta_ranges=raw_payload["theta_ranges"],
+            in_size=config["in_size"],
+            hidden_size=config["hidden_size"],
+            num_layers=config["num_layers"],
+            num_coupling_layers=config["num_coupling_layers"],
+        )
+        params = {
+            "S": raw_payload["params"]["S"]["value"],
+            "mlp": raw_payload["params"]["mlp"],
+        }
+        # 4. Update instance with the properly formatted state
+        nnx.update(instance, params)
+
+        shutil.rmtree(extract_path)
+        return instance
