@@ -10,7 +10,7 @@ tfd = tfp.distributions
 @jax.jit
 def approximate_bounds(
     theta: jnp.ndarray, weights: jnp.ndarray
-) -> tuple[jnp.ndarray, jnp.ndarray]:
+) -> jnp.ndarray:
     """Function to estimate prior bounds from samples.
 
     Sample maximum and minimum are biased estimators of the true
@@ -36,7 +36,7 @@ def approximate_bounds(
     a = ((n - 2) * sample_max - sample_min) / (n - 3)
     b = ((n - 2) * sample_min - sample_max) / (n - 3)
 
-    return b, a
+    return jnp.stack([b, a])
 
 
 @jax.jit
