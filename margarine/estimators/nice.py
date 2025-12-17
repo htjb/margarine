@@ -6,8 +6,9 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import optax
-import orbax.checkpoint as ocp
+import orbax.checkpoint as orbax
 import tqdm
+import yaml
 from flax import nnx
 from tensorflow_probability.substrates import jax as tfp
 
@@ -252,12 +253,16 @@ class NICE(BaseDensityEstimator, nnx.Module):
         key, subkey = jax.random.split(key)
         self.test_phi, self.val_phi, self.test_weights, self.val_weights = (
             train_test_split(
-                self.test_phi,
-                self.test_weights,
-                subkey,
-                test_size=0.5,
+                self.test_phi, self.test_weights, subkey, test_size=0.5
             )
         )
+
+        # self.train_phi = nnx.data(self.train_phi)
+        # self.test_phi = nnx.data(self.test_phi)
+        # self.train_weights = nnx.data(self.train_weights)
+        # self.test_weights = nnx.data(self.test_weights)
+        # self.val_phi = nnx.data(self.val_phi)
+        # self.val_weights = nnx.data(self.val_weights)
 
         tx = optax.adam(learning_rate)
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
@@ -268,6 +273,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         best_model = nnx.state(self, nnx.Param)
         c = 0
 
+        # data_size = len(self.train_phi)
         data_size = len(self.train_phi)
 
         tl, vl = [], []
@@ -309,8 +315,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 best_loss=f"{best_loss:.3e}",
             )
 
-        self.train_loss = jnp.array(tl)
-        self.val_loss = jnp.array(vl)
+        self.train_loss = tl
+        self.val_loss = vl
 
         if best_model is not None:
             nnx.update(self, best_model)
@@ -427,25 +433,33 @@ class NICE(BaseDensityEstimator, nnx.Module):
         if path.exists():
             shutil.rmtree(path)
 
-        params = nnx.state(self, nnx.Param)
+        state = nnx.state(self)
 
-        payload = {
-            "params": params,
-            "config": {
-                "in_size": self.in_size,
-                "hidden_size": self.hidden_size,
-                "num_layers": self.nlayers,
-                "num_coupling_layers": self.num_coupling_layers,
-            },
-            "theta": self.theta,
-            "weights": self.weights,
-            "theta_ranges": self.theta_ranges,
-            "train_loss": getattr(self, "train_loss", None),
-            "val_loss": getattr(self, "val_loss", None),
+        checkpointer = orbax.PyTreeCheckpointer()
+        checkpointer.save(f"{path}/state", state)
+
+        config = {
+            "in_size": self.in_size,
+            "hidden_size": self.hidden_size,
+            "num_layers": self.nlayers,
+            "num_coupling_layers": self.num_coupling_layers,
+        }
+        with open(f"{path}/config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        metadata = {
+            "train_loss": self.train_loss,
+            "val_loss": self.val_loss,
+            "train_phi": self.train_phi,
+            "test_phi": self.test_phi,
+            "train_weights": self.train_weights,
+            "test_weights": self.test_weights,
+            "val_phi": self.val_phi,
+            "val_weights": self.val_weights,
         }
 
-        ckpt = ocp.Checkpointer(ocp.StandardCheckpointHandler())
-        ckpt.save(path, args=ocp.args.StandardSave(payload))
+        with open(f"{path}/metadata.yaml", "w") as f:
+            yaml.dump(metadata, f)
 
         # Archive the directory
         shutil.make_archive(str(path), "zip", root_dir=path)
@@ -463,29 +477,37 @@ class NICE(BaseDensityEstimator, nnx.Module):
             Loaded NICE model.
         """
         zip_path = Path(f"{filename}.zip")
-        extract_path = Path(filename).resolve()
-        shutil.unpack_archive(zip_path, extract_path)
+        path = Path(filename).resolve()
+        shutil.unpack_archive(zip_path, path)
 
-        ckpt = ocp.Checkpointer(ocp.StandardCheckpointHandler())
-
-        raw_payload = ckpt.restore(extract_path)
-        config = raw_payload["config"]
+        with open(f"{path}/config.yaml") as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
 
         instance = cls(
-            theta=raw_payload["theta"],
-            weights=raw_payload["weights"],
-            theta_ranges=raw_payload["theta_ranges"],
+            theta=jnp.zeros((1, 2)),
             in_size=config["in_size"],
             hidden_size=config["hidden_size"],
             num_layers=config["num_layers"],
             num_coupling_layers=config["num_coupling_layers"],
         )
-        params = {
-            "S": raw_payload["params"]["S"]["value"],
-            "mlp": raw_payload["params"]["mlp"],
-        }
-        # 4. Update instance with the properly formatted state
-        nnx.update(instance, params)
 
-        shutil.rmtree(extract_path)
+        abstract_state = nnx.state(instance)
+        checkpointer = orbax.PyTreeCheckpointer()
+        state = checkpointer.restore(
+            f"{path}/state", item=abstract_state, partial_restore=True
+        )
+        nnx.update(instance, state)
+
+        with open(f"{path}/metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+        instance.train_loss = metadata["train_loss"]
+        instance.val_loss = metadata["val_loss"]
+        instance.train_phi = metadata["train_phi"]
+        instance.test_phi = metadata["test_phi"]
+        instance.train_weights = metadata["train_weights"]
+        instance.test_weights = metadata["test_weights"]
+        instance.val_phi = metadata["val_phi"]
+        instance.val_weights = metadata["val_weights"]
+
+        shutil.rmtree(path)
         return instance
