@@ -1,9 +1,16 @@
 """Implementation of the RealNVP estimator."""
 
+import logging
+import shutil
+import warnings
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 import optax
+import orbax.checkpoint as orbax
 import tqdm
+import yaml
 from flax import nnx
 from tensorflow_probability.substrates import jax as tfp
 
@@ -14,6 +21,11 @@ from margarine.utils.utils import (
     inverse_transform,
     train_test_split,
 )
+
+# surpress some orbax warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="orbax")
+logging.getLogger("absl").setLevel(logging.ERROR)
+
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
@@ -35,7 +47,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         num_layers: int = 2,
         num_coupling_layers: int = 4,
         nnx_rngs: dict | None = None,
-        key: jnp.ndarray = jax.random.PRNGKey(0),
+        permutations_key: jnp.ndarray = jax.random.PRNGKey(0),
     ) -> None:
         """Initialize the RealNVP estimator.
 
@@ -48,7 +60,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             num_layers: Number of layers in each coupling network.
             num_coupling_layers: Number of coupling layers.
             nnx_rngs: Optional RNGs for Flax.
-            key: JAX random key for permutations.
+            permutations_key: JAX random key for permutations.
         """
         super().__init__()
         self.theta = nnx.data(theta)
@@ -147,6 +159,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             ]
         )
 
+        self.permutations_key = permutations_key
+        key = self.permutations_key
         self.permutations = []
         for _ in range(self.num_coupling_layers):
             key, subkey = jax.random.split(key)
@@ -343,6 +357,9 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
                 best_loss=f"{best_loss:.3e}",
             )
 
+        self.train_loss = tl
+        self.val_loss = vl
+
         if best_model is not None:
             nnx.update(self, best_model)
 
@@ -452,8 +469,41 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         Args:
             filename: Path to the file where the model will be saved.
         """
-        # Placeholder for save logic
-        pass
+        path = Path(filename).resolve()
+        if path.exists():
+            shutil.rmtree(path)
+
+        state = nnx.state(self)
+
+        checkpointer = orbax.PyTreeCheckpointer()
+        checkpointer.save(f"{path}/state", state)
+
+        config = {
+            "in_size": self.in_size,
+            "hidden_size": self.hidden_size,
+            "num_layers": self.nlayers,
+            "num_coupling_layers": self.num_coupling_layers,
+            "key": self.permutations_key.tolist(),
+        }
+        with open(f"{path}/config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        metadata = {
+            "train_loss": self.train_loss,
+            "val_loss": self.val_loss,
+            "train_phi": self.train_phi,
+            "test_phi": self.test_phi,
+            "train_weights": self.train_weights,
+            "test_weights": self.test_weights,
+            "val_phi": self.val_phi,
+            "val_weights": self.val_weights,
+        }
+
+        with open(f"{path}/metadata.yaml", "w") as f:
+            yaml.dump(metadata, f)
+
+        shutil.make_archive(str(path), "zip", root_dir=path)
+        shutil.rmtree(path)
 
     @classmethod
     def load(cls, filename: str) -> "RealNVP":
@@ -465,5 +515,39 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         Returns:
             Loaded RealNVP model.
         """
-        # Placeholder for load logic
-        pass
+        zip_path = Path(f"{filename}.zip")
+        path = Path(filename).resolve()
+        shutil.unpack_archive(zip_path, path)
+
+        with open(f"{path}/config.yaml") as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+
+        instance = cls(
+            theta=jnp.zeros((1, 2)),
+            in_size=config["in_size"],
+            hidden_size=config["hidden_size"],
+            num_layers=config["num_layers"],
+            num_coupling_layers=config["num_coupling_layers"],
+            permutations_key=jnp.array(config["key"], dtype=jnp.uint32),
+        )
+
+        abstract_state = nnx.state(instance)
+        checkpointer = orbax.PyTreeCheckpointer()
+        state = checkpointer.restore(
+            f"{path}/state", item=abstract_state, partial_restore=True
+        )
+        nnx.update(instance, state)
+
+        with open(f"{path}/metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+        instance.train_loss = metadata["train_loss"]
+        instance.val_loss = metadata["val_loss"]
+        instance.train_phi = metadata["train_phi"]
+        instance.test_phi = metadata["test_phi"]
+        instance.train_weights = metadata["train_weights"]
+        instance.test_weights = metadata["test_weights"]
+        instance.val_phi = metadata["val_phi"]
+        instance.val_weights = metadata["val_weights"]
+
+        shutil.rmtree(path)
+        return instance
