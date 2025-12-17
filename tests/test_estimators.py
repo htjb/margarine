@@ -1,5 +1,7 @@
 """Test the various estimators in margarine."""
 
+import os
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats as stats
@@ -150,6 +152,14 @@ def test_nice() -> None:
 
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+
+    nice_estimator.save("nice_test.margarine")
+    loaded_estimator = NICE.load("nice_test.margarine")
+    key, subkey = jax.random.split(key)
+    samples = nice_estimator.sample(subkey, 1000)
+    loaded_samples = loaded_estimator.sample(subkey, 1000)
+    assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
+    os.remove("nice_test.margarine.zip")
 
 
 def test_realnvp() -> None:

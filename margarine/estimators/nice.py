@@ -1,6 +1,8 @@
 """Implementation of the NICE estimator."""
 
+import logging
 import shutil
+import warnings
 from pathlib import Path
 
 import jax
@@ -19,6 +21,10 @@ from margarine.utils.utils import (
     inverse_transform,
     train_test_split,
 )
+
+# surpress some orbax warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="orbax")
+logging.getLogger("absl").setLevel(logging.ERROR)
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
@@ -129,7 +135,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         x = jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
 
-        x = jnp.exp(self.S.value) * x
+        x = jnp.exp(self.S) * x
 
         if self.num_coupling_layers % 2 == 1:
             x = jnp.flip(x, axis=-1)
@@ -146,7 +152,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         if self.num_coupling_layers % 2 == 1:
             x = jnp.flip(x, axis=-1)
 
-        x = x / jnp.exp(self.S.value)  # Undo scaling first
+        x = x / jnp.exp(self.S)  # Undo scaling first
 
         mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
 
@@ -256,13 +262,6 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 self.test_phi, self.test_weights, subkey, test_size=0.5
             )
         )
-
-        # self.train_phi = nnx.data(self.train_phi)
-        # self.test_phi = nnx.data(self.test_phi)
-        # self.train_weights = nnx.data(self.train_weights)
-        # self.test_weights = nnx.data(self.test_weights)
-        # self.val_phi = nnx.data(self.val_phi)
-        # self.val_weights = nnx.data(self.val_weights)
 
         tx = optax.adam(learning_rate)
         optimizer = nnx.Optimizer(self, tx, wrt=nnx.Param)
@@ -461,7 +460,6 @@ class NICE(BaseDensityEstimator, nnx.Module):
         with open(f"{path}/metadata.yaml", "w") as f:
             yaml.dump(metadata, f)
 
-        # Archive the directory
         shutil.make_archive(str(path), "zip", root_dir=path)
         shutil.rmtree(path)
 
