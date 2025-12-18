@@ -4,6 +4,7 @@ import logging
 import shutil
 import warnings
 from pathlib import Path
+from zipfile import ZipFile
 
 import jax
 import jax.numpy as jnp
@@ -460,7 +461,11 @@ class NICE(BaseDensityEstimator, nnx.Module):
         with open(f"{path}/metadata.yaml", "w") as f:
             yaml.dump(metadata, f)
 
-        shutil.make_archive(str(path), "zip", root_dir=path)
+        with ZipFile(filename + ".marg", "w") as z:
+            for subpath in path.rglob("*"):
+                if subpath.is_file():
+                    z.write(subpath, arcname=subpath.relative_to(path))
+
         shutil.rmtree(path)
 
     @classmethod
@@ -474,9 +479,11 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Returns:
             Loaded NICE model.
         """
-        zip_path = Path(f"{filename}.zip")
-        path = Path(filename).resolve()
-        shutil.unpack_archive(zip_path, path)
+        zip_path = Path(f"{filename}.marg")
+        path = Path(filename + ".tmp").resolve()
+        with ZipFile(zip_path) as z:
+            # Extract all files to a folder
+            z.extractall(path)
 
         with open(f"{path}/config.yaml") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
