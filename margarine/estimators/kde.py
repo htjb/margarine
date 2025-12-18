@@ -1,5 +1,6 @@
 """KDE implementation using JAX."""
 
+import os
 import pickle
 import shutil
 from pathlib import Path
@@ -158,6 +159,8 @@ class KDE(BaseDensityEstimator):
         path = Path(filename).resolve()
         if path.exists():
             shutil.rmtree(path)
+
+        os.makedirs(path)
 
         with open(f"{path}/kde.pkl", "wb") as f:
             pickle.dump(self.kde, f)
