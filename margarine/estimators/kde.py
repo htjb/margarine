@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from zipfile import ZipFile
 
+import jax
 import jax.numpy as jnp
 import jax.scipy.stats as stats
 import yaml
@@ -83,6 +84,22 @@ class KDE(BaseDensityEstimator):
         (conditional inverse transform sampling)
         to map uniform samples to a Gaussian mixture KDE distribution.
 
+        In detail, for a d-dimensional KDE, each output
+        dimension is computed sequentially:
+
+            x_1 = F_{X_1}^{-1}(u_1)
+            x_2 = F_{X_2 | X_1}^{-1}(u_2 | x_1)
+            ...
+            x_d = F_{X_d | X_{1:d-1}}^{-1}(u_d | x_1, ..., x_{d-1})
+
+        where \(u_i \sim \text{Uniform}[0,1]\), \(F^{-1}\)
+        denotes the inverse CDF, and
+        the conditional CDFs are computed
+        from the Gaussian mixture KDE. Since these
+        inverse CDFs do not have a closed form, we
+        solve for each x_i using a
+        root-finding algorithm (e.g., Newton-Raphson).
+
         Args:
             u (jnp.ndarray): Samples from the unit hypercube [0,1]^d
                 Shape: (n_samples, n_dims)
@@ -92,7 +109,91 @@ class KDE(BaseDensityEstimator):
                 KDE distribution.
                 Shape: (n_samples, n_dims)
         """
-        return NotImplementedError("KDE __call__ method is not implemented.")
+        # generate useful parameters for __call__ function to transform
+        # hypercube into samples on the KDE.
+        S = self.kde.covariance
+        mu = self.kde.dataset.T
+        steps, s = [], []
+        for i in range(mu.shape[-1]):
+            if i == 0:
+                step = jnp.array([])
+                s_i = jnp.sqrt(S[0, 0])
+            else:
+                step = jnp.linalg.solve(S[:i, :i].T, S[i, :i]).T
+                s_i = jnp.sqrt(S[i, i] - step @ S[:i, i])
+            steps.append(step)  # conditional means
+            s.append(s_i)  # conditional stddevs
+
+        def newton_root(
+            m: jnp.ndarray,
+            s_i: float,
+            target: float,
+            init: float,
+            weights: jnp.ndarray,
+            maxiter: int = 20,
+        ) -> float:
+            """Solve for x in the conditional CDF equation with Newton-Raphson.
+
+            Finds the scalar root of:
+
+                sum_k w_k * Φ((x - m_k) / s_i) - target = 0
+
+            where Φ is the standard normal CDF, m is the
+            conditional mean vector
+            for the current dimension, s_i is the
+            conditional standard deviation,
+            weights are the mixture weights of the KDE, and target ∈ [0,1] is
+            the uniform sample to invert.
+
+            Args:
+                m (jnp.ndarray): Conditional means of
+                    the mixture components, shape (n_kernels,).
+                s_i (float): Conditional standard deviation for this dimension.
+                target (float): Uniform sample in [0,1] to map to the KDE.
+                init (float): Initial guess for the Newton-Raphson iteration.
+                weights (jnp.ndarray): Mixture weights, shape (n_kernels,).
+                maxiter (int, optional): Maximum number of iterations.
+                    Default is 20.
+
+            Returns:
+                float: The root x such that the conditional CDF equals target.
+            """
+
+            def f(x: float) -> float:
+                """Function for which we want to find the root."""
+                return (
+                    tfd.Normal(0, 1).cdf((x - m) / s_i) * weights
+                ).sum() - target
+
+            def f_prime(x: float) -> float:
+                """Derivative of the function f."""
+                pdf = tfd.Normal(0, 1).prob((x - m) / s_i) / s_i
+                return (pdf * weights).sum()
+
+            x = init
+            for _ in range(maxiter):
+                x = x - f(x) / f_prime(x)
+            return x
+
+        def transform_one(x: jnp.ndarray) -> jnp.ndarray:
+            """Transform a single sample from unit hypercube to KDE."""
+            y = jnp.zeros_like(x)
+            for i in range(len(x)):
+                m_i = (
+                    mu[:, i] + steps[i] @ (y[:i] - mu[:, :i]).T
+                    if i > 0
+                    else mu[:, i]
+                )
+                init = mu[:, i].mean()
+                y = y.at[i].set(
+                    newton_root(m_i, s[i], x[i], init, self.kde.weights)
+                )
+            return inverse_transform(
+                y, self.theta_ranges[0], self.theta_ranges[1]
+            )
+
+        transformed_samples = jax.vmap(transform_one)(u)
+        return transformed_samples
 
     def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
         """Compute the log-probability of given samples.
