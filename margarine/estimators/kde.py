@@ -124,6 +124,7 @@ class KDE(BaseDensityEstimator):
             steps.append(step)  # conditional means
             s.append(s_i)  # conditional stddevs
 
+        @jax.jit
         def newton_root(
             m: jnp.ndarray,
             s_i: float,
@@ -175,6 +176,7 @@ class KDE(BaseDensityEstimator):
                 x = x - f(x) / f_prime(x)
             return x
 
+        @jax.jit
         def transform_one(x: jnp.ndarray) -> jnp.ndarray:
             """Transform a single sample from unit hypercube to KDE."""
             y = jnp.zeros_like(x)
