@@ -153,13 +153,13 @@ def test_nice() -> None:
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
 
-    nice_estimator.save("nice_test.margarine")
-    loaded_estimator = NICE.load("nice_test.margarine")
+    nice_estimator.save("nice_test")
+    loaded_estimator = NICE.load("nice_test")
     key, subkey = jax.random.split(key)
     samples = nice_estimator.sample(subkey, 1000)
     loaded_samples = loaded_estimator.sample(subkey, 1000)
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
-    os.remove("nice_test.margarine.zip")
+    os.remove("nice_test.marg")
 
 
 def test_realnvp() -> None:
@@ -235,13 +235,13 @@ def test_realnvp() -> None:
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
 
-    realnvp_estimator.save("realnvp_test.margarine")
-    loaded_estimator = RealNVP.load("realnvp_test.margarine")
+    realnvp_estimator.save("realnvp_test")
+    loaded_estimator = RealNVP.load("realnvp_test")
     key, subkey = jax.random.split(key)
     samples = realnvp_estimator.sample(subkey, 1000)
     loaded_samples = loaded_estimator.sample(subkey, 1000)
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
-    os.remove("realnvp_test.margarine.zip")
+    os.remove("realnvp_test.marg")
 
 
 def test_kde() -> None:
@@ -282,3 +282,11 @@ def test_kde() -> None:
 
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+
+    kde_estimator.save("kde_test")
+    loaded_estimator = KDE.load("kde_test")
+    key, subkey = jax.random.split(key)
+    samples = kde_estimator.sample(subkey, 1000)
+    loaded_samples = loaded_estimator.sample(subkey, 1000)
+    assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
+    os.remove("kde_test.marg")
