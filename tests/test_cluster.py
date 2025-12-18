@@ -1,5 +1,7 @@
 """Code to test the clustering functionality."""
 
+import os
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats as stats
@@ -163,3 +165,11 @@ def test_clustering() -> None:
 
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+
+    cluster_estimator.save("test-cluster-save")
+    loaded_estimator = cluster.load("test-cluster-save")
+    key, subkey = jax.random.split(key)
+    cluster_samples = cluster_estimator.sample(subkey, 5000)
+    loaded_samples = loaded_estimator.sample(subkey, 5000)
+    assert_allclose(cluster_samples, loaded_samples, rtol=1e-6, atol=1e-6)
+    os.remove("test-cluster-save.clumarg")

@@ -449,6 +449,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
             yaml.dump(config, f)
 
         metadata = {
+            "theta": self.theta,
+            "weights": self.weights,
             "train_loss": self.train_loss,
             "val_loss": self.val_loss,
             "train_phi": self.train_phi,
@@ -487,7 +489,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             z.extractall(path)
 
         with open(f"{path}/config.yaml") as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
+            config = yaml.unsafe_load(f)
 
         instance = cls(
             theta=jnp.zeros((1, 2)),
@@ -507,6 +509,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         with open(f"{path}/metadata.yaml") as f:
             metadata = yaml.unsafe_load(f)
+        instance.theta = metadata["theta"]
+        instance.weights = metadata["weights"]
         instance.train_loss = metadata["train_loss"]
         instance.val_loss = metadata["val_loss"]
         instance.train_phi = metadata["train_phi"]

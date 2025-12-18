@@ -1,19 +1,22 @@
 """Module for clustered mixture of density estimators."""
 
+import os
+import shutil
 import warnings
+from pathlib import Path
+from zipfile import ZipFile
 
 import jax
 import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
+import yaml
 from jax.scipy.special import logsumexp
 
 from margarine.estimators.kde import KDE
 from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
 from margarine.utils.kmeans import kmeans, silhouette_score
-from margarine.utils.utils import (
-    approximate_bounds,
-)
+from margarine.utils.utils import approximate_bounds
 
 tfd = tfp.distributions
 
@@ -277,3 +280,87 @@ class cluster:
             values.append(x)
 
         return jnp.vstack(values)
+
+    def save(self, filename: str) -> None:
+        """Save the clustered estimator to a file.
+
+        Args:
+            filename (str): The name of the file to save the estimator to.
+        """
+        path = Path(filename).resolve()
+        if path.exists():
+            shutil.rmtree(path)
+
+        os.makedirs(path)
+
+        config = {
+            "base_estimator": self.base_estimator.__name__,
+            "kwargs": self.kwargs,
+            "theta_ranges": self.theta_ranges,
+            "clusters": self.clusters,
+        }
+
+        with open(path / "config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        for i, estimator in enumerate(self.estimators):
+            estimator.save(str(path) + f"/estimator_{i}")
+
+        metadata = {
+            "theta": self.theta,
+            "weights": self.weights,
+        }
+
+        with open(path / "metadata.yaml", "w") as f:
+            yaml.dump(metadata, f)
+
+        with ZipFile(filename + ".clumarg", "w") as z:
+            for subpath in path.rglob("*"):
+                if subpath.is_file():
+                    z.write(subpath, arcname=subpath.relative_to(path))
+
+        shutil.rmtree(path)
+
+    @classmethod
+    def load(cls, filename: str) -> "cluster":
+        """Load a clustered estimator from a file.
+
+        Args:
+            filename (str): The name of the file to load the estimator from.
+
+        Returns:
+            cluster: The loaded clustered estimator.
+        """
+        zip_path = Path(f"{filename}.clumarg")
+        path = Path(filename + ".tmp").resolve()
+        with ZipFile(zip_path) as z:
+            # Extract all files to a folder
+            z.extractall(path)
+
+        with open(path / "config.yaml") as f:
+            config = yaml.unsafe_load(f)
+
+        with open(path / "metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+
+        base_estimator_class = globals()[config["base_estimator"]]
+
+        instance = cls(
+            theta=metadata["theta"],  # Placeholder, will be overwritten
+            base_estimator=base_estimator_class,
+            weights=metadata["weights"],  # Placeholder, will be overwritten
+            theta_ranges=config["theta_ranges"],
+            clusters=config["clusters"],
+            **config["kwargs"],
+        )
+
+        instance.estimators = []
+        for i in range(instance.cluster_number):
+            estimator = base_estimator_class.load(
+                str(path) + f"/estimator_{i}"
+            )
+            instance.estimators.append(estimator)
+
+        shutil.rmtree(path)
+
+        return instance

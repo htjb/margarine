@@ -199,7 +199,7 @@ class KDE(BaseDensityEstimator):
             z.extractall(path)
 
         with open(f"{path}/config.yaml") as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
+            config = yaml.unsafe_load(f)
 
         instance = cls(
             theta=jnp.array([]),  # Placeholder, will be overwritten
@@ -209,8 +209,7 @@ class KDE(BaseDensityEstimator):
         )
 
         with open(f"{path}/metadata.yaml") as f:
-            metadata = yaml.load(f, Loader=yaml.FullLoader)
-
+            metadata = yaml.unsafe_load(f)
         instance.theta = jnp.array(metadata["theta"])
         instance.weights = jnp.array(metadata["weights"])
 
