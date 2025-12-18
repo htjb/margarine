@@ -485,6 +485,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             "num_layers": self.nlayers,
             "num_coupling_layers": self.num_coupling_layers,
             "key": self.permutations_key.tolist(),
+            "theta_ranges": self.theta_ranges,
         }
         with open(f"{path}/config.yaml", "w") as f:
             yaml.dump(config, f)
@@ -536,6 +537,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             num_layers=config["num_layers"],
             num_coupling_layers=config["num_coupling_layers"],
             permutations_key=jnp.array(config["key"], dtype=jnp.uint32),
+            theta_ranges=config["theta_ranges"],
         )
 
         abstract_state = nnx.state(instance)

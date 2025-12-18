@@ -164,16 +164,13 @@ class KDE(BaseDensityEstimator):
 
         config = {
             "bandwidth": self.bandwidth,
+            "theta_ranges": self.theta_ranges,
         }
 
         with open(f"{path}/config.yaml", "w") as f:
             yaml.dump(config, f)
 
-        metadata = {
-            "theta": self.theta,
-            "weights": self.weights,
-            "theta_ranges": self.theta_ranges,
-        }
+        metadata = {"theta": self.theta, "weights": self.weights}
 
         with open(f"{path}/metadata.yaml", "w") as f:
             yaml.dump(metadata, f)
@@ -207,8 +204,8 @@ class KDE(BaseDensityEstimator):
         instance = cls(
             theta=jnp.array([]),  # Placeholder, will be overwritten
             weights=jnp.array([]),  # Placeholder, will be overwritten
-            theta_ranges=jnp.array([]),  # Placeholder, will be overwritten
             bandwidth=config["bandwidth"],
+            theta_ranges=config["theta_ranges"],
         )
 
         with open(f"{path}/metadata.yaml") as f:
@@ -216,7 +213,6 @@ class KDE(BaseDensityEstimator):
 
         instance.theta = jnp.array(metadata["theta"])
         instance.weights = jnp.array(metadata["weights"])
-        instance.theta_ranges = jnp.array(metadata["theta_ranges"])
 
         with open(f"{path}/kde.pkl", "rb") as f:
             kde = pickle.load(f)

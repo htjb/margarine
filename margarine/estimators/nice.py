@@ -443,6 +443,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             "hidden_size": self.hidden_size,
             "num_layers": self.nlayers,
             "num_coupling_layers": self.num_coupling_layers,
+            "theta_ranges": self.theta_ranges,
         }
         with open(f"{path}/config.yaml", "w") as f:
             yaml.dump(config, f)
@@ -494,6 +495,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             hidden_size=config["hidden_size"],
             num_layers=config["num_layers"],
             num_coupling_layers=config["num_coupling_layers"],
+            theta_ranges=config["theta_ranges"],
         )
 
         abstract_state = nnx.state(instance)
