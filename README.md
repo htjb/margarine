@@ -7,10 +7,9 @@
 **Homepage:** https://github.com/htjb/margarine  
 **Documentation:** https://margarine.readthedocs.io/
 
-[![Documentation Status](https://readthedocs.org/projects/margarine/badge/?version=latest)](https://margarine.readthedocs.io/en/latest/?badge=latest)  
-[![arXiv:2205.12841](http://img.shields.io/badge/astro.IM-arXiv%3A2205.12841-B31B1B.svg)](https://arxiv.org/abs/2205.12841)
-[![arXiv:2305.02930](http://img.shields.io/badge/astro.IM-arXiv%3A2305.02930-B31B1B.svg)](https://arxiv.org/abs/2305.02930)
-[![arXiv:2207.11457](http://img.shields.io/badge/astro.IM-arXiv%3A2207.11457-B31B1B.svg)](https://arxiv.org/abs/2207.11457)
+[![Documentation Status](https://readthedocs.org/projects/margarine/badge/?version=latest)](https://margarine.readthedocs.io/en/latest/?badge=latest) [![arXiv:2205.12841](http://img.shields.io/badge/astro.IM-arXiv%3A2205.12841-DCFF87.svg)](https://arxiv.org/abs/2205.12841) 
+[![arXiv:2305.02930](http://img.shields.io/badge/astro.IM-arXiv%3A2305.02930-DCFF87.svg)](https://arxiv.org/abs/2305.02930)
+[![arXiv:2207.11457](http://img.shields.io/badge/astro.IM-arXiv%3A2207.11457-DCFF87.svg)](https://arxiv.org/abs/2207.11457)
 [![PyPI version](https://badge.fury.io/py/margarine.svg)](https://badge.fury.io/py/margarine)
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
