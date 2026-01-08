@@ -1,14 +1,16 @@
-"""Base density estimator for margarine package.
+r"""Base density estimator for margarine package.
 
 Defines a base class for density estimators with common interface methods
 including:
+
 - train
 - sample
-- __call__
+- \_\_call\_\_
 - log_prob
 - log_like
 - save
 - load
+
 """
 
 from abc import ABC, abstractmethod
