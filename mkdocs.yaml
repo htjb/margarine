@@ -29,4 +29,6 @@ plugins:
             heading_level: 2
 nav:
   - Home: index.md
+  - Tutorials: tutorials.md
   - API Reference: api-reference.md
+  - Roadmap: roadmap.md

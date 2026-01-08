@@ -129,4 +129,6 @@ If used for academic work, please cite:
 
 Contributions and feature suggestions welcome. Open an issue to report bugs or discuss ideas. See `CONTRIBUTING.md` for details.
 
+The future goals of the project are outlined in `ROADMAP.md`.
+
 
