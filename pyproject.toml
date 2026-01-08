@@ -42,6 +42,7 @@ docs = [
   "mkdocs-material",
   "mkdocstrings",
   "mkdocstrings-python",
+  "mkdocs-include-markdown-plugin",
 ]
 
 [tool.setuptools.packages.find]
