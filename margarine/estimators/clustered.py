@@ -1,17 +1,22 @@
 """Module for clustered mixture of density estimators."""
 
+import os
+import shutil
 import warnings
+from pathlib import Path
+from zipfile import ZipFile
 
 import jax
 import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
+import yaml
 from jax.scipy.special import logsumexp
 
-from margarine.base.baseflow import BaseDensityEstimator
+from margarine.estimators.kde import KDE
+from margarine.estimators.nice import NICE
+from margarine.estimators.realnvp import RealNVP
 from margarine.utils.kmeans import kmeans, silhouette_score
-from margarine.utils.utils import (
-    approximate_bounds,
-)
+from margarine.utils.utils import approximate_bounds
 
 tfd = tfp.distributions
 
@@ -22,10 +27,10 @@ class cluster:
     def __init__(
         self,
         theta: jnp.ndarray,
-        base_estimator: BaseDensityEstimator,
+        base_estimator: NICE | KDE | RealNVP,
         weights: jnp.ndarray | None = None,
         theta_ranges: jnp.ndarray | None = None,
-        clusters: jnp.ndarray | None = None,
+        clusters: jnp.ndarray | None | int = None,
         max_cluster_number: int = 10,
         **kwargs: dict,
     ) -> None:
@@ -39,15 +44,17 @@ class cluster:
 
         Args:
             theta (jnp.ndarray): Samples to train the clustered MAF on.
-            base_estimator (BaseDensityEstimator): The base density estimator
+            base_estimator (NICE | KDE | RealNVP): The base density estimator
                 to use for each cluster.
             weights (jnp.ndarray | None, optional): Weights for the samples.
                 Defaults to None.
             theta_ranges (jnp.ndarray | None, optional): Ranges for the
-                parameters in each cluster. Should have shape
-                (nclusters, nparams, 2). Defaults to None.
-            clusters (jnp.ndarray | None, optional): Predefined cluster
-                labels for each sample. If None, k-means clustering is used.
+                parameters. Should have shape
+                (nparams, 2). Defaults to None.
+            clusters (jnp.ndarray | None | int, optional): Predefined cluster
+                labels for each sample or an integer
+                corresponding to the number of expected clusters.
+                If None, k-means clustering is used.
                 Defaults to None.
             max_cluster_number (int, optional): Maximum number of clusters
                 to consider when using k-means clustering. Defaults to 10.
@@ -71,15 +78,27 @@ class cluster:
             ks = jnp.arange(2, max_cluster_number + 1)
             losses = []
             for k in ks:
-                labels = kmeans(self.theta, k=k, num_iters=25)
+                labels = kmeans(
+                    self.theta,
+                    k=k,
+                )
                 losses.append(-silhouette_score(self.theta, labels))
             losses = jnp.array(losses)
             minimum_index = jnp.argmin(losses)
             self.cluster_number = ks[minimum_index]
 
             self.clusters = kmeans(
-                self.theta, k=self.cluster_number, num_iters=25
+                self.theta,
+                k=self.cluster_number,
             )
+        elif isinstance(self.clusters, int):
+            self.cluster_number = self.clusters
+            self.clusters = kmeans(
+                self.theta,
+                k=self.cluster_number,
+            )
+        else:
+            self.cluster_number = len(jnp.unique(self.clusters))
 
         # count the number of times a cluster label appears in cluster_labels
         self.cluster_count = jnp.bincount(self.clusters)
@@ -176,7 +195,7 @@ class cluster:
         self,
         x: jnp.ndarray,
         logevidence: float,
-        prior_density: jnp.ndarray | BaseDensityEstimator,
+        prior_density: jnp.ndarray | NICE | KDE | RealNVP,
     ) -> jnp.ndarray:
         """Compute the marginal log-likelihood of given samples.
 
@@ -188,7 +207,7 @@ class cluster:
         Returns:
             jnp.ndarray: Log-likelihoods of the samples.
         """
-        if isinstance(prior_density, BaseDensityEstimator):
+        if isinstance(prior_density, NICE | KDE | RealNVP):
             prior_density = prior_density.log_prob(x)
 
         return self.log_prob(x) + logevidence - prior_density
@@ -261,3 +280,87 @@ class cluster:
             values.append(x)
 
         return jnp.vstack(values)
+
+    def save(self, filename: str) -> None:
+        """Save the clustered estimator to a file.
+
+        Args:
+            filename (str): The name of the file to save the estimator to.
+        """
+        path = Path(filename).resolve()
+        if path.exists():
+            shutil.rmtree(path)
+
+        os.makedirs(path)
+
+        config = {
+            "base_estimator": self.base_estimator.__name__,
+            "kwargs": self.kwargs,
+            "theta_ranges": self.theta_ranges,
+            "clusters": self.clusters,
+        }
+
+        with open(path / "config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        for i, estimator in enumerate(self.estimators):
+            estimator.save(str(path) + f"/estimator_{i}")
+
+        metadata = {
+            "theta": self.theta,
+            "weights": self.weights,
+        }
+
+        with open(path / "metadata.yaml", "w") as f:
+            yaml.dump(metadata, f)
+
+        with ZipFile(filename + ".clumarg", "w") as z:
+            for subpath in path.rglob("*"):
+                if subpath.is_file():
+                    z.write(subpath, arcname=subpath.relative_to(path))
+
+        shutil.rmtree(path)
+
+    @classmethod
+    def load(cls, filename: str) -> "cluster":
+        """Load a clustered estimator from a file.
+
+        Args:
+            filename (str): The name of the file to load the estimator from.
+
+        Returns:
+            cluster: The loaded clustered estimator.
+        """
+        zip_path = Path(f"{filename}.clumarg")
+        path = Path(filename + ".tmp").resolve()
+        with ZipFile(zip_path) as z:
+            # Extract all files to a folder
+            z.extractall(path)
+
+        with open(path / "config.yaml") as f:
+            config = yaml.unsafe_load(f)
+
+        with open(path / "metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+
+        base_estimator_class = globals()[config["base_estimator"]]
+
+        instance = cls(
+            theta=metadata["theta"],  # Placeholder, will be overwritten
+            base_estimator=base_estimator_class,
+            weights=metadata["weights"],  # Placeholder, will be overwritten
+            theta_ranges=config["theta_ranges"],
+            clusters=config["clusters"],
+            **config["kwargs"],
+        )
+
+        instance.estimators = []
+        for i in range(instance.cluster_number):
+            estimator = base_estimator_class.load(
+                str(path) + f"/estimator_{i}"
+            )
+            instance.estimators.append(estimator)
+
+        shutil.rmtree(path)
+
+        return instance

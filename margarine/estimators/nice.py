@@ -1,9 +1,17 @@
 """Implementation of the NICE estimator."""
 
+import logging
+import shutil
+import warnings
+from pathlib import Path
+from zipfile import ZipFile
+
 import jax
 import jax.numpy as jnp
 import optax
+import orbax.checkpoint as orbax
 import tqdm
+import yaml
 from flax import nnx
 from tensorflow_probability.substrates import jax as tfp
 
@@ -14,6 +22,10 @@ from margarine.utils.utils import (
     inverse_transform,
     train_test_split,
 )
+
+# surpress some orbax warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="orbax")
+logging.getLogger("absl").setLevel(logging.ERROR)
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
@@ -248,10 +260,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         key, subkey = jax.random.split(key)
         self.test_phi, self.val_phi, self.test_weights, self.val_weights = (
             train_test_split(
-                self.test_phi,
-                self.test_weights,
-                subkey,
-                test_size=0.5,
+                self.test_phi, self.test_weights, subkey, test_size=0.5
             )
         )
 
@@ -264,6 +273,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         best_model = nnx.state(self, nnx.Param)
         c = 0
 
+        # data_size = len(self.train_phi)
         data_size = len(self.train_phi)
 
         tl, vl = [], []
@@ -305,8 +315,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 best_loss=f"{best_loss:.3e}",
             )
 
-        self.train_loss = jnp.array(tl)
-        self.val_loss = jnp.array(vl)
+        self.train_loss = tl
+        self.val_loss = vl
 
         if best_model is not None:
             nnx.update(self, best_model)
@@ -322,6 +332,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             Samples drawn from the NICE model.
         """
         u = jax.random.uniform(key, shape=(num_samples, self.theta.shape[1]))
+
         samples = self(u)
         return samples
 
@@ -418,18 +429,96 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Args:
             filename: Path to the file where the model will be saved.
         """
-        # Placeholder for save logic
-        pass
+        path = Path(filename).resolve()
+        if path.exists():
+            shutil.rmtree(path)
+
+        state = nnx.state(self)
+
+        checkpointer = orbax.PyTreeCheckpointer()
+        checkpointer.save(f"{path}/state", state)
+
+        config = {
+            "in_size": self.in_size,
+            "hidden_size": self.hidden_size,
+            "num_layers": self.nlayers,
+            "num_coupling_layers": self.num_coupling_layers,
+            "theta_ranges": self.theta_ranges,
+        }
+        with open(f"{path}/config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        metadata = {
+            "theta": self.theta,
+            "weights": self.weights,
+            "train_loss": self.train_loss,
+            "val_loss": self.val_loss,
+            "train_phi": self.train_phi,
+            "test_phi": self.test_phi,
+            "train_weights": self.train_weights,
+            "test_weights": self.test_weights,
+            "val_phi": self.val_phi,
+            "val_weights": self.val_weights,
+        }
+
+        with open(f"{path}/metadata.yaml", "w") as f:
+            yaml.dump(metadata, f)
+
+        with ZipFile(filename + ".marg", "w") as z:
+            for subpath in path.rglob("*"):
+                if subpath.is_file():
+                    z.write(subpath, arcname=subpath.relative_to(path))
+
+        shutil.rmtree(path)
 
     @classmethod
     def load(cls, filename: str) -> "NICE":
         """Load a trained NICE model from a file.
 
         Args:
-            filename: Path to the file from which the model will be loaded.
+            filename (str): Path to the file from which the
+                model will be loaded.
 
         Returns:
             Loaded NICE model.
         """
-        # Placeholder for load logic
-        pass
+        zip_path = Path(f"{filename}.marg")
+        path = Path(filename + ".tmp").resolve()
+        with ZipFile(zip_path) as z:
+            # Extract all files to a folder
+            z.extractall(path)
+
+        with open(f"{path}/config.yaml") as f:
+            config = yaml.unsafe_load(f)
+
+        instance = cls(
+            theta=jnp.zeros((1, 2)),
+            in_size=config["in_size"],
+            hidden_size=config["hidden_size"],
+            num_layers=config["num_layers"],
+            num_coupling_layers=config["num_coupling_layers"],
+            theta_ranges=config["theta_ranges"],
+        )
+
+        abstract_state = nnx.state(instance)
+        checkpointer = orbax.PyTreeCheckpointer()
+        state = checkpointer.restore(
+            f"{path}/state", item=abstract_state, partial_restore=True
+        )
+        nnx.update(instance, state)
+
+        with open(f"{path}/metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+        instance.theta = metadata["theta"]
+        instance.weights = metadata["weights"]
+        instance.train_loss = metadata["train_loss"]
+        instance.val_loss = metadata["val_loss"]
+        instance.train_phi = metadata["train_phi"]
+        instance.test_phi = metadata["test_phi"]
+        instance.train_weights = metadata["train_weights"]
+        instance.test_weights = metadata["test_weights"]
+        instance.val_phi = metadata["val_phi"]
+        instance.val_weights = metadata["val_weights"]
+
+        shutil.rmtree(path)
+        return instance

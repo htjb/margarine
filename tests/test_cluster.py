@@ -1,5 +1,7 @@
 """Code to test the clustering functionality."""
 
+import os
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.stats as stats
@@ -39,10 +41,10 @@ def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
 nsamples = 5000
 key = jax.random.PRNGKey(0)
 
-target_mean_one = jnp.array([-2.0, -2.0])
-target_cov_one = jnp.array([[1.0, -0.7], [-0.7, 1.0]])
-target_mean_two = jnp.array([6.0, 6.0])
-target_cov_two = jnp.array([[1.0, -0.4], [-0.4, 1.0]])
+target_mean_one = jnp.array([-2.0, 0.0])
+target_cov_one = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+target_mean_two = jnp.array([6.0, 0.0])
+target_cov_two = jnp.array([[0.5, 0.0], [0.0, 1.0]])
 
 
 original_samples = jnp.concatenate(
@@ -109,9 +111,9 @@ def test_clustering() -> None:
             weights=weights,
             in_size=2,
             hidden_size=50,
-            num_layers=2,
-            num_coupling_layers=2,
-            max_cluster_number=3,
+            num_layers=10,
+            num_coupling_layers=4,
+            clusters=2,
             theta_ranges=bounds,
         )
 
@@ -137,7 +139,11 @@ def test_clustering() -> None:
         )
         key, subkey = jax.random.split(key)
         prior_estimator.train(
-            subkey, learning_rate=1e-4, epochs=2000, patience=50, batch_size=1024
+            subkey,
+            learning_rate=1e-4,
+            epochs=2000,
+            patience=50,
+            batch_size=1024,
         )
 
         # check the kl divergence and model dimensionality
@@ -159,3 +165,11 @@ def test_clustering() -> None:
 
     assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
     assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+
+    cluster_estimator.save("test-cluster-save")
+    loaded_estimator = cluster.load("test-cluster-save")
+    key, subkey = jax.random.split(key)
+    cluster_samples = cluster_estimator.sample(subkey, 5000)
+    loaded_samples = loaded_estimator.sample(subkey, 5000)
+    assert_allclose(cluster_samples, loaded_samples, rtol=1e-6, atol=1e-6)
+    os.remove("test-cluster-save.clumarg")
