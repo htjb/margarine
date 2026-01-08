@@ -8,12 +8,20 @@
 **Documentation:** https://margarine.readthedocs.io/
 
 [![Documentation Status](https://readthedocs.org/projects/margarine/badge/?version=latest)](https://margarine.readthedocs.io/en/latest/?badge=latest)  
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/htjb/margarine/master?labpath=notebook%2FTutorial.ipynb)  
 [![arXiv:2205.12841](http://img.shields.io/badge/astro.IM-arXiv%3A2205.12841-B31B1B.svg)](https://arxiv.org/abs/2205.12841)
+[![arXiv:2305.02930](http://img.shields.io/badge/astro.IM-arXiv%3A2305.02930-B31B1B.svg)](https://arxiv.org/abs/2305.02930)
+[![arXiv:2207.11457](http://img.shields.io/badge/astro.IM-arXiv%3A2207.11457-B31B1B.svg)](https://arxiv.org/abs/2207.11457)
+[![PyPI version](https://badge.fury.io/py/margarine.svg)](https://badge.fury.io/py/margarine)
+[![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
+`margarine` provides a suite of density estimation tools including KDEs, normalizing flows like NICE and RealNVP as well as piecewise normalizing flows which can be used to learn multimodal distributions. It can be trained on MCMC samples and used to estimate a variety of marginal bayesian statistics including nuisance free or marginalised likelihoods, margainal Kullback-Leibler divergences and marginal model dimensionalities.
 
 ---
 
 ## Installation
+
+From version 2.0.0 margarine moved to JAX for improved performance. Older versions (1.x.x) using TensorFlow are still available via pip with the last release being 1.3.4.
 
 Install from Git:
 
@@ -31,37 +39,78 @@ pip install margarine
 
 Note: pip may not always give the latest version.
 
-`margarine` versions ≥1.3.0 work with modern TensorFlow.
-
 ---
 
-## Details / Examples
+## Getting Started
 
-`margarine` helps compute marginal Bayesian statistics from MCMC or nested sampling output.
+All of the density estimators in `margarine` have a common interface and set of methods including `train()`, `sample()`, `log_prob()`, `log_like()`, `save()` and `load()`. The below example shows how to train a RealNVP and generate samples.
 
-A usage example is available in the GitHub repo via:
+```python
+import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
 
-* `notebook/Tutorial.ipynb`  
-* Interactive version: https://mybinder.org/v2/gh/htjb/margarine/master?labpath=notebook%2FTutorial.ipynb
+from margarine.estimators.realnvp import RealNVP
+
+nsamples = 5000
+key = jax.random.PRNGKey(0)
+
+original_samples = jax.random.multivariate_normal(
+    key,
+    mean=jnp.array([0.0, 0.0]),
+    cov=jnp.array([[1.0, 0.8], [0.8, 1.0]]),
+    shape=(nsamples,),
+)
+
+weights = jnp.ones(len(original_samples))
+
+realnvp_estimator = RealNVP(
+        original_samples,
+        weights=weights,
+        in_size=2,
+        hidden_size=50,
+        num_layers=6,
+        num_coupling_layers=6,
+    )
+
+key, subkey = jax.random.split(key)
+
+realnvp_estimator.train(
+            subkey,
+            learning_rate=1e-3,
+            epochs=2000,
+            patience=50,
+            batch_size=1000,
+        )
+
+generated_samples = realnvp_estimator.sample(key, num_samples=nsamples)
+
+plt.scatter(
+    original_samples[:, 0], original_samples[:, 1], alpha=0.5, label="Original Samples"
+)
+plt.scatter(
+    generated_samples[:, 0], generated_samples[:, 1], alpha=0.5, label="Generated Samples"
+)
+plt.legend()
+plt.title("RealNVP: Original vs Generated Samples")
+plt.xlabel("X1")
+plt.ylabel("X2")
+plt.show()
+```
+
+for more details see the documentation.
 
 ---
 
 ## Documentation
 
-Available at: https://margarine.readthedocs.io/
-
-To build locally:
+Available at: https://margarine.readthedocs.io/. To build locally:
 
 ```bash
-cd docs
-sphinx-build source html-build
+pip install ".[docs]"
+mkdocs serve
 ```
 
-Install docs dependencies:
-
-```bash
-pip install sphinx numpydoc sphinx_rtd_theme
-```
 
 ---
 
@@ -71,70 +120,14 @@ Licensed under MIT.
 
 If used for academic work, please cite:
 
-* Main paper: https://ui.adsabs.harvard.edu/abs/2022arXiv220512841B/abstract  
-* MaxEnt22 proceedings: https://ui.adsabs.harvard.edu/search/p_=0&q=author%3A%22Bevins%2C%20H.%20T.%20J.%22&sort=date%20desc%2C%20bibcode%20desc  
-
-If using the clustering implementation, cite: https://arxiv.org/abs/2305.02930
-
-### BibTeX
-
-```bibtex
-@ARTICLE{2023MNRAS.526.4613B,
-  author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Lemos}, Pablo and {Sims}, Peter H. and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia and {Alsing}, Justin},
-  title = "{Marginal post-processing of Bayesian inference products with normalizing flows and kernel density estimators}",
-  journal = {\mnras},
-  year = 2023,
-  month = dec,
-  volume = {526},
-  number = {3},
-  pages = {4613-4626},
-  doi = {10.1093/mnras/stad2997},
-  eprint = {2205.12841},
-  primaryClass = {astro-ph.IM}
-}
-```
-
-```bibtex
-@ARTICLE{2022arXiv220711457B,
-  author = {{Bevins}, Harry and {Handley}, Will and {Lemos}, Pablo and {Sims}, Peter and {de Lera Acedo}, Eloy and {Fialkov}, Anastasia},
-  title = "{Marginal Bayesian Statistics Using Masked Autoregressive Flows and Kernel Density Estimators with Examples in Cosmology}",
-  journal = {arXiv e-prints},
-  year = 2022,
-  month = jul,
-  eprint = {2207.11457},
-  primaryClass = {astro-ph.CO}
-}
-```
-
-```bibtex
-@ARTICLE{2023arXiv230502930B,
-  author = {{Bevins}, Harry and {Handley}, Will},
-  title = "{Piecewise Normalizing Flows}",
-  journal = {arXiv e-prints},
-  year = 2023,
-  month = may,
-  doi = {10.48550/arXiv.2305.02930},
-  eprint = {2305.02930},
-  primaryClass = {stat.ML}
-}
-```
+* Main paper: https://arxiv.org/abs/2205.12841
+* MaxEnt22 proceedings: https://arxiv.org/abs/2207.11457
+* Piecewise Normalising Flows Paper: https://arxiv.org/abs/2305.02930
 
 ---
 
 ## Contributing
 
-Contributions and feature suggestions welcome.  
-Open an issue to report bugs or discuss ideas.
+Contributions and feature suggestions welcome. Open an issue to report bugs or discuss ideas. See `CONTRIBUTING.md` for details.
 
-See `CONTRIBUTING.md` for details.
-
----
-
-## Roadmap to 2.0.0
-
-Planned additions:
-
-- JAX support for KDE and MAF with GPU acceleration  
-- Base class density estimator to simplify extensions  
-- Neural Spline Flow density estimator
 
