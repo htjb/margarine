@@ -136,8 +136,10 @@ print("KL Divergence:", kl_div)
 print("Model Dimensionality:", model_dim)
 ```
 
-
 You can also calculate the KL divergence and model dimensionality between differnt types of `margarine` density estimators e.g. between a RealNVP and a KDE estimator.
+
+Older versions of `margarine` include an estimate of the error on statistics like the KL divergence and model dimensionality. This was estimated by calculating the statistics using samples drawn from the learned distribution and a reserved subset of the original samples and then comparing the two estimates. An additional source of error comes from the stochastic nature of training normalising flows. 
+This functionality has been removed in the current version to simplify the API, and error estimation is left to the user to implement as needed.
 
 ## Piecewise Normalising Flows
 
