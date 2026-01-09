@@ -366,7 +366,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Returns:
             Log probabilities of the input data.
         """
-        # calcualte the actual log prob under the NICE model
+        # calculate the actual log prob under the NICE model
         # assuming a standard normal base distribution
         z = self.forward(x)
         log_pz = -0.5 * jnp.sum(z**2 + jnp.log(2 * jnp.pi), axis=1)
