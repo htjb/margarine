@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "margarine"
-version = "1.4.2"
+version = "2.0.0"
 description = "margarine: Posterior Sampling and Marginal Bayesian Statistics "
 readme = "README.rst"
 authors = [
@@ -12,17 +12,13 @@ authors = [
 license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
-    "anesthetic",
-    "numpy",
-    "pandas",
-    "scikit-learn",
-    "scipy",
-    "tensorflow",
-    "tensorflow-probability",
-    "tf-keras",
-    "torch",
+    "tfp-nightly",
+    "flax",
+    "jax",
+    "optax",
     "tqdm",
 ]
+
 classifiers=[
     'Intended Audience :: Science/Research',
     'Natural Language :: English',
@@ -40,6 +36,14 @@ dev = [
     "pytest",
     "ruff",
     "pre-commit",
+]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings",
+  "mkdocstrings-python",
+  "mkdocs-include-markdown-plugin",
+  "pymdown-extensions",
 ]
 
 [tool.setuptools.packages.find]

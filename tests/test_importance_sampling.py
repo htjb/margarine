@@ -1,93 +1,89 @@
-"""Tests for importance sampling functionality."""
+"""Test the importance sampling feature."""
 
-import numpy as np
-import pytest
-import tensorflow as tf
-from anesthetic import MCMCSamples
-from scipy.stats import norm
+import jax
+import jax.numpy as jnp
+from jax.scipy import stats
+from numpy.testing import assert_allclose
 
-from margarine.maf import MAF
-from margarine.marginal_stats import calculate
+from margarine.estimators.realnvp import RealNVP
+from margarine.statistics import integrate
+from margarine.utils.utils import approximate_bounds
 
+nsamples = 5000
+key = jax.random.PRNGKey(0)
 
-def D_KL(
-    logL: np.ndarray | tf.Tensor, weights: np.ndarray | tf.Tensor
-) -> float:
-    """Calculate the Kullback-Leibler divergence."""
-    return -np.average(logL, weights=weights)
+target_mean = jnp.array([0.0, 0.0])
+target_cov = jnp.array([[1.0, 0.8], [0.8, 1.0]])
 
+original_samples = jax.random.multivariate_normal(
+    key,
+    mean=target_mean,
+    cov=target_cov,
+    shape=(nsamples,),
+)
+likelihood_probs = stats.multivariate_normal.logpdf(
+    original_samples,
+    mean=target_mean,
+    cov=target_cov,
+)
+weights = jnp.ones(len(original_samples))
 
-def d_g(
-    logL: np.ndarray | tf.Tensor, weights: np.ndarray | tf.Tensor
-) -> float:
-    """Calculate the BMD statistic."""
-    return 2 * np.cov(logL, aweights=weights)
-
-
-norm = norm(loc=4.2, scale=0.3)
-theta = norm.rvs(size=(1000, 2))
-logL = norm.logpdf(theta).sum(axis=1)
-weights = np.ones(len(theta))
-
-mcmc_samples = MCMCSamples(data=theta, logL=logL)
-samples_kl = D_KL(logL, weights)
-samples_d = d_g(logL, weights)
-names = [i for i in range(theta.shape[-1])]
+prior_probs = stats.uniform.logpdf(original_samples, loc=-4.0, scale=8.0)
+prior_probs = jnp.sum(prior_probs, axis=-1)
 
 
-class TestImportance:
-    """Class to test importance sampling functionality."""
+bounds = approximate_bounds(original_samples, weights)
+prior_samples = jax.random.uniform(
+    key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
+)
 
-    @pytest.fixture
-    def maf(self) -> MAF:
-        """Fixture to create MAF instance."""
-        return MAF(mcmc_samples, parameters=names)
 
-    @pytest.fixture
-    def calc(self, maf: MAF) -> calculate:
-        """Fixture to create a calculate instance with the trained MAF."""
-        return calculate(maf)
+def test_importance_sampling() -> None:
+    """Test importance sampling functionality."""
+    key = jax.random.PRNGKey(123)
 
-    def likelihood(self, parameters: np.ndarray) -> np.ndarray:
-        """Define a simple Gaussian likelihood function."""
-        y = np.array([0, 6])
-        loglikelihood = (
-            -0.5 * np.log(2 * np.pi * (1**2))
-            - 0.5 * ((y - parameters) / 1) ** 2
-        ).sum(axis=-1)
-        return loglikelihood
+    # Create a RealNVP estimator
+    realnvp_estimator = RealNVP(
+        original_samples,
+        weights=weights,
+        in_size=2,
+        hidden_size=25,
+        num_layers=2,
+        num_coupling_layers=2,
+        theta_ranges=bounds,
+    )
 
-    def prior(self, parameters: np.ndarray) -> np.ndarray:
-        """Define a simple Gaussian prior function."""
-        y = np.array([6, 0])
-        density = (
-            -0.5 * np.log(2 * np.pi * (1**2))
-            - 0.5 * ((y - parameters) / 1) ** 2
-        ).sum(axis=-1)
-        return density
+    key, subkey = jax.random.split(key)
+    realnvp_estimator.train(
+        subkey, learning_rate=1e-4, epochs=2000, patience=50
+    )
 
-    # @pytest.mark.parametrize(("prior", [prior, maf.log_prob]))
-    def test_integrate_prior(self, calc: calculate) -> None:
-        """Test integration using the prior distribution."""
-        calc.integrate(self.likelihood, self.prior, sample_size=1000)
+    prior_estimator = RealNVP(
+        prior_samples,
+        in_size=2,
+        hidden_size=50,
+        num_layers=2,
+        num_coupling_layers=2,
+        theta_ranges=bounds,
+    )
 
-    def test_integrate_maf(self, calc: calculate, maf: MAF) -> None:
-        """Test integration using the MAF distribution."""
-        calc.integrate(self.likelihood, maf.log_prob, sample_size=1000)
+    key, subkey = jax.random.split(key)
+    prior_estimator.train(subkey, learning_rate=1e-3, epochs=2000, patience=50)
 
-    def test_integrate_unphysical(self, calc: calculate) -> None:
-        """Test integration with unphysical logzero value."""
-        with pytest.raises(ValueError):
-            calc.integrate(
-                self.likelihood, self.prior, sample_size=1000, logzero=10
-            )
+    # Perform importance sampling integration
+    integral = integrate(
+        realnvp_estimator,
+        lambda x: stats.multivariate_normal.logpdf(
+            x, mean=target_mean, cov=target_cov
+        ),
+        prior_estimator,
+        sample_size=20000,
+    )
 
-    @pytest.mark.parametrize("ss", [10, 100])
-    @pytest.mark.parametrize("bs", [10, 100])
-    def test_integrate_batching(
-        self, calc: calculate, ss: int, bs: int
-    ) -> None:
-        """Test integration with different sample and batch sizes."""
-        calc.integrate(
-            self.likelihood, self.prior, sample_size=ss, batch_size=bs
-        )
+    expected_value = jnp.prod(
+        1 / (bounds[1] - bounds[0])
+    )  # Expected value for the integral in 2D
+    # Assert that the computed integral is close to the expected value
+    assert_allclose(
+        jnp.exp(integral["log_integral"]), expected_value, rtol=0.01, atol=0.01
+    )
