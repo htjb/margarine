@@ -43,6 +43,7 @@ docs = [
   "mkdocstrings",
   "mkdocstrings-python",
   "mkdocs-include-markdown-plugin",
+  "pymdown-extensions",
 ]
 
 [tool.setuptools.packages.find]
