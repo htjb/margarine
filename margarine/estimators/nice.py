@@ -474,7 +474,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         shutil.rmtree(path)
 
     @classmethod
-    def load(cls, filename: str) -> "NICE" | None:
+    def load(cls, filename: str) -> BaseDensityEstimator | None:
         """Load a trained NICE model from a file.
 
         Args:

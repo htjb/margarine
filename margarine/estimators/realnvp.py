@@ -516,7 +516,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         shutil.rmtree(path)
 
     @classmethod
-    def load(cls, filename: str) -> "RealNVP":
+    def load(cls, filename: str) -> BaseDensityEstimator | None:
         """Load a trained RealNVP model from a file.
 
         Args:

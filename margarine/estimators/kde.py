@@ -294,7 +294,7 @@ class KDE(BaseDensityEstimator):
         shutil.rmtree(path)
 
     @classmethod
-    def load(cls, filename: str) -> "KDE" | None:
+    def load(cls, filename: str) -> BaseDensityEstimator | None:
         """Load a KDE from a file.
 
         Args:
