@@ -20,7 +20,7 @@ The code can be used to:
 - Build non-trivial priors from samples
 - Perform density estimation tasks in general machine learning applications
 - Emulate correctly normalised marginal likelihoods
-- Calcualte statistics like the KL divergence between different density estimators and marginal model dimensionalities.
+- Calculate statistics like the KL divergence between different density estimators and marginal model dimensionalities.
 
 ---
 
