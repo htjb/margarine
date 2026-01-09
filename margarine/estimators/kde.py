@@ -220,7 +220,7 @@ class KDE(BaseDensityEstimator):
             [
                 tfb.Invert(tfb.NormalCDF()),
                 tfb.Scale(1 / (self.theta_ranges[1] - self.theta_ranges[0])),
-                tfb.Shift(-self.theta_ranges[1]),
+                tfb.Shift(-self.theta_ranges[0]),
             ]
         )
 
