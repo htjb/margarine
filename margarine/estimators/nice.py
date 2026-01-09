@@ -274,7 +274,6 @@ class NICE(BaseDensityEstimator, nnx.Module):
         best_model = nnx.state(self, nnx.Param)
         c = 0
 
-        # data_size = len(self.train_phi)
         data_size = len(self.train_phi)
 
         tl, vl = [], []
