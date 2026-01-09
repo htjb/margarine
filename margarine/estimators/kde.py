@@ -12,6 +12,7 @@ import jax.scipy.stats as stats
 import yaml
 from tensorflow_probability.substrates import jax as tfp
 
+from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
@@ -276,7 +277,11 @@ class KDE(BaseDensityEstimator):
         with open(f"{path}/config.yaml", "w") as f:
             yaml.dump(config, f)
 
-        metadata = {"theta": self.theta, "weights": self.weights}
+        metadata = {
+            "theta": self.theta,
+            "weights": self.weights,
+            "margarine_version": _version.__version__,
+        }
 
         with open(f"{path}/metadata.yaml", "w") as f:
             yaml.dump(metadata, f)
@@ -289,7 +294,7 @@ class KDE(BaseDensityEstimator):
         shutil.rmtree(path)
 
     @classmethod
-    def load(cls, filename: str) -> "KDE":
+    def load(cls, filename: str) -> "KDE" | None:
         """Load a KDE from a file.
 
         Args:
@@ -304,6 +309,26 @@ class KDE(BaseDensityEstimator):
             # Extract all files to a folder
             z.extractall(path)
 
+        with open(f"{path}/metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+
+        version = metadata.get("margarine_version", None)
+        if version is None:
+            print(
+                "Warning: The KDE was saved with a version of margarine ",
+                " < 2.0.0. In order to load it you will need to downgrade ",
+                "margarine to a version < 2.0.0. e.g. ",
+                "pip install margarine<2.0.0",
+            )
+            return
+        if version != _version.__version__:
+            print(
+                f"Warning: The KDE was saved with margarine version "
+                f"{version}, but you are loading it with version "
+                f"{_version.__version__}. This may lead to "
+                f"incompatibilities."
+            )
+
         with open(f"{path}/config.yaml") as f:
             config = yaml.unsafe_load(f)
 
@@ -314,8 +339,6 @@ class KDE(BaseDensityEstimator):
             theta_ranges=config["theta_ranges"],
         )
 
-        with open(f"{path}/metadata.yaml") as f:
-            metadata = yaml.unsafe_load(f)
         instance.theta = jnp.array(metadata["theta"])
         instance.weights = jnp.array(metadata["weights"])
 

@@ -15,6 +15,7 @@ import yaml
 from flax import nnx
 from tensorflow_probability.substrates import jax as tfp
 
+from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
@@ -501,6 +502,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             "test_weights": self.test_weights,
             "val_phi": self.val_phi,
             "val_weights": self.val_weights,
+            "margarine_version": _version.__version__,
         }
 
         with open(f"{path}/metadata.yaml", "w") as f:
@@ -529,6 +531,26 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             # Extract all files to a folder
             z.extractall(path)
 
+        with open(f"{path}/metadata.yaml") as f:
+            metadata = yaml.unsafe_load(f)
+
+        version = metadata.get("margarine_version", None)
+        if version is None:
+            print(
+                "Warning: The KDE was saved with a version of margarine ",
+                " < 2.0.0. In order to load it you will need to downgrade ",
+                "margarine to a version < 2.0.0. e.g. ",
+                "pip install margarine<2.0.0",
+            )
+            return
+        if version != _version.__version__:
+            print(
+                f"Warning: The KDE was saved with margarine version "
+                f"{version}, but you are loading it with version "
+                f"{_version.__version__}. This may lead to "
+                f"incompatibilities."
+            )
+
         with open(f"{path}/config.yaml") as f:
             config = yaml.unsafe_load(f)
 
@@ -549,8 +571,6 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         )
         nnx.update(instance, state)
 
-        with open(f"{path}/metadata.yaml") as f:
-            metadata = yaml.unsafe_load(f)
         instance.theta = metadata["theta"]
         instance.weights = metadata["weights"]
         instance.train_loss = metadata["train_loss"]
