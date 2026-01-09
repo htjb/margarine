@@ -216,7 +216,7 @@ plt.ylabel("X2")
 plt.show()
 ```
 
-![image](example-images/clustered_density_example.png)
+![image](example-images/clustered_density_estimator.png)
 
 Piecewise estimators have all the same methods as standard estimators and often perform better on multimodal distributions.
 
