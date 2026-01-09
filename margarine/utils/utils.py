@@ -85,7 +85,7 @@ def inverse_transform(
 def train_test_split(
     a: jnp.ndarray,
     b: jnp.ndarray,
-    key: jnp.ndarray,
+    key: jnp.ndarray | None = None,
     test_size: float = 0.2,
 ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Splitting data into training and testing sets.
