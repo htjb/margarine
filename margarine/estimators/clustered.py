@@ -32,7 +32,7 @@ class cluster:
         theta_ranges: jnp.ndarray | None = None,
         clusters: jnp.ndarray | None | int = None,
         max_cluster_number: int = 10,
-        **kwargs: dict,
+        **kwargs: object,
     ) -> None:
         r"""Piecewise normalizing flow built from masked autoregressive flows.
 
@@ -147,7 +147,7 @@ class cluster:
                 )
             )
 
-    def train(self, **kwargs: dict) -> None:
+    def train(self, **kwargs: object) -> None:
         r"""Train the cluster estimator.
 
         Args:
