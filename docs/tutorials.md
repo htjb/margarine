@@ -85,7 +85,7 @@ plt.ylabel("X2")
 plt.show()
 ```
 
-![image](https://raw.githubusercontent.com/htjb/margarine/main/docs/example-images/realnvp_example.png)
+![image](example-images/realnvp_example.png)
 
 This is essentially what the `sample()` method does internally by transforming uniform samples to the learned distribution.
 
@@ -139,6 +139,97 @@ print("Model Dimensionality:", model_dim)
 
 You can also calculate the KL divergence and model dimensionality between differnt types of `margarine` density estimators e.g. between a RealNVP and a KDE estimator.
 
+## Piecewise Normalising Flows
+
+`margarine` includes piecewise normalising flow density estimators that can model multimodal distributions more effectively than standard normalising flows. Piecewise NFs are described in more detail in [this paper](https://arxiv.org/abs/2305.02930). 
+
+Essentially piecewise NFs divide the samples into clusters using K-Means clustering and then train a separate normalising flow on each cluster. The overall density is then a weighted sum of the densities from each cluster. In `margarine` piecewise NFs can be built from any of the standard density estimators using the `clustered` estimator. The example below demonstrated how to build a piecewise RealNVP estimato.
+
+```python
+import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+
+from margarine.estimators.clustered import cluster
+from margarine.estimators.realnvp import RealNVP
+
+nsamples = 5000
+key = jax.random.PRNGKey(0)
+
+target_mean_one = jnp.array([-2.0, 0.0])
+target_cov_one = jnp.array([[1.0, 0.0], [0.0, 1.0]])
+target_mean_two = jnp.array([6.0, 0.0])
+target_cov_two = jnp.array([[0.5, 0.0], [0.0, 1.0]])
+
+
+original_samples = jnp.concatenate(
+    [
+        jax.random.multivariate_normal(
+            key,
+            mean=target_mean_one,
+            cov=target_cov_one,
+            shape=(nsamples // 2,),
+        ),
+        jax.random.multivariate_normal(
+            key,
+            mean=target_mean_two,
+            cov=target_cov_two,
+            shape=(nsamples // 2,),
+        ),
+    ],
+    axis=0,
+)
+
+weights = jnp.ones(original_samples.shape[0])
+
+cluster_estimator = cluster(
+    original_samples,
+    base_estimator=RealNVP,
+    weights=weights,
+    in_size=2,
+    hidden_size=50,
+    num_layers=10,
+    num_coupling_layers=4,
+    clusters=2,
+)
+
+key, subkey = jax.random.split(key)
+cluster_estimator.train(
+    key=subkey,
+    learning_rate=1e-4,
+    epochs=2000,
+    patience=50,
+    batch_size=len(original_samples),
+)
+
+key, subkey = jax.random.split(key)
+samples = cluster_estimator.sample(subkey, 5000)
+
+plt.scatter(
+    original_samples[:, 0], original_samples[:, 1], alpha=0.5, label="Original Samples"
+)
+plt.scatter(samples[:, 0], samples[:, 1], alpha=0.5, label="Generated Samples")
+plt.legend()
+plt.title("Piecewise RealNVP: Original vs Generated Samples")
+plt.xlabel("X1")
+plt.ylabel("X2")
+plt.show()
+```
+
+![image](example-images/clustered_density_example.png)
+
+Piecewise estimators have all the same methods as standard estimators and often perform better on multimodal distributions.
 
 ## Saving and Loading Models
+
+Each density estimator in `margarine` has `save()` and `load()` methods to save the model parameters to disk and load them back later. This is useful for persisting trained models and reusing them without having to retrain.
+
+Models are saved in zips with custom file extensions `.marg` and `.clumarg` for standard and piecwise estimators respectively. They can be saved and loaded as follows:
+
+```python
+# Save the model
+realnvp_estimator.save("realnvp_model")
+# Load the model
+loaded_estimator = RealNVP.load("realnvp_model")
+```
 
