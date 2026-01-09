@@ -1,6 +1,4 @@
-# margarine: you won't believe it's not your posterior samples!
-
-### Marginal Bayesian Statistics
+# margarine: density estimation made easy
 
 **Authors:** Harry T.J. Bevins  
 **Version:** 2.0.0  
