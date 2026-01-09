@@ -14,7 +14,15 @@
 [![Licence: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
-`margarine` provides a suite of density estimation tools including KDEs, normalizing flows like NICE and RealNVP as well as piecewise normalizing flows which can be used to learn multimodal distributions. It can be trained on MCMC samples and used to estimate a variety of marginal bayesian statistics including nuisance free or marginalised likelihoods, margainal Kullback-Leibler divergences and marginal model dimensionalities.
+`margarine` provides a suite of density estimation tools including KDEs, normalizing flows like NICE and RealNVP as well as a novel method for improved performance on multimodal distributions. 
+
+The code can be used to:
+
+- Emulate posterior distributions from weightened samples (e.g. MCMC, nested sampling)
+- Build non-trivial priors from samples
+- Perform density estimation tasks in general machine learning applications
+- Emulate correctly normalised marginal likelihoods
+- Calcualte statistics like the KL divergence between different density estimators and marginal model dimensionalities.
 
 ---
 
