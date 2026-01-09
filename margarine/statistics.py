@@ -156,7 +156,7 @@ def integrate(
                     + "flow and likelihood"
                 )
 
-        # calcualte the importance weights = prior * likelihood / flow
+        # calculate the importance weights = prior * likelihood / flow
         weights = jnp.exp(fs + pis - gs)
         # effective sample size
         eff = jnp.sum(weights) ** 2 / jnp.sum(weights**2) / sample_size
