@@ -2,6 +2,8 @@
 
 This document provides a collection of tutorials and examples to help you get started with various topics. Each section includes step-by-step instructions and code snippets to guide you through the process.
 
+There have been significant breaking changes to the API since version 2.0.0 when `margarine` moved to JAX from TensorFlow. If you are using an older version (1.x.x) please refer to the [v1.4.2 documentation](https://margarine.readthedocs.io/en/latest/#30887389) instead.
+
 ## The Basics
 
 `margarine` has several different density estimators that can be used to learn probability distributions from samples. Each estimator has a common interface and set of methods including `train()`, `sample()`, `log_prob()`, `log_like()`, `save()` and `load()`. The following example demonstrates how to train a RealNVP density estimator and generate samples from it. Similar patterns can be followed for other estimators in the library and the API reference can be consulted for specifics.

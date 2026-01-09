@@ -28,7 +28,7 @@ The code can be used to:
 
 ## Installation
 
-From version 2.0.0 margarine moved to JAX for improved performance. Older versions (1.x.x) using TensorFlow are still available via pip with the last release being 1.3.4.
+From version 2.0.0 margarine moved to JAX for improved performance. Older versions (1.x.x) using TensorFlow are still available via pip with the last release being 1.4.2.
 
 Install from Git:
 
