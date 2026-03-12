@@ -440,7 +440,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             """Calculate the normalising jacobian for the transformation."""
             return transform_chain.inverse_log_det_jacobian(y, event_ndims=0)
 
-        correction = norm_jac(transformed_x).sum(axis=1)
+        correction = -norm_jac(transformed_x).sum(axis=1)
 
         return self.log_prob_under_RealNVP(transformed_x) + correction
 
