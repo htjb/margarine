@@ -315,8 +315,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 best_loss=f"{best_loss:.3e}",
             )
 
-        self.train_loss = tl
-        self.val_loss = vl
+        self.train_loss = jnp.array(tl)
+        self.val_loss = jnp.array(vl)
 
         if best_model is not None:
             nnx.update(self, best_model)
