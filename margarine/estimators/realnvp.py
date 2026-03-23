@@ -113,7 +113,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         additive_layers.append(
             nnx.Linear(
                 self.hidden_size,
-                self.net_in_size,
+                self.pass_size,
                 kernel_init=kernel_init,
                 rngs=nnx_rngs,
             )
@@ -148,7 +148,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         scaling_layers.append(
             nnx.Linear(
                 self.hidden_size,
-                self.net_in_size,
+                self.pass_size,
                 kernel_init=kernel_init,
                 rngs=nnx_rngs,
             )

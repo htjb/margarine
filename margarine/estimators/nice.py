@@ -94,7 +94,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             layers.append(lambda x: jax.nn.gelu(x))
 
         layers.append(
-            nnx.Linear(self.hidden_size, self.net_in_size, rngs=nnx_rngs)
+            nnx.Linear(self.hidden_size, self.pass_size, rngs=nnx_rngs)
         )
         self.mlp = nnx.List(
             [nnx.Sequential(*layers) for _ in range(self.num_coupling_layers)]
