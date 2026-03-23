@@ -1,7 +1,7 @@
 # margarine: density estimation made easy
 
 **Authors:** Harry T.J. Bevins  
-**Version:** 2.1.0  
+**Version:** 2.2.0  
 **Homepage:** https://github.com/htjb/margarine  
 **Documentation:** https://margarine.readthedocs.io/
 
