@@ -244,6 +244,73 @@ def test_realnvp() -> None:
     os.remove("realnvp_test.marg")
 
 
+def test_nice_odd_dimensions() -> None:
+    """Test NICE estimator with an odd number of dimensions."""
+    key = jax.random.PRNGKey(45)
+
+    odd_samples = jax.random.multivariate_normal(
+        key,
+        mean=jnp.zeros(3),
+        cov=jnp.eye(3),
+        shape=(nsamples,),
+    )
+
+    nice_estimator = NICE(
+        odd_samples,
+        in_size=3,
+        hidden_size=50,
+        num_layers=2,
+        num_coupling_layers=4,
+    )
+
+    # check forward/inverse roundtrip
+    key, subkey = jax.random.split(key)
+    z = jax.random.normal(subkey, (100, 3))
+    forward_transformed = nice_estimator.forward(z)
+    inverse_transformed = nice_estimator.inverse(forward_transformed)
+    error = jnp.mean(jnp.abs(inverse_transformed - z))
+    assert error < 1e-3
+
+    # check log_prob runs without crashing
+    log_probs = nice_estimator.log_prob_under_NICE(z)
+    assert log_probs.shape == (100,)
+    assert jnp.all(jnp.isfinite(log_probs))
+
+
+def test_realnvp_odd_dimensions() -> None:
+    """Test RealNVP estimator with an odd number of dimensions."""
+    key = jax.random.PRNGKey(46)
+
+    odd_samples = jax.random.multivariate_normal(
+        key,
+        mean=jnp.zeros(3),
+        cov=jnp.eye(3),
+        shape=(nsamples,),
+    )
+
+    realnvp_estimator = RealNVP(
+        odd_samples,
+        in_size=3,
+        hidden_size=50,
+        num_coupling_layers=4,
+    )
+
+    # check forward/inverse roundtrip
+    key, subkey = jax.random.split(key)
+    z = jax.random.normal(subkey, (100, 3))
+    forward_transformed, log_det = realnvp_estimator.forward(
+        z, return_log_det=True
+    )
+    inverse_transformed = realnvp_estimator.inverse(forward_transformed)
+    error = jnp.mean(jnp.abs(inverse_transformed - z))
+    assert error < 1e-3
+
+    # check log_prob runs without crashing
+    log_probs = realnvp_estimator.log_prob_under_RealNVP(z)
+    assert log_probs.shape == (100,)
+    assert jnp.all(jnp.isfinite(log_probs))
+
+
 def test_kde() -> None:
     """Test KDE estimator."""
     key = jax.random.PRNGKey(44)
