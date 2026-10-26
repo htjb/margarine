@@ -243,6 +243,31 @@ def test_realnvp() -> None:
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
     os.remove("realnvp_test.marg")
 
+def test_nice_mlps() -> None:
+    """Test to check that the MLPs in a NICE instance are different."""
+    theta = jax.random.normal(jax.random.PRNGKey(1), (500, 4))
+    flow = NICE(theta, in_size=4, hidden_size=16,
+                num_layers=2, num_coupling_layers=2)
+
+    a = flow.mlp
+
+    assert(a[0] != a[1])
+
+def test_realnvp_mlps() -> None:
+    """Test to check that the MLPs in a RealNVP instance are different."""
+    theta = jax.random.normal(jax.random.PRNGKey(1), (500, 4))
+    flow = RealNVP(theta, in_size=4, hidden_size=16,
+                num_layers=2, num_coupling_layers=2)
+
+    a = flow.additive_mlp
+    b = flow.scaling_mlp
+
+    assert(a[0] != a[1])
+    assert(b[0] != b[1])
+    assert(a[0] != b[0])
+    assert(a[1] != b[1])
+    assert(a[1] != b[0])
+    assert(a[0] != b[1])
 
 def test_nice_odd_dimensions() -> None:
     """Test NICE estimator with an odd number of dimensions."""
