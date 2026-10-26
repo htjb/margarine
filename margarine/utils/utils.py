@@ -2,9 +2,13 @@
 
 import jax
 import jax.numpy as jnp
+from flax import nnx
+from flax.nnx.nn import initializers
 from tensorflow_probability.substrates import jax as tfp
 
 tfd = tfp.distributions
+
+default_kernel_init = initializers.lecun_normal()
 
 
 @jax.jit
@@ -121,3 +125,28 @@ def train_test_split(
     b_test = b[test_indices]
 
     return a_train, a_test, b_train, b_test
+
+def build_mlp(in_size: int, hidden_size: int, num_layers: int,
+               pass_size: int, nnx_rngs: dict,
+               kernel_init: nnx.initializers.Initializer = default_kernel_init) -> nnx.Sequential:
+    """Build a multi-layer perceptron (MLP) using Flax's nnx module.
+
+    Args:
+        in_size: Input size of the MLP.
+        hidden_size: Size of the hidden layers.
+        num_layers: Number of hidden layers.
+        pass_size: Size of the pass-through layer.
+        nnx_rngs: RNGs for Flax.
+        kernel_init: Optional initializer for the kernel weights.
+
+    Returns:
+        An instance of nnx.Sequential representing the MLP.
+    """
+    layers = nnx.List()
+    layers.append(nnx.Linear(in_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init))
+    layers.append(lambda x: jax.nn.relu(x))
+    for _ in range(num_layers):
+        layers.append(nnx.Linear(hidden_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init))
+        layers.append(lambda x: jax.nn.relu(x))
+    layers.append(nnx.Linear(hidden_size, pass_size, rngs=nnx_rngs, kernel_init=kernel_init))
+    return nnx.Sequential(*layers)

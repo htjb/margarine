@@ -22,6 +22,7 @@ from margarine.utils.utils import (
     forward_transform,
     inverse_transform,
     train_test_split,
+    build_mlp,
 )
 
 # surpress some orbax warnings
@@ -30,30 +31,6 @@ logging.getLogger("absl").setLevel(logging.ERROR)
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
-
-def _build_mlp(in_size: int, hidden_size: int, num_layers: int, 
-               pass_size: int, nnx_rngs: dict) -> nnx.Sequential:
-    """Build a multi-layer perceptron (MLP) using Flax's nnx module.
-
-    Args:
-        in_size: Input size of the MLP.
-        hidden_size: Size of the hidden layers.
-        num_layers: Number of hidden layers.
-        pass_size: Size of the pass-through layer.
-        nnx_rngs: RNGs for Flax.
-
-    Returns:
-        An instance of nnx.Sequential representing the MLP.
-    """
-    layers = nnx.List()
-    layers.append(nnx.Linear(in_size, hidden_size, rngs=nnx_rngs))
-    layers.append(lambda x: jax.nn.relu(x))
-    for _ in range(num_layers):
-        layers.append(nnx.Linear(hidden_size, hidden_size, rngs=nnx_rngs))
-        layers.append(lambda x: jax.nn.relu(x))
-    layers.append(nnx.Linear(hidden_size, pass_size, rngs=nnx_rngs))
-    return nnx.Sequential(*layers)
-
 
 class NICE(BaseDensityEstimator, nnx.Module):
     """Implementation of the NICE architecture for density estimation.
@@ -106,7 +83,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         self.net_in_size = in_size - self.pass_size
 
         self.mlp = nnx.List(
-            [_build_mlp(
+            [build_mlp(
                 self.net_in_size, self.hidden_size,
                 self.nlayers, self.pass_size, nnx_rngs
                 ) for _ in range(self.num_coupling_layers)]
