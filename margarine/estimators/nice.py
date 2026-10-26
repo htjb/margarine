@@ -19,10 +19,10 @@ from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
+    build_mlp,
     forward_transform,
     inverse_transform,
     train_test_split,
-    build_mlp,
 )
 
 # surpress some orbax warnings
@@ -31,6 +31,7 @@ logging.getLogger("absl").setLevel(logging.ERROR)
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
+
 
 class NICE(BaseDensityEstimator, nnx.Module):
     """Implementation of the NICE architecture for density estimation.
@@ -83,10 +84,16 @@ class NICE(BaseDensityEstimator, nnx.Module):
         self.net_in_size = in_size - self.pass_size
 
         self.mlp = nnx.List(
-            [build_mlp(
-                self.net_in_size, self.hidden_size,
-                self.nlayers, self.pass_size, nnx_rngs
-                ) for _ in range(self.num_coupling_layers)]
+            [
+                build_mlp(
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                )
+                for _ in range(self.num_coupling_layers)
+            ]
         )
 
         self.S = nnx.Param(jnp.zeros(in_size))

@@ -19,10 +19,10 @@ from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
+    build_mlp,
     forward_transform,
     inverse_transform,
     train_test_split,
-    build_mlp,
 )
 
 # surpress some orbax warnings
@@ -32,6 +32,7 @@ logging.getLogger("absl").setLevel(logging.ERROR)
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
+
 
 class RealNVP(BaseDensityEstimator, nnx.Module):
     """Implementation of the RealNVP architecture for density estimation.
@@ -93,9 +94,12 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         self.additive_mlp = nnx.List(
             [
                 build_mlp(
-                    self.net_in_size, self.hidden_size,
-                    self.nlayers, self.pass_size, nnx_rngs,
-                    kernel_init=kernel_init
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                    kernel_init=kernel_init,
                 )
                 for _ in range(self.num_coupling_layers)
             ]
@@ -104,9 +108,12 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         self.scaling_mlp = nnx.List(
             [
                 build_mlp(
-                    self.net_in_size, self.hidden_size,
-                    self.nlayers, self.pass_size, nnx_rngs,
-                    kernel_init=kernel_init
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                    kernel_init=kernel_init,
                 )
                 for _ in range(self.num_coupling_layers)
             ]

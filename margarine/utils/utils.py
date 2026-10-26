@@ -126,9 +126,15 @@ def train_test_split(
 
     return a_train, a_test, b_train, b_test
 
-def build_mlp(in_size: int, hidden_size: int, num_layers: int,
-               pass_size: int, nnx_rngs: dict,
-               kernel_init: nnx.initializers.Initializer = default_kernel_init) -> nnx.Sequential:
+
+def build_mlp(
+    in_size: int,
+    hidden_size: int,
+    num_layers: int,
+    pass_size: int,
+    nnx_rngs: dict,
+    kernel_init: nnx.initializers.Initializer = default_kernel_init,
+) -> nnx.Sequential:
     """Build a multi-layer perceptron (MLP) using Flax's nnx module.
 
     Args:
@@ -143,10 +149,25 @@ def build_mlp(in_size: int, hidden_size: int, num_layers: int,
         An instance of nnx.Sequential representing the MLP.
     """
     layers = nnx.List()
-    layers.append(nnx.Linear(in_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init))
+    layers.append(
+        nnx.Linear(
+            in_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init
+        )
+    )
     layers.append(lambda x: jax.nn.relu(x))
     for _ in range(num_layers):
-        layers.append(nnx.Linear(hidden_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init))
+        layers.append(
+            nnx.Linear(
+                hidden_size,
+                hidden_size,
+                rngs=nnx_rngs,
+                kernel_init=kernel_init,
+            )
+        )
         layers.append(lambda x: jax.nn.relu(x))
-    layers.append(nnx.Linear(hidden_size, pass_size, rngs=nnx_rngs, kernel_init=kernel_init))
+    layers.append(
+        nnx.Linear(
+            hidden_size, pass_size, rngs=nnx_rngs, kernel_init=kernel_init
+        )
+    )
     return nnx.Sequential(*layers)
