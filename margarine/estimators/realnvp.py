@@ -20,6 +20,7 @@ from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
     build_mlp,
+    coupling_permutations,
     forward_transform,
     inverse_transform,
     train_test_split,
@@ -120,13 +121,11 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         )
 
         self.permutations_key = permutations_key
-        key = self.permutations_key
-        self.permutations = []
-        for _ in range(self.num_coupling_layers):
-            key, subkey = jax.random.split(key)
-            perm = jax.random.permutation(subkey, in_size)
-            self.permutations.append(perm)
-        self.permutations = nnx.data(self.permutations)
+        self.permutations = nnx.data(
+            coupling_permutations(
+                self.permutations_key, in_size, self.num_coupling_layers
+            )
+        )
         self.inverse_permutations = nnx.data(
             [jnp.argsort(p) for p in self.permutations]
         )
@@ -493,20 +492,22 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             metadata = yaml.unsafe_load(f)
 
         version = metadata.get("margarine_version", None)
-        if version is None:
-            print(
-                "Warning: The KDE was saved with a version of margarine ",
-                " < 2.0.0. In order to load it you will need to downgrade ",
-                "margarine to a version < 2.0.0. e.g. ",
-                "pip install margarine<2.0.0",
-            )
-            return
-        if version != _version.__version__:
-            print(
-                f"Warning: The KDE was saved with margarine version "
+        if version < _version.__version__:
+            raise ValueError(
+                f"The RealNVP model was saved with margarine version "
                 f"{version}, but you are loading it with version "
-                f"{_version.__version__}. This may lead to "
-                f"incompatibilities."
+                f"{_version.__version__}. "
+                f"We suggest you downgrade or "
+                f"retrain the model."
+            )
+        if version > _version.__version__:
+            print(
+                f"Warning:The RealNVP model was saved with margarine version "
+                f"{version}, but you are loading it with version "
+                f"{_version.__version__}. "
+                f"This might lead to inconsistencies. "
+                "We suggest you upgrade or "
+                "retrain the model."
             )
 
         with open(f"{path}/config.yaml") as f:
