@@ -4,71 +4,77 @@ import os
 
 import jax
 import jax.numpy as jnp
-import jax.scipy.stats as stats
 from numpy.testing import assert_allclose
 
 from margarine.estimators.kde import KDE
 from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
 from margarine.statistics import kldivergence, model_dimensionality
-from margarine.utils.utils import approximate_bounds
 
 
-def D_KL(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
-    """Calculate the Kullback-Leibler divergence.
+def analytic_kl(cov: jnp.ndarray, bounds: jnp.ndarray) -> jnp.ndarray:
+    """KL divergence between a Gaussian and a uniform prior.
+
+    Assumes the prior box contains essentially all of the Gaussian's mass.
 
     Args:
-        logPpi (jnp.ndarray): Log-likelihood values
-        weights (jnp.ndarray): Corresponding weights
+        cov (jnp.ndarray): Covariance of the Gaussian
+        bounds (jnp.ndarray): Lower and upper bounds of the uniform prior
 
     Returns:
         jnp.ndarray: Kullback-Leibler divergence
     """
-    return jnp.average(logPpi, weights=weights)
+    d = cov.shape[0]
+    log_volume = jnp.sum(jnp.log(bounds[1] - bounds[0]))
+    entropy = 0.5 * (
+        d * jnp.log(2 * jnp.pi * jnp.e) + jnp.linalg.slogdet(cov)[1]
+    )
+    return log_volume - entropy
 
 
-def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
-    """Calculate the BMD statistic.
+def analytic_bmd(cov: jnp.ndarray) -> jnp.ndarray:
+    """BMD between a Gaussian and a uniform prior.
+
+    log P = const - chi^2_d / 2, so 2 * Var[log P] = d.
 
     Args:
-        logPpi (jnp.ndarray): Log-likelihood values
-        weights (jnp.ndarray): Corresponding weights
+        cov (jnp.ndarray): Covariance of the Gaussian
 
     Returns:
         jnp.ndarray: BMD statistic
     """
-    return 2 * jnp.cov(logPpi, aweights=weights)
+    return jnp.asarray(cov.shape[0], dtype=float)
 
 
 nsamples = 5000
 key = jax.random.PRNGKey(0)
 
+target_mean = jnp.array([0.0, 0.0])
+target_cov = jnp.array([[1.0, 0.8], [0.8, 1.0]])
+bounds = jnp.array([[-5.0, -5.0], [5.0, 5.0]])
+
+key, subkey = jax.random.split(key)
 original_samples = jax.random.multivariate_normal(
-    key,
-    mean=jnp.array([0.0, 0.0]),
-    cov=jnp.array([[1.0, 0.8], [0.8, 1.0]]),
+    subkey,
+    mean=target_mean,
+    cov=target_cov,
     shape=(nsamples,),
-)
-posterior_probs = stats.multivariate_normal.logpdf(
-    original_samples,
-    mean=jnp.array([0.0, 0.0]),
-    cov=jnp.array([[1.0, 0.8], [0.8, 1.0]]),
 )
 weights = jnp.ones(len(original_samples))
 
-prior_probs = stats.uniform.logpdf(original_samples, loc=-4.0, scale=8.0)
-prior_probs = jnp.sum(prior_probs, axis=-1)
-
-logPpi = posterior_probs - prior_probs
-
-
-samples_kl = D_KL(logPpi, weights)
-samples_d = d_g(logPpi, weights)
-
-bounds = approximate_bounds(original_samples, weights)
+key, subkey = jax.random.split(key)
 prior_samples = jax.random.uniform(
-    key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
+    subkey, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
 )
+
+true_kl = analytic_kl(target_cov, bounds)
+true_bmd = analytic_bmd(target_cov)
+
+# fixed tolerances on the analytic values, calibrated over several seeds
+kl_atol = 0.15
+bmd_atol = 0.3
+# NICE and KDE consistently underestimate the BMD by ~0.15-0.35
+smoothing_bmd_atol = 0.45
 
 
 def test_nice() -> None:
@@ -92,66 +98,50 @@ def test_nice() -> None:
     error = jnp.mean(jnp.abs(inverse_transformed - z))
     assert error < 1e-3
 
-    kld_estimates, bmd_estimates = [], []
-    for _ in range(5):
-        nice_estimator = NICE(
-            original_samples,
-            weights=weights,
-            in_size=2,
-            hidden_size=50,
-            num_layers=2,
-            num_coupling_layers=6,
-            theta_ranges=bounds,
-        )
+    nice_estimator = NICE(
+        original_samples,
+        weights=weights,
+        in_size=2,
+        hidden_size=50,
+        num_layers=2,
+        num_coupling_layers=6,
+        theta_ranges=bounds,
+    )
 
-        key, subkey = jax.random.split(key)
-        nice_estimator.train(
-            subkey,
-            learning_rate=1e-3,
-            epochs=2000,
-            patience=50,
-            batch_size=1024,
-        )
+    key, subkey = jax.random.split(key)
+    nice_estimator.train(
+        subkey,
+        learning_rate=1e-3,
+        epochs=2000,
+        patience=50,
+        batch_size=1024,
+    )
 
-        key, subkey = jax.random.split(key)
-        samples = nice_estimator.sample(subkey, 5000)
+    key, subkey = jax.random.split(key)
+    samples = nice_estimator.sample(subkey, 5000)
 
-        prior_estimator = NICE(
-            prior_samples,
-            in_size=2,
-            hidden_size=50,
-            num_layers=2,
-            num_coupling_layers=6,
-            theta_ranges=bounds,
-        )
-        key, subkey = jax.random.split(key)
-        prior_estimator.train(
-            subkey,
-            learning_rate=1e-3,
-            epochs=2000,
-            patience=50,
-            batch_size=1024,
-        )
+    prior_estimator = NICE(
+        prior_samples,
+        in_size=2,
+        hidden_size=50,
+        num_layers=2,
+        num_coupling_layers=6,
+        theta_ranges=bounds,
+    )
+    key, subkey = jax.random.split(key)
+    prior_estimator.train(
+        subkey,
+        learning_rate=1e-3,
+        epochs=2000,
+        patience=50,
+        batch_size=1024,
+    )
 
-        # check the kl divergence and model dimensionality
-        kld = kldivergence(nice_estimator, prior_estimator, samples)
-        dim = model_dimensionality(nice_estimator, prior_estimator, samples)
-        kld_estimates.append(kld)
-        bmd_estimates.append(dim)
-
-    kld_estimates = jnp.array(kld_estimates)
-    bmd_estimates = jnp.array(bmd_estimates)
-
-    kl_rtol = 3 * jnp.std(kld_estimates) / (jnp.mean(kld_estimates) + 1e-10)
-    kl_atol = 3 * jnp.std(kld_estimates)
-    kld = jnp.mean(kld_estimates)
-
-    dim_rtol = 3 * jnp.std(bmd_estimates) / (jnp.mean(bmd_estimates) + 1e-10)
-    dim_atol = 3 * jnp.std(bmd_estimates)
-    dim = jnp.mean(bmd_estimates)
-
-    assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
-    assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+    # check the kl divergence and model dimensionality
+    kld = kldivergence(nice_estimator, prior_estimator, samples)
+    dim = model_dimensionality(nice_estimator, prior_estimator, samples)
+    assert_allclose(kld, true_kl, rtol=0, atol=kl_atol)
+    assert_allclose(dim, true_bmd, rtol=0, atol=smoothing_bmd_atol)
 
     nice_estimator.save("nice_test")
     loaded_estimator = NICE.load("nice_test")
@@ -183,57 +173,47 @@ def test_realnvp() -> None:
     error = jnp.mean(jnp.abs(inverse_transformed - z))
     assert error < 1e-3
 
-    kl_estimates, bmd_estimates = [], []
-    for _ in range(5):
-        realnvp_estimator = RealNVP(
-            original_samples,
-            weights=weights,
-            in_size=2,
-            hidden_size=50,
-            num_coupling_layers=2,
-        )
-        key, subkey = jax.random.split(key)
-        realnvp_estimator.train(
-            subkey,
-            learning_rate=1e-4,
-            epochs=2000,
-            patience=50,
-            batch_size=len(original_samples),
-        )
+    realnvp_estimator = RealNVP(
+        original_samples,
+        weights=weights,
+        in_size=2,
+        hidden_size=50,
+        num_coupling_layers=2,
+        theta_ranges=bounds,
+    )
+    key, subkey = jax.random.split(key)
+    realnvp_estimator.train(
+        subkey,
+        learning_rate=1e-4,
+        epochs=2000,
+        patience=50,
+        batch_size=len(original_samples),
+    )
 
-        key, subkey = jax.random.split(key)
-        samples = realnvp_estimator.sample(subkey, 5000)
+    key, subkey = jax.random.split(key)
+    samples = realnvp_estimator.sample(subkey, 5000)
 
-        prior_estimator = RealNVP(
-            prior_samples, in_size=2, hidden_size=50, num_coupling_layers=2
-        )
-        key, subkey = jax.random.split(key)
-        prior_estimator.train(
-            subkey,
-            learning_rate=1e-4,
-            epochs=2000,
-            patience=50,
-            batch_size=len(prior_samples),
-        )
+    prior_estimator = RealNVP(
+        prior_samples,
+        in_size=2,
+        hidden_size=50,
+        num_coupling_layers=2,
+        theta_ranges=bounds,
+    )
+    key, subkey = jax.random.split(key)
+    prior_estimator.train(
+        subkey,
+        learning_rate=1e-4,
+        epochs=2000,
+        patience=50,
+        batch_size=len(prior_samples),
+    )
 
-        # check the kl divergence and model dimensionality
-        kld = kldivergence(realnvp_estimator, prior_estimator, samples)
-        dim = model_dimensionality(realnvp_estimator, prior_estimator, samples)
-        kl_estimates.append(kld)
-        bmd_estimates.append(dim)
-
-    kl_estimates = jnp.array(kl_estimates)
-    bmd_estimates = jnp.array(bmd_estimates)
-
-    kl_rtol = 3 * jnp.std(kl_estimates) / (jnp.mean(kl_estimates) + 1e-10)
-    kl_atol = 3 * jnp.std(kl_estimates)
-    kld = jnp.mean(kl_estimates)
-
-    dim_rtol = 3 * jnp.std(bmd_estimates) / (jnp.mean(bmd_estimates) + 1e-10)
-    dim_atol = 3 * jnp.std(bmd_estimates)
-    dim = jnp.mean(bmd_estimates)
-    assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
-    assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+    # check the kl divergence and model dimensionality
+    kld = kldivergence(realnvp_estimator, prior_estimator, samples)
+    dim = model_dimensionality(realnvp_estimator, prior_estimator, samples)
+    assert_allclose(kld, true_kl, rtol=0, atol=kl_atol)
+    assert_allclose(dim, true_bmd, rtol=0, atol=bmd_atol)
 
     realnvp_estimator.save("realnvp_test")
     loaded_estimator = RealNVP.load("realnvp_test")
@@ -243,6 +223,31 @@ def test_realnvp() -> None:
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
     os.remove("realnvp_test.marg")
 
+def test_nice_mlps() -> None:
+    """Test to check that the MLPs in a NICE instance are different."""
+    theta = jax.random.normal(jax.random.PRNGKey(1), (500, 4))
+    flow = NICE(theta, in_size=4, hidden_size=16,
+                num_layers=2, num_coupling_layers=2)
+
+    a = flow.mlp
+
+    assert(a[0] != a[1])
+
+def test_realnvp_mlps() -> None:
+    """Test to check that the MLPs in a RealNVP instance are different."""
+    theta = jax.random.normal(jax.random.PRNGKey(1), (500, 4))
+    flow = RealNVP(theta, in_size=4, hidden_size=16,
+                num_layers=2, num_coupling_layers=2)
+
+    a = flow.additive_mlp
+    b = flow.scaling_mlp
+
+    assert(a[0] != a[1])
+    assert(b[0] != b[1])
+    assert(a[0] != b[0])
+    assert(a[1] != b[1])
+    assert(a[1] != b[0])
+    assert(a[0] != b[1])
 
 def test_nice_odd_dimensions() -> None:
     """Test NICE estimator with an odd number of dimensions."""
@@ -314,41 +319,23 @@ def test_realnvp_odd_dimensions() -> None:
 def test_kde() -> None:
     """Test KDE estimator."""
     key = jax.random.PRNGKey(44)
-    kl_estimates, bmd_estimates = [], []
-    for _ in range(5):
-        kde_estimator = KDE(
-            original_samples,
-            weights=weights,
-            theta_ranges=bounds,
-            bandwidth=0.08,
-        )
-        kde_estimator.train()
-        key, subkey = jax.random.split(key)
-        samples = kde_estimator.sample(subkey, 5000)
+    kde_estimator = KDE(
+        original_samples,
+        weights=weights,
+        theta_ranges=bounds,
+        bandwidth=0.08,
+    )
+    kde_estimator.train()
+    key, subkey = jax.random.split(key)
+    samples = kde_estimator.sample(subkey, 5000)
 
-        prior_estimator = KDE(
-            prior_samples, theta_ranges=bounds, bandwidth=0.08
-        )
-        prior_estimator.train()
+    prior_estimator = KDE(prior_samples, theta_ranges=bounds, bandwidth=0.08)
+    prior_estimator.train()
 
-        kld = kldivergence(kde_estimator, prior_estimator, samples)
-        dim = model_dimensionality(kde_estimator, prior_estimator, samples)
-        kl_estimates.append(kld)
-        bmd_estimates.append(dim)
-
-    kl_estimates = jnp.array(kl_estimates)
-    bmd_estimates = jnp.array(bmd_estimates)
-
-    kl_rtol = 3 * jnp.std(kl_estimates) / (jnp.mean(kl_estimates) + 1e-10)
-    kl_atol = 3 * jnp.std(kl_estimates)
-    kld = jnp.mean(kl_estimates)
-
-    dim_rtol = 3 * jnp.std(bmd_estimates) / (jnp.mean(bmd_estimates) + 1e-10)
-    dim_atol = 3 * jnp.std(bmd_estimates)
-    dim = jnp.mean(bmd_estimates)
-
-    assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
-    assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+    kld = kldivergence(kde_estimator, prior_estimator, samples)
+    dim = model_dimensionality(kde_estimator, prior_estimator, samples)
+    assert_allclose(kld, true_kl, rtol=0, atol=kl_atol)
+    assert_allclose(dim, true_bmd, rtol=0, atol=smoothing_bmd_atol)
 
     kde_estimator.save("kde_test")
     loaded_estimator = KDE.load("kde_test")

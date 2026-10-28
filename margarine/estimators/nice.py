@@ -19,6 +19,8 @@ from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
+    build_mlp,
+    coupling_permutations,
     forward_transform,
     inverse_transform,
     train_test_split,
@@ -48,6 +50,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         num_layers: int = 2,
         num_coupling_layers: int = 4,
         nnx_rngs: dict | None = None,
+        permutations_key: jnp.ndarray = jax.random.PRNGKey(0),
     ) -> None:
         """Initialize the NICE estimator.
 
@@ -60,6 +63,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             num_layers: Number of layers in each coupling network.
             num_coupling_layers: Number of coupling layers.
             nnx_rngs: Optional RNGs for Flax.
+            permutations_key: JAX random key for permutations.
         """
         super().__init__()
         self.theta = nnx.data(theta)
@@ -82,25 +86,30 @@ class NICE(BaseDensityEstimator, nnx.Module):
         self.pass_size = in_size // 2
         self.net_in_size = in_size - self.pass_size
 
-        layers = nnx.List()
-        layers.append(
-            nnx.Linear(self.net_in_size, self.hidden_size, rngs=nnx_rngs)
-        )
-        layers.append(lambda x: jax.nn.gelu(x))
-        for _ in range(self.nlayers):
-            layers.append(
-                nnx.Linear(self.hidden_size, self.hidden_size, rngs=nnx_rngs)
-            )
-            layers.append(lambda x: jax.nn.gelu(x))
-
-        layers.append(
-            nnx.Linear(self.hidden_size, self.pass_size, rngs=nnx_rngs)
-        )
         self.mlp = nnx.List(
-            [nnx.Sequential(*layers) for _ in range(self.num_coupling_layers)]
+            [
+                build_mlp(
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                )
+                for _ in range(self.num_coupling_layers)
+            ]
         )
 
         self.S = nnx.Param(jnp.zeros(in_size))
+
+        self.permutations_key = permutations_key
+        self.permutations = nnx.data(
+            jnp.stack(coupling_permutations(
+                self.permutations_key, in_size, self.num_coupling_layers
+            ))
+        )
+        self.inverse_permutations = nnx.data(
+            jnp.argsort(self.permutations, axis=1)
+        )
 
     @jax.jit
     def forward(self, x: jnp.ndarray) -> jnp.ndarray:
@@ -124,12 +133,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             Returns:
                 Transformed samples.
             """
-            x = jax.lax.cond(
-                i % 2 == 0,
-                lambda x: jnp.flip(x, axis=-1),
-                lambda x: x,
-                x,
-            )
+            x = x[:, self.permutations[i]]  # Apply permutation
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
             m = jax.lax.switch(i, mlp_fns, xb)
             x = jnp.concatenate([xa + m, xb], axis=1)
@@ -138,9 +142,6 @@ class NICE(BaseDensityEstimator, nnx.Module):
         x = jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
 
         x = jnp.exp(self.S) * x
-
-        if self.num_coupling_layers % 2 == 1:
-            x = jnp.flip(x, axis=-1)
 
         return x
 
@@ -151,9 +152,6 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Args:
             x: Input samples.
         """
-        if self.num_coupling_layers % 2 == 1:
-            x = jnp.flip(x, axis=-1)
-
         x = x / jnp.exp(self.S)  # Undo scaling first
 
         mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
@@ -174,12 +172,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
             m = jax.lax.switch(i, mlp_fns, xb)
             x = jnp.concatenate([xa - m, xb], axis=1)
-            x = jax.lax.cond(
-                i % 2 == 0,
-                lambda x: jnp.flip(x, axis=-1),
-                lambda x: x,
-                x,
-            )
+            x = x[:, self.inverse_permutations[i]]  # Apply inverse permutation
             return x
 
         return jax.lax.fori_loop(0, self.num_coupling_layers, body, x)
@@ -443,6 +436,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             "hidden_size": self.hidden_size,
             "num_layers": self.nlayers,
             "num_coupling_layers": self.num_coupling_layers,
+            "key": self.permutations_key.tolist(),
             "theta_ranges": self.theta_ranges,
         }
         with open(f"{path}/config.yaml", "w") as f:
@@ -493,20 +487,22 @@ class NICE(BaseDensityEstimator, nnx.Module):
             metadata = yaml.unsafe_load(f)
 
         version = metadata.get("margarine_version", None)
-        if version is None:
-            print(
-                "Warning: The KDE was saved with a version of margarine ",
-                " < 2.0.0. In order to load it you will need to downgrade ",
-                "margarine to a version < 2.0.0. e.g. ",
-                "pip install margarine<2.0.0",
-            )
-            return
-        if version != _version.__version__:
-            print(
-                f"Warning: The KDE was saved with margarine version "
+        if version < _version.__version__:
+            raise ValueError(
+                f"The NICE model was saved with margarine version "
                 f"{version}, but you are loading it with version "
-                f"{_version.__version__}. This may lead to "
-                f"incompatibilities."
+                f"{_version.__version__}. "
+                f"We suggest you downgrade or "
+                "retrain the model."
+            )
+        if version > _version.__version__:
+            print(
+                f"Warning:The NICE model was saved with margarine version "
+                f"{version}, but you are loading it with version "
+                f"{_version.__version__}. "
+                f"This might lead to inconsistencies. "
+                "We suggest you upgrade or "
+                "retrain the model."
             )
 
         with open(f"{path}/config.yaml") as f:
@@ -518,6 +514,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             hidden_size=config["hidden_size"],
             num_layers=config["num_layers"],
             num_coupling_layers=config["num_coupling_layers"],
+            permutations_key=jnp.array(config["key"], dtype=jnp.uint32),
             theta_ranges=config["theta_ranges"],
         )
 

@@ -2,9 +2,13 @@
 
 import jax
 import jax.numpy as jnp
+from flax import nnx
+from flax.nnx.nn import initializers
 from tensorflow_probability.substrates import jax as tfp
 
 tfd = tfp.distributions
+
+default_kernel_init = initializers.lecun_normal()
 
 
 @jax.jit
@@ -121,3 +125,107 @@ def train_test_split(
     b_test = b[test_indices]
 
     return a_train, a_test, b_train, b_test
+
+
+def coupling_permutations(
+    key: jnp.ndarray, in_size: int, num_coupling_layers: int
+) -> list[jnp.ndarray]:
+    """Build permutations that guarantee every dimension gets transformed.
+
+    The coupling layers transform the first in_size // 2 columns
+    of their input. Random permutations can leave a dimension out of
+    that block in every layer, so it is never transformed. Instead
+    we shuffle the dimensions and deal them out in_size // 2 at a time,
+    reshuffling once every dimension has been dealt. Each dimension is
+    therefore transformed at least once every
+    ceil(in_size / (in_size // 2)) layers, while the groupings
+    of transformed and conditioning dimensions remain random.
+
+    The flows apply the permutations cumulatively (layer i permutes
+    the output of layer i - 1), so the desired ordering of the original
+    dimensions for each layer is converted to a permutation relative
+    to the ordering left by the previous layer.
+
+    Args:
+        key: JAX random key for the shuffles.
+        in_size: Number of dimensions.
+        num_coupling_layers: Number of coupling layers.
+
+    Returns:
+        A list of permutations, one per coupling layer, to be applied
+        cumulatively.
+    """
+    pass_size = in_size // 2
+
+    # current[j] is the original dimension sitting in column j
+    current = jnp.arange(in_size)
+    deck = []
+    permutations = []
+    for _ in range(num_coupling_layers):
+        transformed = []
+        while len(transformed) < pass_size:
+            if not deck:
+                key, subkey = jax.random.split(key)
+                deck = jax.random.permutation(subkey, in_size).tolist()
+            # skip dimensions already dealt to this layer, which can
+            # happen when a deal spans two shuffles
+            dim = next(d for d in deck if d not in transformed)
+            deck.remove(dim)
+            transformed.append(dim)
+
+        # desired ordering of the original dimensions for this layer
+        target = jnp.array(
+            transformed + [d for d in range(in_size) if d not in transformed]
+        )
+        # argsort(current) undoes the previous ordering and indexing
+        # with target then applies the desired one
+        permutations.append(jnp.argsort(current)[target])
+        current = target
+
+    return permutations
+
+
+def build_mlp(
+    in_size: int,
+    hidden_size: int,
+    num_layers: int,
+    pass_size: int,
+    nnx_rngs: dict,
+    kernel_init: nnx.initializers.Initializer = default_kernel_init,
+) -> nnx.Sequential:
+    """Build a multi-layer perceptron (MLP) using Flax's nnx module.
+
+    Args:
+        in_size: Input size of the MLP.
+        hidden_size: Size of the hidden layers.
+        num_layers: Number of hidden layers.
+        pass_size: Size of the pass-through layer.
+        nnx_rngs: RNGs for Flax.
+        kernel_init: Optional initializer for the kernel weights.
+
+    Returns:
+        An instance of nnx.Sequential representing the MLP.
+    """
+    layers = nnx.List()
+    layers.append(
+        nnx.Linear(
+            in_size, hidden_size, rngs=nnx_rngs, kernel_init=kernel_init
+        )
+    )
+    layers.append(lambda x: jax.nn.relu(x))
+    for _ in range(num_layers):
+        layers.append(
+            nnx.Linear(
+                hidden_size,
+                hidden_size,
+                rngs=nnx_rngs,
+                kernel_init=kernel_init,
+            )
+        )
+        layers.append(lambda x: jax.nn.relu(x))
+    layers.append(
+        nnx.Linear(
+            hidden_size, pass_size, rngs=nnx_rngs, kernel_init=kernel_init
+        )
+    )
+    return nnx.Sequential(*layers)

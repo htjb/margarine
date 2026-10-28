@@ -19,6 +19,8 @@ from margarine import _version
 from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
+    build_mlp,
+    coupling_permutations,
     forward_transform,
     inverse_transform,
     train_test_split,
@@ -90,85 +92,40 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             0.1, "fan_avg", "truncated_normal"
         )
 
-        additive_layers = nnx.List()
-        additive_layers.append(
-            nnx.Linear(
-                self.net_in_size,
-                self.hidden_size,
-                kernel_init=kernel_init,
-                rngs=nnx_rngs,
-            )
-        )
-        additive_layers.append(lambda x: jax.nn.relu(x))
-        for _ in range(self.nlayers):
-            additive_layers.append(
-                nnx.Linear(
-                    self.hidden_size,
-                    self.hidden_size,
-                    kernel_init=kernel_init,
-                    rngs=nnx_rngs,
-                )
-            )
-            additive_layers.append(lambda x: jax.nn.relu(x))
-        additive_layers.append(
-            nnx.Linear(
-                self.hidden_size,
-                self.pass_size,
-                kernel_init=kernel_init,
-                rngs=nnx_rngs,
-            )
-        )
         self.additive_mlp = nnx.List(
             [
-                nnx.Sequential(*additive_layers)
+                build_mlp(
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                    kernel_init=kernel_init,
+                )
                 for _ in range(self.num_coupling_layers)
             ]
         )
 
-        scaling_layers = nnx.List()
-        scaling_layers.append(
-            nnx.Linear(
-                self.net_in_size,
-                self.hidden_size,
-                kernel_init=kernel_init,
-                rngs=nnx_rngs,
-            )
-        )
-        scaling_layers.append(lambda x: jax.nn.relu(x))
-        for _ in range(self.nlayers):
-            scaling_layers.append(
-                nnx.Linear(
-                    self.hidden_size,
-                    self.hidden_size,
-                    kernel_init=kernel_init,
-                    rngs=nnx_rngs,
-                )
-            )
-            scaling_layers.append(lambda x: jax.nn.relu(x))
-        scaling_layers.append(
-            nnx.Linear(
-                self.hidden_size,
-                self.pass_size,
-                kernel_init=kernel_init,
-                rngs=nnx_rngs,
-            )
-        )
-
         self.scaling_mlp = nnx.List(
             [
-                nnx.Sequential(*scaling_layers)
+                build_mlp(
+                    self.net_in_size,
+                    self.hidden_size,
+                    self.nlayers,
+                    self.pass_size,
+                    nnx_rngs,
+                    kernel_init=kernel_init,
+                )
                 for _ in range(self.num_coupling_layers)
             ]
         )
 
         self.permutations_key = permutations_key
-        key = self.permutations_key
-        self.permutations = []
-        for _ in range(self.num_coupling_layers):
-            key, subkey = jax.random.split(key)
-            perm = jax.random.permutation(subkey, in_size)
-            self.permutations.append(perm)
-        self.permutations = nnx.data(self.permutations)
+        self.permutations = nnx.data(
+            coupling_permutations(
+                self.permutations_key, in_size, self.num_coupling_layers
+            )
+        )
         self.inverse_permutations = nnx.data(
             [jnp.argsort(p) for p in self.permutations]
         )
@@ -535,20 +492,22 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             metadata = yaml.unsafe_load(f)
 
         version = metadata.get("margarine_version", None)
-        if version is None:
-            print(
-                "Warning: The KDE was saved with a version of margarine ",
-                " < 2.0.0. In order to load it you will need to downgrade ",
-                "margarine to a version < 2.0.0. e.g. ",
-                "pip install margarine<2.0.0",
-            )
-            return
-        if version != _version.__version__:
-            print(
-                f"Warning: The KDE was saved with margarine version "
+        if version < _version.__version__:
+            raise ValueError(
+                f"The RealNVP model was saved with margarine version "
                 f"{version}, but you are loading it with version "
-                f"{_version.__version__}. This may lead to "
-                f"incompatibilities."
+                f"{_version.__version__}. "
+                f"We suggest you downgrade or "
+                f"retrain the model."
+            )
+        if version > _version.__version__:
+            print(
+                f"Warning:The RealNVP model was saved with margarine version "
+                f"{version}, but you are loading it with version "
+                f"{_version.__version__}. "
+                f"This might lead to inconsistencies. "
+                "We suggest you upgrade or "
+                "retrain the model."
             )
 
         with open(f"{path}/config.yaml") as f:
