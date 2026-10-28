@@ -4,7 +4,6 @@ import os
 
 import jax
 import jax.numpy as jnp
-import jax.scipy.stats as stats
 from numpy.testing import assert_allclose
 
 from margarine.estimators.clustered import cluster
@@ -12,30 +11,54 @@ from margarine.estimators.realnvp import RealNVP
 from margarine.statistics import kldivergence, model_dimensionality
 
 
-def D_KL(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
-    """Calculate the Kullback-Leibler divergence.
+def analytic_kl(
+    covs: jnp.ndarray, mixture_weights: jnp.ndarray, bounds: jnp.ndarray
+) -> jnp.ndarray:
+    """KL divergence between a Gaussian mixture and a uniform prior.
+
+    Assumes the components are well separated and that the prior box
+    contains essentially all of the mixture's mass.
 
     Args:
-        logPpi (jnp.ndarray): Log-likelihood values
-        weights (jnp.ndarray): Corresponding weights
+        covs (jnp.ndarray): Covariances of the components
+        mixture_weights (jnp.ndarray): Weights of the components
+        bounds (jnp.ndarray): Lower and upper bounds of the uniform prior
 
     Returns:
         jnp.ndarray: Kullback-Leibler divergence
     """
-    return jnp.average(logPpi, weights=weights)
+    d = covs.shape[-1]
+    log_volume = jnp.sum(jnp.log(bounds[1] - bounds[0]))
+    component_entropies = 0.5 * (
+        d * jnp.log(2 * jnp.pi * jnp.e) + jnp.linalg.slogdet(covs)[1]
+    )
+    entropy = jnp.sum(
+        mixture_weights * (component_entropies - jnp.log(mixture_weights))
+    )
+    return log_volume - entropy
 
 
-def d_g(logPpi: jnp.ndarray, weights: jnp.ndarray) -> jnp.ndarray:
-    """Calculate the BMD statistic.
+def analytic_bmd(
+    covs: jnp.ndarray, mixture_weights: jnp.ndarray
+) -> jnp.ndarray:
+    """BMD between a Gaussian mixture and a uniform prior.
+
+    Assumes the components are well separated. Within component k,
+    log P = log w_k - log|Sigma_k| / 2 - chi^2_d / 2 + const, so
+    2 * Var[log P] = d + 2 * Var_k[log w_k - log|Sigma_k| / 2].
 
     Args:
-        logPpi (jnp.ndarray): Log-likelihood values
-        weights (jnp.ndarray): Corresponding weights
+        covs (jnp.ndarray): Covariances of the components
+        mixture_weights (jnp.ndarray): Weights of the components
 
     Returns:
         jnp.ndarray: BMD statistic
     """
-    return 2 * jnp.cov(logPpi, aweights=weights)
+    d = covs.shape[-1]
+    offsets = jnp.log(mixture_weights) - 0.5 * jnp.linalg.slogdet(covs)[1]
+    mean_offset = jnp.sum(mixture_weights * offsets)
+    offset_var = jnp.sum(mixture_weights * (offsets - mean_offset) ** 2)
+    return d + 2 * offset_var
 
 
 nsamples = 5000
@@ -45,18 +68,19 @@ target_mean_one = jnp.array([-2.0, 0.0])
 target_cov_one = jnp.array([[1.0, 0.0], [0.0, 1.0]])
 target_mean_two = jnp.array([6.0, 0.0])
 target_cov_two = jnp.array([[0.5, 0.0], [0.0, 1.0]])
+bounds = jnp.array([[-6.5, -6.5], [10.0, 10.0]])
 
-
+key, key_one, key_two = jax.random.split(key, 3)
 original_samples = jnp.concatenate(
     [
         jax.random.multivariate_normal(
-            key,
+            key_one,
             mean=target_mean_one,
             cov=target_cov_one,
             shape=(nsamples // 2,),
         ),
         jax.random.multivariate_normal(
-            key,
+            key_two,
             mean=target_mean_two,
             cov=target_cov_two,
             shape=(nsamples // 2,),
@@ -64,107 +88,73 @@ original_samples = jnp.concatenate(
     ],
     axis=0,
 )
-
-
-posterior_probs = jnp.concatenate(
-    [
-        stats.multivariate_normal.logpdf(
-            original_samples[: nsamples // 2],
-            mean=target_mean_one,
-            cov=target_cov_one,
-        ),
-        stats.multivariate_normal.logpdf(
-            original_samples[nsamples // 2 :],
-            mean=target_mean_two,
-            cov=target_cov_two,
-        ),
-    ],
-    axis=0,
-)
-
 weights = jnp.ones(len(original_samples))
 
-prior_probs = stats.uniform.logpdf(original_samples, loc=-6.5, scale=16.5)
-
-prior_probs = jnp.sum(prior_probs, axis=-1)
-
-logPpi = posterior_probs - prior_probs
-
-samples_kl = D_KL(logPpi, weights)
-samples_d = d_g(logPpi, weights)
-
-bounds = jnp.array([[-6.5, -6.5], [10.0, 10.0]])
+key, subkey = jax.random.split(key)
 prior_samples = jax.random.uniform(
-    key, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
+    subkey, (nsamples, 2), minval=bounds[0], maxval=bounds[1]
 )
+
+target_covs = jnp.stack([target_cov_one, target_cov_two])
+mixture_weights = jnp.array([0.5, 0.5])
+true_kl = analytic_kl(target_covs, mixture_weights, bounds)
+true_bmd = analytic_bmd(target_covs, mixture_weights)
+
+# fixed tolerances on the analytic values, calibrated over several seeds
+kl_atol = 0.15
+bmd_atol = 0.3
 
 
 def test_clustering() -> None:
     """Test the clustered density estimator."""
     key = jax.random.PRNGKey(42)
 
-    kld_estimates, bmd_estimates = [], []
-    for _ in range(5):
-        cluster_estimator = cluster(
-            original_samples,
-            base_estimator=RealNVP,
-            weights=weights,
-            in_size=2,
-            hidden_size=50,
-            num_layers=10,
-            num_coupling_layers=4,
-            clusters=2,
-            theta_ranges=bounds,
-        )
+    cluster_estimator = cluster(
+        original_samples,
+        base_estimator=RealNVP,
+        weights=weights,
+        in_size=2,
+        hidden_size=50,
+        num_layers=10,
+        num_coupling_layers=4,
+        clusters=2,
+        theta_ranges=bounds,
+    )
 
-        key, subkey = jax.random.split(key)
-        cluster_estimator.train(
-            key=subkey,
-            learning_rate=1e-4,
-            epochs=2000,
-            patience=50,
-            batch_size=len(original_samples),
-        )
+    key, subkey = jax.random.split(key)
+    cluster_estimator.train(
+        key=subkey,
+        learning_rate=1e-4,
+        epochs=2000,
+        patience=50,
+        batch_size=len(original_samples),
+    )
 
-        key, subkey = jax.random.split(key)
-        samples = cluster_estimator.sample(subkey, 5000)
+    key, subkey = jax.random.split(key)
+    samples = cluster_estimator.sample(subkey, 5000)
 
-        prior_estimator = RealNVP(
-            prior_samples,
-            in_size=2,
-            hidden_size=50,
-            num_layers=2,
-            num_coupling_layers=2,
-            theta_ranges=bounds,
-        )
-        key, subkey = jax.random.split(key)
-        prior_estimator.train(
-            subkey,
-            learning_rate=1e-4,
-            epochs=2000,
-            patience=50,
-            batch_size=1024,
-        )
+    prior_estimator = RealNVP(
+        prior_samples,
+        in_size=2,
+        hidden_size=50,
+        num_layers=2,
+        num_coupling_layers=2,
+        theta_ranges=bounds,
+    )
+    key, subkey = jax.random.split(key)
+    prior_estimator.train(
+        subkey,
+        learning_rate=1e-4,
+        epochs=2000,
+        patience=50,
+        batch_size=1024,
+    )
 
-        # check the kl divergence and model dimensionality
-        kld = kldivergence(cluster_estimator, prior_estimator, samples)
-        dim = model_dimensionality(cluster_estimator, prior_estimator, samples)
-        kld_estimates.append(kld)
-        bmd_estimates.append(dim)
-
-    kld_estimates = jnp.array(kld_estimates)
-    bmd_estimates = jnp.array(bmd_estimates)
-
-    kl_rtol = 3 * jnp.std(kld_estimates) / (jnp.mean(kld_estimates) + 1e-10)
-    kl_atol = 3 * jnp.std(kld_estimates)
-    kld = jnp.mean(kld_estimates)
-
-    dim_rtol = 3 * jnp.std(bmd_estimates) / (jnp.mean(bmd_estimates) + 1e-10)
-    dim_atol = 3 * jnp.std(bmd_estimates)
-    dim = jnp.mean(bmd_estimates)
-
-    assert_allclose(kld, samples_kl, rtol=kl_rtol, atol=kl_atol)
-    assert_allclose(dim, samples_d, rtol=dim_rtol, atol=dim_atol)
+    # check the kl divergence and model dimensionality
+    kld = kldivergence(cluster_estimator, prior_estimator, samples)
+    dim = model_dimensionality(cluster_estimator, prior_estimator, samples)
+    assert_allclose(kld, true_kl, rtol=0, atol=kl_atol)
+    assert_allclose(dim, true_bmd, rtol=0, atol=bmd_atol)
 
     cluster_estimator.save("test-cluster-save")
     loaded_estimator = cluster.load("test-cluster-save")
