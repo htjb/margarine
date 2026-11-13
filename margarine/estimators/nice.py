@@ -79,6 +79,14 @@ class NICE(BaseDensityEstimator, nnx.Module):
             nnx_rngs = nnx.Rngs(0)
 
         self.in_size = in_size
+
+        if self.in_size != self.theta.shape[1]:
+            raise ValueError(
+                "Input size must match the number of parameters in theta."
+            )
+        if self.in_size < 2:
+            raise ValueError("Input size must be at least 2 for RealNVP.")
+
         self.hidden_size = hidden_size
         self.nlayers = num_layers
         self.num_coupling_layers = num_coupling_layers
