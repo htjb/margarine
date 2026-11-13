@@ -85,7 +85,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 "Input size must match the number of parameters in theta."
             )
         if self.in_size < 2:
-            raise ValueError("Input size must be at least 2 for RealNVP.")
+            raise ValueError("Input size must be at least 2 for NICE.")
 
         self.hidden_size = hidden_size
         self.nlayers = num_layers
@@ -519,7 +519,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             config = yaml.unsafe_load(f)
 
         instance = cls(
-            theta=jnp.zeros((1, 2)),
+            theta=jnp.zeros((1, config["in_size"])),
             in_size=config["in_size"],
             hidden_size=config["hidden_size"],
             num_layers=config["num_layers"],
