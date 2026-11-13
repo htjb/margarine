@@ -167,7 +167,7 @@ def train_test_split(
         c_test = c[test_indices]
         return a_train, a_test, b_train, b_test, c_train, c_test
     else:
-        return a_train, a_test, b_train, b_test
+        return a_train, a_test, b_train, b_test, None, None
 
 
 def coupling_permutations(
