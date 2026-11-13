@@ -85,6 +85,38 @@ def inverse_transform(
     x = tfd.Uniform(min_val, max_val).quantile(x)
     return x
 
+@jax.jit
+def conditional_forward_transform(x: jnp.ndarray) -> jnp.ndarray:
+    """Standardise conditional parameters.
+
+    Args:
+        x (jnp.ndarray): Conditional parameters to be standardised.
+
+    Returns:
+        jnp.ndarray: Standardised conditional parameters.
+        jnp.ndarray: Mean of the conditional parameters.
+        jnp.ndarray: Standard deviation of the conditional parameters.
+    """
+    mean = jnp.mean(x, axis=0)
+    std = jnp.std(x, axis=0)
+    return (x - mean) / std, mean, std
+
+@jax.jit
+def conditional_inverse_transform(
+    x: jnp.ndarray, mean: jnp.ndarray, std: jnp.ndarray
+) -> jnp.ndarray:
+    """Inverse standardisation of conditional parameters.
+
+    Args:
+        x (jnp.ndarray): Standardised conditional parameters.
+        mean (jnp.ndarray): Mean of the original conditional parameters.
+        std (jnp.ndarray): Standard deviation of the original
+            conditional parameters.
+
+    Returns:
+        jnp.ndarray: Inverse standardised conditional parameters.
+    """
+    return x * std + mean
 
 def train_test_split(
     a: jnp.ndarray,
