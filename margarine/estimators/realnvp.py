@@ -448,6 +448,10 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         # from unit hypercube to standard normal space
         x = forward_transform(u, 0, 1)
 
+        if c is not None and self.conditional is False:
+            raise ValueError(
+                "Conditional parameters are not required for this model."
+                )
         if self.conditional:
             c = check_conditional_input(c, self.conditional_shape, x.shape[0])
             c, _, _ = conditional_forward_transform(
@@ -673,7 +677,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             c = jnp.zeros((1, config["conditional_shape"]))
 
         instance = cls(
-            theta=jnp.zeros((1, 2)),
+            theta=jnp.zeros((1, config["in_size"])),
             in_size=config["in_size"],
             hidden_size=config["hidden_size"],
             num_layers=config["num_layers"],
