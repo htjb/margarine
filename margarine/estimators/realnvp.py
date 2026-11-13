@@ -20,13 +20,12 @@ from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
     build_mlp,
+    check_conditional_input,
+    conditional_forward_transform,
     coupling_permutations,
     forward_transform,
     inverse_transform,
     train_test_split,
-    conditional_forward_transform,
-    conditional_inverse_transform,
-    check_conditional_input,
 )
 
 # surpress some orbax warnings
