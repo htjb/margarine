@@ -291,3 +291,53 @@ def build_mlp(
         )
     )
     return nnx.Sequential(*layers)
+
+
+def check_conditional_input(
+    c: jnp.ndarray | None, conditional_shape: int, x_shape: int
+) -> jnp.ndarray:
+    """Check conditional input and broadcast it to one row per sample.
+
+    Accepted shapes, with d = conditional_shape and N = x_shape:
+
+    - (d,) or (1, d): a single condition, used for every sample.
+    - (N,) when d == 1: one scalar condition per sample.
+    - (N, d): one condition per sample.
+
+    Args:
+        c: Conditional parameters for the samples.
+        conditional_shape: Number of conditional parameters, d.
+        x_shape: Number of input samples, N.
+
+    Returns:
+        jnp.ndarray: Conditional parameters with shape (N, d).
+
+    Raises:
+        ValueError: If conditional parameters are not
+            provided or have an incorrect shape.
+    """
+    if c is None:
+        raise ValueError("Conditional parameters must be provided.")
+    c = jnp.asarray(c)
+    if c.ndim == 1:
+        if c.shape[0] == conditional_shape:
+            # a single condition for every sample
+            c = c[None, :]
+        elif conditional_shape == 1 and c.shape[0] == x_shape:
+            # one scalar condition per sample
+            c = c[:, None]
+    if c.ndim != 2 or c.shape[1] != conditional_shape:
+        raise ValueError(
+            f"Conditional parameters must have shape "
+            f"({conditional_shape},), (1, {conditional_shape}) or "
+            f"({x_shape}, {conditional_shape}), but got {c.shape}."
+        )
+    if c.shape[0] == 1:
+        c = jnp.tile(c, (x_shape, 1))
+    if c.shape[0] != x_shape:
+        raise ValueError(
+            f"Got {c.shape[0]} conditional parameters for {x_shape} "
+            "samples. Pass one condition per sample or a single "
+            "condition for all samples."
+        )
+    return c
