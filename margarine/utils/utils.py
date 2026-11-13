@@ -85,21 +85,33 @@ def inverse_transform(
     x = tfd.Uniform(min_val, max_val).quantile(x)
     return x
 
+
 @jax.jit
-def conditional_forward_transform(x: jnp.ndarray) -> jnp.ndarray:
+def conditional_forward_transform(
+    x: jnp.ndarray,
+    mean: jnp.ndarray | None = None,
+    std: jnp.ndarray | None = None,
+) -> jnp.ndarray:
     """Standardise conditional parameters.
 
     Args:
         x (jnp.ndarray): Conditional parameters to be standardised.
+        mean (jnp.ndarray | None): Mean of the conditional parameters.
+        std (jnp.ndarray | None): Standard deviation of the
+                conditional parameters.
 
     Returns:
         jnp.ndarray: Standardised conditional parameters.
         jnp.ndarray: Mean of the conditional parameters.
         jnp.ndarray: Standard deviation of the conditional parameters.
     """
+    if mean is not None and std is not None:
+        return (x - mean) / std, mean, std
     mean = jnp.mean(x, axis=0)
     std = jnp.std(x, axis=0)
+    std = jnp.where(std == 0, 1, std)
     return (x - mean) / std, mean, std
+
 
 @jax.jit
 def conditional_inverse_transform(
@@ -118,14 +130,21 @@ def conditional_inverse_transform(
     """
     return x * std + mean
 
+
 def train_test_split(
     a: jnp.ndarray,
     b: jnp.ndarray,
     c: jnp.ndarray | None = None,
     key: jnp.ndarray | None = None,
     test_size: float = 0.2,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray,
-           jnp.ndarray | None, jnp.ndarray | None]:
+) -> tuple[
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray | None,
+    jnp.ndarray | None,
+]:
     """Splitting data into training and testing sets.
 
     Function is equivalent
