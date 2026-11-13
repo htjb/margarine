@@ -308,6 +308,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
                 best_loss=f"{best_loss:.3e}",
             )
 
+            key, subkey = jax.random.split(subkey)
+
         self.train_loss = jnp.array(tl)
         self.val_loss = jnp.array(vl)
 
