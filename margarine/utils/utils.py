@@ -121,18 +121,22 @@ def conditional_inverse_transform(
 def train_test_split(
     a: jnp.ndarray,
     b: jnp.ndarray,
+    c: jnp.ndarray | None = None,
     key: jnp.ndarray | None = None,
     test_size: float = 0.2,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray,
+           jnp.ndarray | None, jnp.ndarray | None]:
     """Splitting data into training and testing sets.
 
     Function is equivalent
-    to sklearn.model_selection.train_test_split but a and b
+    to sklearn.model_selection.train_test_split but a and b (and c if provided)
     are jax arrays.
 
     Args:
-        a (jnp.ndarray): First set of data to be split.
-        b (jnp.ndarray): Second set of data to be split.
+        a (jnp.ndarray): Parameters to be split.
+        b (jnp.ndarray): Weights or second set of data to be split.
+        c (jnp.ndarray | None): Conditional parameters to be split.
+            If provided, c will be split in the same way as a and b.
         test_size (float): Proportion of data to be used for testing.
         key (jax.random.KeyArray): JAX random key for shuffling.
 
@@ -141,6 +145,8 @@ def train_test_split(
         a_test (jnp.ndarray): Testing set from a.
         b_train (jnp.ndarray): Training set from b.
         b_test (jnp.ndarray): Testing set from b.
+        c_train (jnp.ndarray | None): Training set from c, if provided.
+        c_test (jnp.ndarray | None): Testing set from c, if provided.
     """
     if key is None:
         key = jax.random.PRNGKey(0)
@@ -156,7 +162,12 @@ def train_test_split(
     b_train = b[train_indices]
     b_test = b[test_indices]
 
-    return a_train, a_test, b_train, b_test
+    if c is not None:
+        c_train = c[train_indices]
+        c_test = c[test_indices]
+        return a_train, a_test, b_train, b_test, c_train, c_test
+    else:
+        return a_train, a_test, b_train, b_test
 
 
 def coupling_permutations(
