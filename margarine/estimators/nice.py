@@ -20,6 +20,9 @@ from margarine.base.baseflow import BaseDensityEstimator
 from margarine.utils.utils import (
     approximate_bounds,
     build_mlp,
+    check_conditional_input,
+    conditional_forward_transform,
+    conditional_inverse_transform,
     coupling_permutations,
     forward_transform,
     inverse_transform,
@@ -51,6 +54,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
         num_coupling_layers: int = 4,
         nnx_rngs: dict | None = None,
         permutations_key: jnp.ndarray = jax.random.PRNGKey(0),
+        c: jnp.ndarray | None = None,
     ) -> None:
         """Initialize the NICE estimator.
 
@@ -64,6 +68,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
             num_coupling_layers: Number of coupling layers.
             nnx_rngs: Optional RNGs for Flax.
             permutations_key: JAX random key for permutations.
+            c: Optinal conditional parameters
         """
         super().__init__()
         self.theta = nnx.data(theta)
@@ -94,6 +99,21 @@ class NICE(BaseDensityEstimator, nnx.Module):
         self.pass_size = in_size // 2
         self.net_in_size = in_size - self.pass_size
 
+        if c is not None:
+            if c.ndim == 1:
+                c = c[:, None]
+            if c.shape[0] != len(self.theta):
+                raise ValueError(
+                    "Conditional parameters must have the same number of "
+                    "samples as theta."
+                )
+            self.c = nnx.data(c)
+            self.conditional = True
+            self.conditional_shape = self.c.shape[1]
+            self.net_in_size += self.conditional_shape
+        else:
+            self.conditional = False
+
         self.mlp = nnx.List(
             [
                 build_mlp(
@@ -120,7 +140,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
         )
 
     @jax.jit
-    def forward(self, x: jnp.ndarray) -> jnp.ndarray:
+    def forward(self, x: jnp.ndarray,
+                c:jnp.ndarray | None = None) -> jnp.ndarray:
         """NICE forward pass.
 
         This is the forward pass of the NICE coupling layer from
@@ -128,8 +149,11 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
         Args:
             x (jnp.ndarray): Input samples.
+            c (jnp.ndarray): Optional conditional input.
         """
-        mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
+        mlp_fns = tuple(
+            (lambda net_in, mlp=mlp: mlp(net_in)) for mlp in self.mlp
+            )
 
         def body(i: int, x: jnp.ndarray) -> jnp.ndarray:
             """Body function for the coupling layers.
@@ -143,7 +167,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
             """
             x = x[:, self.permutations[i]]  # Apply permutation
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
-            m = jax.lax.switch(i, mlp_fns, xb)
+            net_in = xb if c is None else jnp.concatenate([xb, c], axis=1)
+            m = jax.lax.switch(i, mlp_fns, net_in)
             x = jnp.concatenate([xa + m, xb], axis=1)
             return x
 
@@ -154,15 +179,16 @@ class NICE(BaseDensityEstimator, nnx.Module):
         return x
 
     @jax.jit
-    def inverse(self, x: jnp.ndarray) -> jnp.ndarray:
+    def inverse(self, x: jnp.ndarray, c:jnp.ndarray | None = None) -> jnp.ndarray:
         """NICE inverse pass.
 
         Args:
             x: Input samples.
+            c: Optional conditional input.
         """
         x = x / jnp.exp(self.S)  # Undo scaling first
 
-        mlp_fns = tuple((lambda xb, mlp=mlp: mlp(xb)) for mlp in self.mlp)
+        mlp_fns = tuple((lambda net_in, mlp=mlp: mlp(net_in)) for mlp in self.mlp)
 
         def body(k: int, x: jnp.ndarray) -> jnp.ndarray:
             """Body function for the inverse coupling layers.
@@ -178,7 +204,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
             i = self.num_coupling_layers - 1 - k
 
             xa, xb = x[:, : self.pass_size], x[:, self.pass_size :]
-            m = jax.lax.switch(i, mlp_fns, xb)
+            net_in = xb if c is None else jnp.concatenate([xb, c], axis=1)
+            m = jax.lax.switch(i, mlp_fns, net_in)
             x = jnp.concatenate([xa - m, xb], axis=1)
             x = x[:, self.inverse_permutations[i]]  # Apply inverse permutation
             return x
