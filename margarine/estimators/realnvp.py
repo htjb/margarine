@@ -162,8 +162,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
     def forward(
         self,
         x: jnp.ndarray,
-        return_log_det: bool = False,
         c: jnp.ndarray | None = None,
+        return_log_det: bool = False,
     ) -> jnp.ndarray | tuple[jnp.ndarray, jnp.ndarray]:
         """Forward pass of the RealNVP coupling layer.
 
