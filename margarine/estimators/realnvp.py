@@ -25,6 +25,7 @@ from margarine.utils.utils import (
     coupling_permutations,
     forward_transform,
     inverse_transform,
+    prepare_conditional_input,
     train_test_split,
 )
 
@@ -422,13 +423,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         Returns:
             Samples drawn from the RealNVP model.
         """
-        if c is not None and self.conditional is False:
-            raise ValueError(
-                "Conditional parameters are not required for this model."
-                )
-
         u = jax.random.uniform(key, shape=(num_samples, self.theta.shape[1]))
-        samples = self(u, c if self.conditional else None)
+        samples = self(u, c)
         return samples
 
     def __call__(
@@ -447,18 +443,10 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         # from unit hypercube to standard normal space
         x = forward_transform(u, 0, 1)
 
-        if c is not None and self.conditional is False:
-            raise ValueError(
-                "Conditional parameters are not required for this model."
-                )
-        if self.conditional:
-            c = check_conditional_input(c, self.conditional_shape, x.shape[0])
-            c, _, _ = conditional_forward_transform(
-                c, self.conditional_mean, self.conditional_std
-            )
+        c = prepare_conditional_input(self, c, x.shape[0])
 
         # from standard normal to target space
-        x = self.inverse(x, c if self.conditional else None)
+        x = self.inverse(x, c)
 
         # from gaussianized target space to original target space
         x = inverse_transform(x, self.theta_ranges[0], self.theta_ranges[1])
@@ -520,11 +508,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
 
         correction = -norm_jac(transformed_x).sum(axis=1)
 
-        if self.conditional:
-            c = check_conditional_input(c, self.conditional_shape, x.shape[0])
-            c, _, _ = conditional_forward_transform(
-                c, self.conditional_mean, self.conditional_std
-            )
+        c = prepare_conditional_input(self, c, x.shape[0])
 
         return self.log_prob_under_RealNVP(transformed_x, c) + correction
 
