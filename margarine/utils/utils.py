@@ -1,5 +1,7 @@
 """Utility functions for margarine package."""
 
+from typing import Any
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -340,4 +342,42 @@ def check_conditional_input(
             "samples. Pass one condition per sample or a single "
             "condition for all samples."
         )
+    return c
+
+
+def prepare_conditional_input(
+    estimator: Any, c: jnp.ndarray | None, num_samples: int
+) -> jnp.ndarray | None:
+    """Validate, broadcast and normalise user supplied conditionals.
+
+    Used by the flows to turn the conditional parameters a user passes
+    to sample, __call__ or log_prob into the normalised (N, d) array
+    the coupling networks expect.
+
+    Args:
+        estimator: The flow. Must have a ``conditional`` attribute and,
+            if conditional, ``conditional_shape``, ``conditional_mean``
+            and ``conditional_std``.
+        c: Conditional parameters in their original units.
+        num_samples: Number of samples they apply to, N.
+
+    Returns:
+        jnp.ndarray | None: Normalised conditional parameters with
+            shape (N, d), or None for an unconditional flow.
+
+    Raises:
+        ValueError: If c is given to an unconditional flow, or is
+            missing or the wrong shape for a conditional flow.
+    """
+    if not estimator.conditional:
+        if c is not None:
+            raise ValueError(
+                "Conditional parameters were given but this "
+                f"{type(estimator).__name__} model is not conditional."
+            )
+        return None
+    c = check_conditional_input(c, estimator.conditional_shape, num_samples)
+    c, _, _ = conditional_forward_transform(
+        c, estimator.conditional_mean, estimator.conditional_std
+    )
     return c
