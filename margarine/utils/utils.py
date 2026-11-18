@@ -1,12 +1,12 @@
 """Utility functions for margarine package."""
 
-from typing import Any
-
 import jax
 import jax.numpy as jnp
 from flax import nnx
 from flax.nnx.nn import initializers
 from tensorflow_probability.substrates import jax as tfp
+
+from margarine.base.baseflow import BaseDensityEstimator
 
 tfd = tfp.distributions
 
@@ -350,7 +350,7 @@ def check_conditional_input(
 
 
 def prepare_conditional_input(
-    estimator: Any, c: jnp.ndarray | None, num_samples: int
+    estimator: BaseDensityEstimator, c: jnp.ndarray | None, num_samples: int
 ) -> jnp.ndarray | None:
     """Validate, broadcast and normalise user supplied conditionals.
 
