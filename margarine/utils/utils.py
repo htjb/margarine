@@ -321,6 +321,10 @@ def check_conditional_input(
     if c is None:
         raise ValueError("Conditional parameters must be provided.")
     c = jnp.asarray(c)
+
+    if c.ndim == 0:
+        c = c[None]
+
     if c.ndim == 1:
         if c.shape[0] == conditional_shape:
             # a single condition for every sample
