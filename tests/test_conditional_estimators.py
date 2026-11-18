@@ -8,7 +8,6 @@ from numpy.testing import assert_allclose
 
 from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
-from margarine.statistics import kldivergence, model_dimensionality
 
 
 def true_log_prob(x: jnp.ndarray, c_val: float) -> jnp.ndarray:
