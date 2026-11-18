@@ -46,18 +46,19 @@ def test_transformations_and_bounds() -> None:
     error = jnp.mean(jnp.abs(recovered_samples - samples))
     assert error < 1e-6
 
+
 def test_conditional_forward_backward() -> None:
     """Test the forward and inverse transformations for conditional data."""
     key = jax.random.PRNGKey(0)
     num_samples = 1000
 
     # Generate random samples
-    samples = jax.random.uniform(key, (num_samples, 1), minval=-5.0, maxval=5.0)
+    samples = jax.random.uniform(
+        key, (num_samples, 1), minval=-5.0, maxval=5.0
+    )
 
     # Perform forward transformation
-    transformed_samples, mean, std = conditional_forward_transform(
-        samples
-    )
+    transformed_samples, mean, std = conditional_forward_transform(samples)
 
     # Perform inverse transformation
     recovered_samples = conditional_inverse_transform(

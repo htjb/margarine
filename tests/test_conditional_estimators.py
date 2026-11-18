@@ -10,12 +10,14 @@ from margarine.estimators.nice import NICE
 from margarine.estimators.realnvp import RealNVP
 from margarine.statistics import kldivergence, model_dimensionality
 
+
 def true_log_prob(x: jnp.ndarray, c_val: float) -> jnp.ndarray:
     """Return the true log probability of x given c_val."""
     cov = true_scale(c_val) ** 2 * base_cov
     return jax.scipy.stats.multivariate_normal.logpdf(
         x, true_mean(jnp.array([[c_val]]))[0], cov
     )
+
 
 nsamples = 10000
 key = jax.random.PRNGKey(0)
@@ -24,13 +26,16 @@ key, kc, kz = jax.random.split(key, 3)
 base_cov = jnp.array([[1.0, 0.5], [0.5, 1.0]])
 L = jnp.linalg.cholesky(base_cov)
 
-def true_mean(c: jnp.ndarray) -> jnp.ndarray:   # c: (N, 1) -> (N, 2)
+
+def true_mean(c: jnp.ndarray) -> jnp.ndarray:  # c: (N, 1) -> (N, 2)
     """Return the true mean of the conditional distribution given c."""
     return jnp.hstack([2 * c, -c])
+
 
 def true_scale(c: jnp.ndarray) -> jnp.ndarray:
     """Return the true scale of the conditional distribution given c."""
     return 0.5 + 0.25 * c
+
 
 c = jax.random.uniform(kc, (nsamples, 1), minval=-1, maxval=1)
 z = jax.random.normal(kz, (nsamples, 2))
@@ -38,6 +43,7 @@ theta = true_mean(c) + true_scale(c) * (z @ L.T)
 bounds = jnp.array([[-6.0, -6.0], [6.0, 6.0]])
 
 kl_tol = 0.1  # KL divergence tolerance for the test
+
 
 def test_conditional_nice() -> None:
     """Test NICE estimator."""
@@ -50,7 +56,7 @@ def test_conditional_nice() -> None:
         num_layers=2,
         num_coupling_layers=4,
         c=c,
-        theta_ranges=bounds
+        theta_ranges=bounds,
     )
 
     # check the forward and inverse transformations
@@ -68,7 +74,7 @@ def test_conditional_nice() -> None:
         num_layers=2,
         num_coupling_layers=6,
         theta_ranges=bounds,
-        c=c
+        c=c,
     )
 
     key, subkey = jax.random.split(key)
@@ -88,7 +94,8 @@ def test_conditional_nice() -> None:
         x = true_mean(c_arr) + true_scale(c_arr) * (z @ L.T)
 
         kl = jnp.mean(
-            true_log_prob(x, c_val) - nice_estimator.log_prob(x, jnp.array([c_val]))
+            true_log_prob(x, c_val)
+            - nice_estimator.log_prob(x, jnp.array([c_val]))
         )
         print(f"KL divergence for c={c_val}: {kl}")
         assert jnp.abs(kl) < kl_tol
@@ -98,9 +105,12 @@ def test_conditional_nice() -> None:
     assert loaded_estimator.conditional is True
     key, subkey = jax.random.split(key)
     samples = nice_estimator.sample(subkey, 1000, c=jnp.array([[0.0]]))
-    loaded_samples = loaded_estimator.sample(subkey, 1000, c=jnp.array([[0.0]]))
+    loaded_samples = loaded_estimator.sample(
+        subkey, 1000, c=jnp.array([[0.0]])
+    )
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
     os.remove("nice_test.marg")
+
 
 def test_conditional_realnvp() -> None:
     """Test RealNVP estimator."""
@@ -113,7 +123,7 @@ def test_conditional_realnvp() -> None:
         num_layers=2,
         num_coupling_layers=4,
         c=c,
-        theta_ranges=bounds
+        theta_ranges=bounds,
     )
 
     # check the forward and inverse transformations
@@ -131,7 +141,7 @@ def test_conditional_realnvp() -> None:
         num_layers=2,
         num_coupling_layers=6,
         theta_ranges=bounds,
-        c=c
+        c=c,
     )
 
     key, subkey = jax.random.split(key)
@@ -151,7 +161,8 @@ def test_conditional_realnvp() -> None:
         x = true_mean(c_arr) + true_scale(c_arr) * (z @ L.T)
 
         kl = jnp.mean(
-            true_log_prob(x, c_val) - realnvp_estimator.log_prob(x, jnp.array([c_val]))
+            true_log_prob(x, c_val)
+            - realnvp_estimator.log_prob(x, jnp.array([c_val]))
         )
         assert jnp.abs(kl) < kl_tol
 
@@ -160,7 +171,8 @@ def test_conditional_realnvp() -> None:
     assert loaded_estimator.conditional is True
     key, subkey = jax.random.split(key)
     samples = realnvp_estimator.sample(subkey, 1000, c=jnp.array([[0.0]]))
-    loaded_samples = loaded_estimator.sample(subkey, 1000, c=jnp.array([[0.0]]))
+    loaded_samples = loaded_estimator.sample(
+        subkey, 1000, c=jnp.array([[0.0]])
+    )
     assert_allclose(samples, loaded_samples, rtol=1e-6, atol=1e-6)
     os.remove("realnvp_test.marg")
-

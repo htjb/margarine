@@ -401,9 +401,7 @@ class NICE(BaseDensityEstimator, nnx.Module):
                     self.train_c[batch_indices] if self.conditional else None
                 )
                 loss = loss_function(self, batch_phi, batch_weights, batch_c)
-                train_step(
-                    self, optimizer, batch_phi, batch_weights, batch_c
-                )
+                train_step(self, optimizer, batch_phi, batch_weights, batch_c)
                 accumulated_train_loss += loss * len(batch_phi)
             loss = accumulated_train_loss / len(self.train_phi)
             tl.append(loss)
