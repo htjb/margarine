@@ -16,7 +16,8 @@
 
 The code can be used to:
 
-- Perform Neural Likelihood and Neural Posterior estimation with NICE and RealNVP flows.
+- Perform Neural Likelihood and Neural Posterior estimation with NICE and RealNVP flows
+- Perform conditional density estimation tasks
 - Emulate posterior distributions from weightened samples (e.g. MCMC, nested sampling)
 - Build non-trivial priors from samples
 - Perform density estimation tasks in general machine learning applications
