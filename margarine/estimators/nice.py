@@ -440,14 +440,17 @@ class NICE(BaseDensityEstimator, nnx.Module):
             nnx.update(self, best_model)
 
     def sample(
-        self, key: jnp.ndarray, num_samples: int, c: jnp.ndarray | None = None
+        self,
+        key: jnp.ndarray,
+        num_samples: int,
+        c: jnp.ndarray | float | None = None,
     ) -> jnp.ndarray:
         """Sample from the trained NICE model.
 
         Args:
-            key: JAX random key.
-            num_samples: Number of samples to draw.
-            c: Conditional parameters for the samples. Required for a
+            key (jnp.ndarray): JAX random key.
+            num_samples (int): Number of samples to draw.
+            c (jnp.ndarray | float | None): Conditional parameters for the samples. Required for a
                 conditional model. Either a single condition used for
                 every sample or one condition per sample.
 
@@ -460,13 +463,13 @@ class NICE(BaseDensityEstimator, nnx.Module):
         return samples
 
     def __call__(
-        self, u: jnp.ndarray, c: jnp.ndarray | None = None
+        self, u: jnp.ndarray, c: jnp.ndarray | float | None = None
     ) -> jnp.ndarray:
         """Transform samples from the unit hypercube.
 
         Args:
             u (jnp.ndarray): Samples from the unit hypercube.
-            c (jnp.ndarray | None): Conditional parameters for the
+            c (jnp.ndarray | float | None): Conditional parameters for the
                 samples. Required for a conditional model. Either a
                 single condition used for every sample or one
                 condition per sample.
@@ -514,13 +517,13 @@ class NICE(BaseDensityEstimator, nnx.Module):
 
     @jax.jit
     def log_prob(
-        self, x: jnp.ndarray, c: jnp.ndarray | None = None
+        self, x: jnp.ndarray, c: jnp.ndarray | float | None = None
     ) -> jnp.ndarray:
         """Compute the log probability of the input data.
 
         Args:
             x (jnp.ndarray): Input data.
-            c (jnp.ndarray | None): Conditional parameters. Required
+            c (jnp.ndarray | float | None): Conditional parameters. Required
                 for a conditional model. Either a single condition
                 used for every sample or one condition per sample.
 
@@ -553,16 +556,17 @@ class NICE(BaseDensityEstimator, nnx.Module):
         x: jnp.ndarray,
         logevidence: float,
         prior_density: jnp.ndarray | BaseDensityEstimator,
-        c: jnp.ndarray | None = None,
+        c: jnp.ndarray | float | None = None,
     ) -> jnp.ndarray:
         """Compute the marginal log-likelihood of given samples.
 
         Args:
-            x: Samples for which to compute the log-likelihood.
-            logevidence: Log-evidence term. This is really Z(c) if the
+            x (jnp.ndarray): Samples for which to compute the log-likelihood.
+            logevidence (float): Log-evidence term. This is really Z(c) if the
                 flow is conditional and Z if not.
-            prior_density: Prior density or density estimator.
-            c: Conditional parameters.
+            prior_density (jnp.ndarray | BaseDensityEstimator):
+                Prior density or density estimator.
+            c (jnp.ndarray | float | None): Conditional parameters.
 
         Returns:
             Log likelihoods of the input data.

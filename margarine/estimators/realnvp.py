@@ -411,14 +411,17 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             nnx.update(self, best_model)
 
     def sample(
-        self, key: jnp.ndarray, num_samples: int, c: jnp.ndarray | None = None
+        self,
+        key: jnp.ndarray,
+        num_samples: int,
+        c: jnp.ndarray | float | None = None,
     ) -> jnp.ndarray:
         """Sample from the trained RealNVP model.
 
         Args:
-            key: JAX random key.
-            num_samples: Number of samples to draw.
-            c: Conditional parameters for the samples.
+            key (jnp.ndarray): JAX random key.
+            num_samples (int): Number of samples to draw.
+            c (jnp.ndarray | float | None): Conditional parameters for the samples.
 
         Returns:
             Samples drawn from the RealNVP model.
@@ -428,13 +431,13 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         return samples
 
     def __call__(
-        self, u: jnp.ndarray, c: jnp.ndarray | None = None
+        self, u: jnp.ndarray, c: jnp.ndarray | float | None = None
     ) -> jnp.ndarray:
         """Transform samples from the unit hypercube.
 
         Args:
             u (jnp.ndarray): Samples from the unit hypercube.
-            c (jnp.ndarray | None): Conditional parameters for the samples.
+            c (jnp.ndarray | float | None): Conditional parameters for the samples.
                 Can be a single sample or a batch of samples.
 
         Returns:
@@ -479,7 +482,7 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
 
     @jax.jit
     def log_prob(
-        self, x: jnp.ndarray, c: jnp.ndarray | None = None
+        self, x: jnp.ndarray, c: jnp.ndarray | float | None = None
     ) -> jnp.ndarray:
         """Compute the log probability of the input data.
 
@@ -517,16 +520,17 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         x: jnp.ndarray,
         logevidence: float,
         prior_density: jnp.ndarray | BaseDensityEstimator,
-        c: jnp.ndarray | None = None,
+        c: jnp.ndarray | float | None = None,
     ) -> jnp.ndarray:
         """Compute the marginal log-likelihood of given samples.
 
         Args:
-            x: Samples for which to compute the log-likelihood.
-            logevidence: Log-evidence term. This is really Z(c) if the
+            x (jnp.ndarray): Samples for which to compute the log-likelihood.
+            logevidence (float): Log-evidence term. This is really Z(c) if the
                 flow is conditional and Z if not.
-            prior_density: Prior density or density estimator.
-            c: Conditional data.
+            prior_density (jnp.ndarray | BaseDensityEstimator):
+                Prior density or density estimator.
+            c (jnp.ndarray | float | None): Conditional data.
 
         Returns:
             Log likelihoods of the input data.
@@ -538,8 +542,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
             # check if c is a single sample or single unique value
             # if no and logevidence is not a single value, raise an error
             c = check_conditional_input(c, self.conditional_shape, x.shape[0])
-            if (jnp.unique(c, axis=0).shape[0] > 1
-                and jnp.isscalar(logevidence)
+            if jnp.unique(c, axis=0).shape[0] > 1 and jnp.isscalar(
+                logevidence
             ):
                 raise ValueError(
                     "If multiple conditional parameters are passed, "
