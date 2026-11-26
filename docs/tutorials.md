@@ -209,7 +209,7 @@ flow.train(
 )
 ```
 
-The flow is ecaluated by passing the conditional as a named argument to functions like `__call__()`, `sample()` and `log_prob()`.
+The flow is ecaluated by passing the conditional as a named argument to functions like `__call__()`, `sample()` and `log_prob()`. Here the flows are evaluated at a single c but an array can also be passed.
 
 ```python
 c_values = [-1.0, -0.5, 0.0, 0.5, 1.0]
