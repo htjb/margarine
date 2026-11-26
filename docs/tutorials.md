@@ -256,6 +256,8 @@ and the distributions are shown below.
 
 The flows are loaded and saved in the same way as non-conditional flows (discussed below).
 
+Currently the KDEs and the Piecewise Normalising Flows (see below) cannot be made conditional although this is a planned addition.
+
 ## Piecewise Normalising Flows
 
 `margarine` includes piecewise normalising flow density estimators that can model multimodal distributions more effectively than standard normalising flows. Piecewise NFs are described in more detail in [this paper](https://arxiv.org/abs/2305.02930). 
