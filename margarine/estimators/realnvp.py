@@ -438,7 +438,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
 
         Args:
             u (jnp.ndarray): Samples from the unit hypercube.
-            c (jnp.ndarray | float | None): Conditional parameters for the samples.
+            c (jnp.ndarray | float | None): Conditional
+            parameters for the samples.
                 Can be a single sample or a batch of samples.
 
         Returns:
