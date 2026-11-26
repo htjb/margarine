@@ -6,6 +6,8 @@ from flax import nnx
 from flax.nnx.nn import initializers
 from tensorflow_probability.substrates import jax as tfp
 
+from margarine.base.baseflow import BaseDensityEstimator
+
 tfd = tfp.distributions
 
 default_kernel_init = initializers.lecun_normal()
@@ -86,21 +88,76 @@ def inverse_transform(
     return x
 
 
+@jax.jit
+def conditional_forward_transform(
+    x: jnp.ndarray,
+    mean: jnp.ndarray | None = None,
+    std: jnp.ndarray | None = None,
+) -> jnp.ndarray:
+    """Standardise conditional parameters.
+
+    Args:
+        x (jnp.ndarray): Conditional parameters to be standardised.
+        mean (jnp.ndarray | None): Mean of the conditional parameters.
+        std (jnp.ndarray | None): Standard deviation of the
+                conditional parameters.
+
+    Returns:
+        jnp.ndarray: Standardised conditional parameters.
+        jnp.ndarray: Mean of the conditional parameters.
+        jnp.ndarray: Standard deviation of the conditional parameters.
+    """
+    if mean is not None and std is not None:
+        return (x - mean) / std, mean, std
+    mean = jnp.mean(x, axis=0)
+    std = jnp.std(x, axis=0)
+    std = jnp.where(std == 0, 1, std)
+    return (x - mean) / std, mean, std
+
+
+@jax.jit
+def conditional_inverse_transform(
+    x: jnp.ndarray, mean: jnp.ndarray, std: jnp.ndarray
+) -> jnp.ndarray:
+    """Inverse standardisation of conditional parameters.
+
+    Args:
+        x (jnp.ndarray): Standardised conditional parameters.
+        mean (jnp.ndarray): Mean of the original conditional parameters.
+        std (jnp.ndarray): Standard deviation of the original
+            conditional parameters.
+
+    Returns:
+        jnp.ndarray: Inverse standardised conditional parameters.
+    """
+    return x * std + mean
+
+
 def train_test_split(
     a: jnp.ndarray,
     b: jnp.ndarray,
+    c: jnp.ndarray | None = None,
     key: jnp.ndarray | None = None,
     test_size: float = 0.2,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> tuple[
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray | None,
+    jnp.ndarray | None,
+]:
     """Splitting data into training and testing sets.
 
     Function is equivalent
-    to sklearn.model_selection.train_test_split but a and b
+    to sklearn.model_selection.train_test_split but a and b (and c if provided)
     are jax arrays.
 
     Args:
-        a (jnp.ndarray): First set of data to be split.
-        b (jnp.ndarray): Second set of data to be split.
+        a (jnp.ndarray): Parameters to be split.
+        b (jnp.ndarray): Weights or second set of data to be split.
+        c (jnp.ndarray | None): Conditional parameters to be split.
+            If provided, c will be split in the same way as a and b.
         test_size (float): Proportion of data to be used for testing.
         key (jax.random.KeyArray): JAX random key for shuffling.
 
@@ -109,6 +166,8 @@ def train_test_split(
         a_test (jnp.ndarray): Testing set from a.
         b_train (jnp.ndarray): Training set from b.
         b_test (jnp.ndarray): Testing set from b.
+        c_train (jnp.ndarray | None): Training set from c, if provided.
+        c_test (jnp.ndarray | None): Testing set from c, if provided.
     """
     if key is None:
         key = jax.random.PRNGKey(0)
@@ -124,7 +183,12 @@ def train_test_split(
     b_train = b[train_indices]
     b_test = b[test_indices]
 
-    return a_train, a_test, b_train, b_test
+    if c is not None:
+        c_train = c[train_indices]
+        c_test = c[test_indices]
+        return a_train, a_test, b_train, b_test, c_train, c_test
+    else:
+        return a_train, a_test, b_train, b_test, None, None
 
 
 def coupling_permutations(
@@ -229,3 +293,95 @@ def build_mlp(
         )
     )
     return nnx.Sequential(*layers)
+
+
+def check_conditional_input(
+    c: jnp.ndarray | None, conditional_shape: int, x_shape: int
+) -> jnp.ndarray:
+    """Check conditional input and broadcast it to one row per sample.
+
+    Accepted shapes, with d = conditional_shape and N = x_shape:
+
+    - (d,) or (1, d): a single condition, used for every sample.
+    - (N,) when d == 1: one scalar condition per sample.
+    - (N, d): one condition per sample.
+
+    Args:
+        c: Conditional parameters for the samples.
+        conditional_shape: Number of conditional parameters, d.
+        x_shape: Number of input samples, N.
+
+    Returns:
+        jnp.ndarray: Conditional parameters with shape (N, d).
+
+    Raises:
+        ValueError: If conditional parameters are not
+            provided or have an incorrect shape.
+    """
+    if c is None:
+        raise ValueError("Conditional parameters must be provided.")
+    c = jnp.asarray(c)
+
+    if c.ndim == 0:
+        c = c[None]
+
+    if c.ndim == 1:
+        if c.shape[0] == conditional_shape:
+            # a single condition for every sample
+            c = c[None, :]
+        elif conditional_shape == 1 and c.shape[0] == x_shape:
+            # one scalar condition per sample
+            c = c[:, None]
+    if c.ndim != 2 or c.shape[1] != conditional_shape:
+        raise ValueError(
+            f"Conditional parameters must have shape "
+            f"({conditional_shape},), (1, {conditional_shape}) or "
+            f"({x_shape}, {conditional_shape}), but got {c.shape}."
+        )
+    if c.shape[0] == 1:
+        c = jnp.tile(c, (x_shape, 1))
+    if c.shape[0] != x_shape:
+        raise ValueError(
+            f"Got {c.shape[0]} conditional parameters for {x_shape} "
+            "samples. Pass one condition per sample or a single "
+            "condition for all samples."
+        )
+    return c
+
+
+def prepare_conditional_input(
+    estimator: BaseDensityEstimator, c: jnp.ndarray | None, num_samples: int
+) -> jnp.ndarray | None:
+    """Validate, broadcast and normalise user supplied conditionals.
+
+    Used by the flows to turn the conditional parameters a user passes
+    to sample, __call__ or log_prob into the normalised (N, d) array
+    the coupling networks expect.
+
+    Args:
+        estimator: The flow. Must have a ``conditional`` attribute and,
+            if conditional, ``conditional_shape``, ``conditional_mean``
+            and ``conditional_std``.
+        c: Conditional parameters in their original units.
+        num_samples: Number of samples they apply to, N.
+
+    Returns:
+        jnp.ndarray | None: Normalised conditional parameters with
+            shape (N, d), or None for an unconditional flow.
+
+    Raises:
+        ValueError: If c is given to an unconditional flow, or is
+            missing or the wrong shape for a conditional flow.
+    """
+    if not estimator.conditional:
+        if c is not None:
+            raise ValueError(
+                "Conditional parameters were given but this "
+                f"{type(estimator).__name__} model is not conditional."
+            )
+        return None
+    c = check_conditional_input(c, estimator.conditional_shape, num_samples)
+    c, _, _ = conditional_forward_transform(
+        c, estimator.conditional_mean, estimator.conditional_std
+    )
+    return c

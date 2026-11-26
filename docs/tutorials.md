@@ -141,11 +141,129 @@ You can also calculate the KL divergence and model dimensionality between differ
 Older versions of `margarine` include an estimate of the error on statistics like the KL divergence and model dimensionality. This was estimated by calculating the statistics using samples drawn from the learned distribution and a reserved subset of the original samples and then comparing the two estimates. An additional source of error comes from the stochastic nature of training normalising flows. 
 This functionality has been removed in the current version to simplify the API, and error estimation is left to the user to implement as needed.
 
+## Conditional Normalizing Flows
+
+The RealNVP and NICE models built in to margarine can be used for conditional density estimation tasks including Neural Posterior and Neural Likelihood estimation (two flavours of Simulation Based Inference). This example shows how to build a conditional RealNVP. The API for the conditional NICE models is identical.
+
+The example here is a 2D banana distribution whoes curvature depends on a conditional paraemter c 
+
+$$x_1 \sim N(0, 1)$$
+
+$$x_2 | x_1, c \sim N(c \times x_1^2, 0.5^2)$$
+
+where $c = -1$ bends downward, $c=0$ is a plain Gaussian and $c=1$ bends up. The flow is trained on a range of conditional values and then evaluated over a few specific values of c.
+
+The problem is set up like so
+
+```python
+import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+
+from margarine.estimators.realnvp import RealNVP
+
+nsamples = 20000
+key = jax.random.PRNGKey(0)
+
+
+def simulate(key: jnp.ndarray, c: jnp.ndarray) -> jnp.ndarray:
+    """Draw one banana sample for each conditional value in c (N, 1)."""
+    k1, k2 = jax.random.split(key)
+    x1 = jax.random.normal(k1, (c.shape[0], 1))
+    x2 = c * x1**2 + 0.5 * jax.random.normal(k2, (c.shape[0], 1))
+    return jnp.hstack([x1, x2])
+
+
+def true_log_prob(x: jnp.ndarray, c: float) -> jnp.ndarray:
+    """Analytic log p(x | c) for the banana distribution."""
+    log_p_x1 = jax.scipy.stats.norm.logpdf(x[:, 0])
+    log_p_x2 = jax.scipy.stats.norm.logpdf(x[:, 1], c * x[:, 0] ** 2, 0.5)
+    return log_p_x1 + log_p_x2
+
+
+# --- training data: each sample is drawn at its own c ~ U(-1, 1) ---
+key, kc, kx = jax.random.split(key, 3)
+c = jax.random.uniform(kc, (nsamples, 1), minval=-1, maxval=1)
+theta = simulate(kx, c)
+```
+
+The flow is conditioned by passing c as a named argument when creating the flow.
+
+```python
+flow = RealNVP(
+    theta,
+    c=c,
+    theta_ranges=bounds,
+    in_size=2,
+    hidden_size=64,
+    num_layers=2,
+    num_coupling_layers=6,
+)
+
+key, subkey = jax.random.split(key)
+flow.train(
+    subkey,
+    learning_rate=1e-3,
+    epochs=2000,
+    patience=50,
+    batch_size=1024,
+)
+```
+
+The flow is ecaluated by passing the conditional as a named argument to functions like `__call__()`, `sample()` and `log_prob()`. Here the flows are evaluated at a single c but an array can also be passed.
+
+```python
+c_values = [-1.0, -0.5, 0.0, 0.5, 1.0]
+fig, axes = plt.subplots(1, len(c_values), figsize=(4 * len(c_values), 4),
+                         sharex=True, sharey=True)
+
+for ax, c_val in zip(axes, c_values):
+
+    key, k_true, k_flow = jax.random.split(key, 3)
+    true_samples = simulate(k_true, jnp.full((5000, 1), c_val))
+    flow_samples = flow.sample(k_flow, 5000, c=c_val)
+
+    # KL(true || flow) estimated with samples from the true distribution
+    kl = jnp.mean(
+        true_log_prob(true_samples, c_val) - flow.log_prob(true_samples, c_val)
+    )
+    print(f"c = {c_val:+.1f}: KL(true || flow) ~ {kl:.4f}")
+
+    ax.scatter(*true_samples.T, s=2, alpha=0.3, label="True")
+    ax.scatter(*flow_samples.T, s=2, alpha=0.3, label="RealNVP")
+    ax.set_title(f"c = {c_val:+.1f}")
+    ax.set_xlabel(r"$x_1$")
+
+axes[0].set_ylabel(r"$x_2$")
+axes[0].legend(markerscale=5)
+fig.suptitle(r"Conditional RealNVP: samples from $p(x \mid c)$")
+plt.tight_layout()
+plt.show()
+```
+
+For this example the estimated KL divergences are
+
+```
+c = -1.0: KL(true || flow) ~ 0.0537
+c = -0.5: KL(true || flow) ~ 0.0205
+c = +0.0: KL(true || flow) ~ 0.0180
+c = +0.5: KL(true || flow) ~ 0.0245
+c = +1.0: KL(true || flow) ~ 0.0381
+```
+
+and the distributions are shown below.
+
+![image](example-images/conditional_flow_example.png)
+
+The flows are loaded and saved in the same way as non-conditional flows (discussed below).
+
+Currently the KDEs and the Piecewise Normalising Flows (see below) cannot be made conditional although this is a planned addition.
+
 ## Piecewise Normalising Flows
 
 `margarine` includes piecewise normalising flow density estimators that can model multimodal distributions more effectively than standard normalising flows. Piecewise NFs are described in more detail in [this paper](https://arxiv.org/abs/2305.02930). 
 
-Essentially piecewise NFs divide the samples into clusters using K-Means clustering and then train a separate normalising flow on each cluster. The overall density is then a weighted sum of the densities from each cluster. In `margarine` piecewise NFs can be built from any of the standard density estimators using the `clustered` estimator. The example below demonstrated how to build a piecewise RealNVP estimato.
+Essentially piecewise NFs divide the samples into clusters using K-Means clustering and then train a separate normalising flow on each cluster. The overall density is then a weighted sum of the densities from each cluster. In `margarine` piecewise NFs can be built from any of the standard density estimators using the `clustered` estimator. The example below demonstrated how to build a piecewise RealNVP estimation.
 
 ```python
 import jax
@@ -234,4 +352,3 @@ realnvp_estimator.save("realnvp_model")
 # Load the model
 loaded_estimator = RealNVP.load("realnvp_model")
 ```
-

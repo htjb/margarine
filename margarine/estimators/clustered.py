@@ -64,6 +64,12 @@ class cluster:
         self.base_estimator = base_estimator
         self.kwargs = kwargs
 
+        if "c" in kwargs:
+            raise NotImplementedError(
+                "Conditional parameters are not "
+                "supported in the cluster class."
+            )
+
         self.theta = theta
         self.weights = weights
         self.theta_ranges = theta_ranges

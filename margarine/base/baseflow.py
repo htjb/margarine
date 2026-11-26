@@ -28,24 +28,30 @@ class BaseDensityEstimator(ABC):
         raise NotImplementedError("Train method must be implemented.")
 
     @abstractmethod
-    def sample(self, key: jnp.ndarray, num_samples: int) -> jnp.ndarray:
+    def sample(
+        self, key: jnp.ndarray, num_samples: int, c: jnp.ndarray | None = None
+    ) -> jnp.ndarray:
         """Generate samples from the density estimator.
 
         Args:
             key: JAX random key for sampling.
             num_samples: Number of samples to generate.
+            c: Conditional parameters for the samples.
 
         Returns:
             jnp.ndarray: Generated samples as a JAX array.
         """
         u = jax.random.uniform(key, shape=(num_samples, self.theta.shape[1]))
-        raise self(u)
+        return self(u, c)
 
-    def __call__(self, u: jnp.ndarray) -> jnp.ndarray:
+    def __call__(
+        self, u: jnp.ndarray, c: jnp.ndarray | None = None
+    ) -> jnp.ndarray:
         """Evaluate the density estimator at given points.
 
         Args:
             u: Samples from the unit hypercube.
+            c: Conditional parameters for the samples.
 
         Returns:
             jnp.ndarray: samples from the density estimator.
@@ -53,11 +59,14 @@ class BaseDensityEstimator(ABC):
         raise NotImplementedError("Call method must be implemented.")
 
     @abstractmethod
-    def log_prob(self, x: jnp.ndarray) -> jnp.ndarray:
+    def log_prob(
+        self, x: jnp.ndarray, c: jnp.ndarray | None = None
+    ) -> jnp.ndarray:
         """Compute the log-probability of given samples.
 
         Args:
             x: Samples for which to compute the log-probability.
+            c: Conditional parameters for the samples.
 
         Returns:
             jnp.ndarray: Log-probabilities of the samples.
@@ -70,6 +79,7 @@ class BaseDensityEstimator(ABC):
         x: jnp.ndarray,
         logevidence: float,
         prior_density: jnp.ndarray,
+        c: jnp.ndarray | None = None
     ) -> jnp.ndarray:
         """Compute the log-likelihood of given samples.
 
@@ -77,6 +87,7 @@ class BaseDensityEstimator(ABC):
             x: Samples for which to compute the log-likelihood.
             logevidence: Log-evidence value.
             prior_density: Prior density estimator or densities.
+            c: Conditional parameters for the samples.
 
         Returns:
             jnp.ndarray: Log-likelihoods of the samples.
