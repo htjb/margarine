@@ -1,7 +1,7 @@
 # margarine: density estimation made easy
 
 **Authors:** Harry T.J. Bevins  
-**Version:** 2.4.0  
+**Version:** 2.4.1 
 **Homepage:** https://github.com/htjb/margarine  
 **Documentation:** https://margarine.readthedocs.io/
 
@@ -16,6 +16,8 @@
 
 The code can be used to:
 
+- Perform Neural Likelihood and Neural Posterior estimation with NICE and RealNVP flows
+- Perform conditional density estimation tasks
 - Emulate posterior distributions from weightened samples (e.g. MCMC, nested sampling)
 - Build non-trivial priors from samples
 - Perform density estimation tasks in general machine learning applications
@@ -128,6 +130,7 @@ If used for academic work, please cite:
 * Main paper: https://arxiv.org/abs/2205.12841
 * MaxEnt22 proceedings: https://arxiv.org/abs/2207.11457
 * Piecewise Normalising Flows Paper: https://arxiv.org/abs/2305.02930
+* β-flows paper: https://arxiv.org/abs/2411.17663
 
 ---
 
