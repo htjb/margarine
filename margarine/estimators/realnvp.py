@@ -421,7 +421,8 @@ class RealNVP(BaseDensityEstimator, nnx.Module):
         Args:
             key (jnp.ndarray): JAX random key.
             num_samples (int): Number of samples to draw.
-            c (jnp.ndarray | float | None): Conditional parameters for the samples.
+            c (jnp.ndarray | float | None): Conditional
+                parameters for the samples.
 
         Returns:
             Samples drawn from the RealNVP model.

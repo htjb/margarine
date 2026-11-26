@@ -450,7 +450,8 @@ class NICE(BaseDensityEstimator, nnx.Module):
         Args:
             key (jnp.ndarray): JAX random key.
             num_samples (int): Number of samples to draw.
-            c (jnp.ndarray | float | None): Conditional parameters for the samples. Required for a
+            c (jnp.ndarray | float | None): Conditional parameters
+                for the samples. Required for a
                 conditional model. Either a single condition used for
                 every sample or one condition per sample.
 
