@@ -147,10 +147,11 @@ The RealNVP and NICE models built in to margarine can be used for conditional de
 
 The example here is a 2D banana distribution whoes curvature depends on a conditional paraemter c 
 
-$$x_1 ~ N(0, 1)$$
-$$x_2 | x_1, c ~ N(c \times x_1^2, 0.5^2)$$
+$$x_1 \sim N(0, 1)$$
 
-where $c = -1$ bends downward, c=0 is a plain Gaussian and c=1 bends up. The flow is trained on a range of conditional values and then evaluated over a few specific values of c.
+$$x_2 | x_1, c \sim N(c \times x_1^2, 0.5^2)$$
+
+where $c = -1$ bends downward, $c=0$ is a plain Gaussian and $c=1$ bends up. The flow is trained on a range of conditional values and then evaluated over a few specific values of c.
 
 The problem is set up like so
 
